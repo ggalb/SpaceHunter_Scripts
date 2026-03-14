@@ -1,0 +1,88 @@
+MIT License
+Space Hunter Lazy Workflow — Part 1 & Part 2
+Copyright (c) 2026 Georg G Albrecht
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+-------------------------------------------------------------------------------
+Third-Party Component License
+-------------------------------------------------------------------------------
+
+AutoColor.js
+Copyright (c) 2016 Hartmut V. Bornemann
+
+This software includes AutoColor.js by Hartmut V. Bornemann, integrated into Space Hunter Lazy
+Workflow Part 2 with the explicit written permission of the author (March 10, 2026).
+
+Permission was granted subject to the following conditions:
+- The original copyright headers must remain intact in the source code.
+- The author's name must remain intact in the source code.
+
+AutoColor.js is NOT covered by the MIT License that governs this software.
+It may not be redistributed, modified, or used in other projects without obtaining separate written
+permission directly from the author:
+
+Hartmut V. Bornemann (hvb356@hotmail.de)
+
+-------------------------------------------------------------------------------
+Acknowledgments
+-------------------------------------------------------------------------------
+
+These scripts are designed to run within PixInsight (https://pixinsight.com/), a commercial image
+processing platform developed by Pleiades Astrophoto S.L. This product is based on software
+from the PixInsight project, developed by Pleiades Astrophoto and its contributors
+(https://pixinsight.com/).
+
+Part 1 — Lazy Workflow Part 1
+
+ASTAP plate solving uses the ASTAP command-line interface (https://www.hnsky.org/astap.htm)
+by Han Kleijn, licensed under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).
+ASTAP is not included and must be separately installed. ASTAP integration approach inspired by
+BlindSolver2000 by Franklin Marek (www.setiastro.com), licensed under CC BY-NC 4.0
+(http://creativecommons.org/licenses/by-nc/4.0/).
+
+ImageSolver by (C) 2012-2024 Andrés del Pozo / (C) 2019-2024 Juan Conejero (PTeam).
+
+Standard PixInsight processes called by this script: SpectroPhotometricFluxCalibration,
+MultiscaleGradientCorrection, GradientCorrection, and DynamicBackgroundExtraction.
+
+Part 2 — Lazy Workflow Part 2
+
+Adaptive Auto STF algorithm based on PixInsight's standard Screen Transfer Function
+methodology by Juan Conejero / Pleiades Astrophoto.
+
+Background finder concept inspired by FindBackground by Gerrit Erdt and Franklin Marek
+(SetiAstro), licensed under CC BY-NC 4.0 (http://creativecommons.org/licenses/by-nc/4.0/). Our
+implementation is independently written with a different algorithm and scoring approach.
+
+Standard PixInsight processes called by this script: SpectrophotometricColorCalibration (SPCC),
+BackgroundNeutralization, ColorCalibration.
+
+-------------------------------------------------------------------------------
+Commercial Tools
+-------------------------------------------------------------------------------
+
+The following tools are not included and must be separately installed and licensed:
+
+BlurXTerminator by Russell Croman (https://www.rc-astro.com/software/bxt/)
+StarXTerminator by Russell Croman (https://www.rc-astro.com/software/sxt/)
+NoiseXTerminator by Russell Croman (https://www.rc-astro.com/software/nxt/)
+
+-------------------------------------------------------------------------------
+
+Scripts developed with assistance from Claude AI (Anthropic).
