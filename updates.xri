@@ -11,7 +11,7 @@
    <platform os="all" arch="noarch" version="1.8.0:1.9.9">
       <package
          fileName="SpaceHunter_Scripts_v1.2.zip"
-         sha1="2FCE7B8918F6613FF8F6A38A1AE23B9D0DE4CEF2"
+         sha1="2fce7b8918f6613ff8f6a38a1ae23b9d0de4cef2"
          type="script"
          releaseDate="20260314"
          title="Space Hunter Scripts v1.2"
