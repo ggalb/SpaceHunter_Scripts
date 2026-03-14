@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xri version="1.0">
+
+   <description>
+      <p><b>Space Hunter Scripts for PixInsight</b></p>
+      <p>A collection of scripts for automated linear image processing of OSC camera images.</p>
+      <p>Copyright &copy; 2026 Georg G Albrecht. MIT License.</p>
+      <p>Repository: https://github.com/ggalb/SpaceHunter_Scripts</p>
+   </description>
+
+   <platform os="any" arch="noarch">
+      <package
+         fileName="SpaceHunter_Scripts_v1.2.zip"
+         sha1="2FCE7B8918F6613FF8F6A38A1AE23B9D0DE4CEF2"
+         releaseDate="20260314"
+         title="Space Hunter Scripts v1.2"
+         version="1.2.0">
+         <description>
+            <p><b>Space Hunter Scripts v1.2</b></p>
+            <p>Includes:</p>
+            <p>- SH Lazy Workflow Part 1: Smart plate solving (ASTAP), ImageSolver, SPFC, variable previews, MultiscaleGradientCorrection, optional GradientCorrection and DynamicBackgroundExtraction.</p>
+            <p>- SH Lazy Workflow Part 2: BlurXTerminator, Background finder with Exclusion Zones, SPCC, AutoColor, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator.</p>
+            <p>- SH +Previews: Creates 1-6 full-size previews with preset or custom naming.</p>
+            <p>- SH KillPreviews: Deletes all previews from the active image window.</p>
+            <p>- SH NamePreviews: Renames previews to Exclude1, Exclude2, etc.</p>
+         </description>
+      </package>
+   </platform>
+
+</xri>
