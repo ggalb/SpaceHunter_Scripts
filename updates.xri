@@ -10,14 +10,21 @@
 
    <platform os="all" arch="noarch" version="1.8.0:1.9.9">
       <package
-         fileName="SpaceHunter_Scripts_v1.2.zip"
-         sha1="2fce7b8918f6613ff8f6a38a1ae23b9d0de4cef2"
+         fileName="SpaceHunter_Scripts_v1.3.zip"
+         sha1="b8e30a971bf69316971e5d1f9f8bd93c8538fd94"
          type="script"
-         releaseDate="20260314"
-         title="Space Hunter Scripts v1.2"
-         version="1.2.0">
+         releaseDate="20260317"
+         title="Space Hunter Scripts v1.3"
+         version="1.3.0">
          <description>
-            <p><b>Space Hunter Scripts v1.2</b></p>
+            <p><b>Space Hunter Scripts v1.3</b></p>
+            <p>New in v1.3:</p>
+            <p>- SPFC and SPCC narrowband filters mode with user-defined wavelength and bandwidth per channel.</p>
+            <p>- MGC filter selection (Gray, Red, Green, Blue) for narrowband workflows.</p>
+            <p>- Combined standard and custom filter database — all filters now loaded and merged automatically.</p>
+            <p>- Filter list alphabetically sorted.</p>
+            <p>- Various bug fixes and workflow improvements.</p>
+            <p>Includes:</p>
             <p>- SH Lazy Workflow Part 1: Smart plate solving (ASTAP), ImageSolver, SPFC, variable previews, MultiscaleGradientCorrection, optional GradientCorrection and DynamicBackgroundExtraction.</p>
             <p>- SH Lazy Workflow Part 2: BlurXTerminator, Background finder with Exclusion Zones, SPCC, AutoColor, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator.</p>
             <p>- SH +Previews: Creates 1-6 full-size previews with preset or custom naming.</p>
