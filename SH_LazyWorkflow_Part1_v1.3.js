@@ -11,7 +11,6 @@
    Copyright &copy; 2026 Georg G Albrecht. MIT License.<br/>\
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
-// MGC filter selection added > Changes to SPFC including Narrowband filters > Changes made to reflect all filters independent of location on PC
 // ============================================================
 // Space Hunter Lazy Workflow Part 1 v1.3
 //
@@ -3171,6 +3170,9 @@ function main()
             console.writeln("\n" + "=".repeat(80));
             console.writeln("MGC FALLBACK: Running GradientCorrection on first 2 previews");
             console.writeln("=".repeat(80) + "\n");
+            // Recreate previews with GC prefix for GC to use
+            console.writeln("Recreating previews with GC prefix...\n");
+            createPreviews("GC");
          }
          let win = ImageWindow.activeWindow;
          if (win.previews.length >= 2) {
