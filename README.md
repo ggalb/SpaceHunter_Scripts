@@ -59,7 +59,7 @@ Continues from Part 1 — BlurXTerminator (correct only), Background finder with
 
 A detailed workflow guide is included: **SH_Workflow_Guide.pdf**
 
-After installation, the PDF can be opened directly from within the Lazy Workflow scripts using the PDF button in the script toolbar.
+After installation, the PDF can be opened directly from within the Lazy Workflow scripts using the PDF button in the script toolbar. The PDF is interactive with linked titles to description and left/right borders returning user to front of paragraph or previous paragraph.
 
 ---
 
