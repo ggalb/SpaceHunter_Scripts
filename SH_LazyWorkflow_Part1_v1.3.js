@@ -1769,8 +1769,8 @@ else
    this.resetSettingsButton = new ToolButton( this );
    var cogIconPath = SCRIPT_DIR + "/SH_Cog.png";
    if (File.exists(cogIconPath))
-      this.resetSettingsButton.icon = new Bitmap(cogIconPath).scaledTo(30, 30);
-   this.resetSettingsButton.setScaledFixedSize( 30, 30 );
+      this.resetSettingsButton.icon = new Bitmap(cogIconPath).scaledTo(24, 24);
+   this.resetSettingsButton.setScaledFixedSize( 24, 24 );
    this.resetSettingsButton.toolTip = "<p>Reset equipment settings to script defaults.<br/>" +
       "Resets: White Reference, Camera and Filter to default,<br/>" +
       "MGC gradient scales to 768/1024/2048/3072.<br/>" +

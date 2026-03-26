@@ -795,7 +795,7 @@ function SpaceHunterDialog2()
    var warningIconPath = SCRIPT_DIR + "/SH_WarningSign.png";
    if (File.exists(warningIconPath))
       this.exclusionWarning_Icon.icon = new Bitmap(warningIconPath);
-   this.exclusionWarning_Icon.setScaledFixedSize( 32, 32 );
+   this.exclusionWarning_Icon.setScaledFixedSize( 24, 24 );
    this.exclusionWarning_Icon.toolTip = this.exclusionZones_CheckBox.toolTip;
 
    this.exclusionZones_Sizer = new HorizontalSizer;
@@ -1196,12 +1196,13 @@ function SpaceHunterDialog2()
    var psfWarningIconPath = SCRIPT_DIR + "/SH_WarningSign.png";
    if (File.exists(psfWarningIconPath))
       this.bxtAutoPSF_Warning_Icon.icon = new Bitmap(psfWarningIconPath);
-   this.bxtAutoPSF_Warning_Icon.setScaledFixedSize( 32, 32 );
+   this.bxtAutoPSF_Warning_Icon.setScaledFixedSize( 24, 24 );
    this.bxtAutoPSF_Warning_Icon.toolTip = this.bxtAutoPSF_CheckBox.toolTip;
 
    this.bxtAutoPSF_Sizer = new HorizontalSizer;
    this.bxtAutoPSF_Sizer.addSpacing( labelWidth -10 );
    this.bxtAutoPSF_Sizer.add( this.bxtAutoPSF_Warning_Icon );
+   this.bxtAutoPSF_Sizer.addSpacing( 6 );
    this.bxtAutoPSF_Sizer.add( this.bxtAutoPSF_CheckBox );
    this.bxtAutoPSF_Sizer.addStretch();
 
@@ -1716,8 +1717,8 @@ else
    this.resetSettingsButton = new ToolButton( this );
    var cogIconPath2 = SCRIPT_DIR + "/SH_Cog.png";
    if (File.exists(cogIconPath2))
-      this.resetSettingsButton.icon = new Bitmap(cogIconPath2).scaledTo(30, 30);
-   this.resetSettingsButton.setScaledFixedSize( 30, 30 );
+      this.resetSettingsButton.icon = new Bitmap(cogIconPath2).scaledTo(24, 24);
+   this.resetSettingsButton.setScaledFixedSize( 24, 24 );
    this.resetSettingsButton.toolTip = "<p>Reset equipment and processing settings to factory defaults.<br/>" +
       "Resets: White Reference to Average Spiral Galaxy, Camera to Ideal QE curve, Filter to default,<br/>" +
       "BXT Full parameters, SXT parameters, and StarNet2 parameters.<br/>" +
