@@ -10,13 +10,14 @@
 
    <platform os="all" arch="noarch" version="1.8.0:1.9.9">
       <package
-         fileName="SpaceHunter_Scripts_20260326.zip"
-         sha1="3c054b20cc704d5f4fbf7ce55d5495e0078910d5"
+         fileName="SpaceHunter_Scripts_20260329.zip"
+         sha1="1f0e4a2ff71e9855ec840b0067a7d6ef7f60c71c"
          type="script"
-         releaseDate="20260326"
-         title="Space Hunter Scripts 20260326">
+         releaseDate="20260329"
+         title="Space Hunter Scripts 20260329">
          <description>
-            <p><b>Space Hunter Scripts 20260326</b></p>
+            <p><b>Space Hunter Scripts 20260329</b></p>
+            <p>- PDF workflow guide included and accessible directly from within both scripts.</p>
             <p>- UI refinements: cog and warning triangle icons resized for consistent toolbar appearance.</p>
             <p>- SPFC and SPCC narrowband filters mode with user-defined wavelength and bandwidth per channel.</p>
             <p>- MGC filter selection (Gray, Red, Green, Blue) for narrowband workflows.</p>
