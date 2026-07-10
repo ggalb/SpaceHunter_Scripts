@@ -5,10 +5,23 @@ Copyright © 2026 Georg G Albrecht. MIT License.
 
 ---
 
+## Versions
+
+This repository provides two versions of the Space Hunter scripts:
+
+- **v2.0 (V8)** — For PixInsight 1.9.4 (Lockhart) and later. Ported to the V8 JavaScript engine with ES6 class inheritance, updated API calls, and significant performance improvements (AutoColor sky-background computation is up to 4x faster). Note: ImageSolver auto-include is temporarily disabled as ImageSolver.js is not yet V8-compatible — plate-solve manually via Script > Image Analysis > ImageSolver before running Part 1.
+- **v1.3 (Legacy)** — For PixInsight 1.8.0 through 1.9.3. Uses the original SpiderMonkey JavaScript engine.
+
+The update repository automatically delivers the correct version for your PixInsight installation.
+
+**ImageSolver workaround for 1.9.4 users:** PixInsight 1.9.4 still supports legacy SpiderMonkey scripts alongside V8. Until ImageSolver.js is updated for V8, you can run the legacy Part 1 v1.3 which includes ImageSolver and works fully on 1.9.4.
+
+---
+
 ## Prerequisites
 
 - Windows operating system (Windows 11 recommended)
-- PixInsight 1.9.3 or higher
+- PixInsight 1.9.4 or higher (for V8 v2.0) or PixInsight 1.8.0–1.9.3 (for legacy v1.3)
 - PixInsight's MARS databases installed
 - ASTAP installed with D50 star maps
 - BlurXTerminator, StarXTerminator, NoiseXTerminator (optional but recommended)

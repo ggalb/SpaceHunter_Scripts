@@ -8,15 +8,16 @@
       <p>Repository: https://github.com/ggalb/SpaceHunter_Scripts</p>
    </description>
 
-   <platform os="all" arch="noarch" version="1.8.0:1.9.9">
+   <!-- Legacy scripts for PixInsight 1.8.0 through 1.9.3 (SpiderMonkey engine) -->
+   <platform os="all" arch="noarch" version="1.8.0:1.9.3">
       <package
          fileName="SpaceHunter_Scripts_20260329.zip"
          sha1="1f0e4a2ff71e9855ec840b0067a7d6ef7f60c71c"
          type="script"
          releaseDate="20260329"
-         title="Space Hunter Scripts 20260329">
+         title="Space Hunter Scripts v1.3">
          <description>
-            <p><b>Space Hunter Scripts 20260329</b></p>
+            <p><b>Space Hunter Scripts v1.3</b></p>
             <p>- PDF workflow guide included and accessible directly from within both scripts.</p>
             <p>- UI refinements: cog and warning triangle icons resized for consistent toolbar appearance.</p>
             <p>- SPFC and SPCC narrowband filters mode with user-defined wavelength and bandwidth per channel.</p>
@@ -26,6 +27,31 @@
             <p>- Various bug fixes and workflow improvements.</p>
             <p>Includes:</p>
             <p>- SH Lazy Workflow Part 1: Smart plate solving (ASTAP), ImageSolver, SPFC, variable previews, MultiscaleGradientCorrection, optional GradientCorrection and DynamicBackgroundExtraction.</p>
+            <p>- SH Lazy Workflow Part 2: BlurXTerminator, Background finder with Exclusion Zones, SPCC, AutoColor, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator.</p>
+            <p>- SH +Previews: Creates 1-6 full-size previews with preset or custom naming.</p>
+            <p>- SH KillPreviews: Deletes all previews from the active image window.</p>
+            <p>- SH NamePreviews: Renames previews to Exclude1, Exclude2, etc.</p>
+         </description>
+      </package>
+   </platform>
+
+   <!-- V8 scripts for PixInsight 1.9.4+ (V8 JavaScript engine) -->
+   <platform os="all" arch="noarch" version="1.9.4:1.9.9">
+      <package
+         fileName="SpaceHunter_Scripts_V8_v2.0.zip"
+         sha1="9c03ee3c1f421c4c8bc2041e67337692ab236da9"
+         type="script"
+         releaseDate="20260709"
+         title="Space Hunter Scripts V8 v2.0">
+         <description>
+            <p><b>Space Hunter Scripts V8 v2.0</b></p>
+            <p>Ported to the V8 JavaScript engine introduced in PixInsight 1.9.4 (Lockhart).</p>
+            <p>- All scripts updated for V8 compatibility: ES6 class inheritance, updated constant naming, CoreApplication API.</p>
+            <p>- AutoColor performance: Float64Array + native sort replaces Array + comparator sort — up to 4x faster sky-background computation on large images.</p>
+            <p>- ImageSolver auto-include temporarily disabled (not yet V8-compatible). Manual plate solving via Script &gt; Image Analysis &gt; ImageSolver before running Part 1.</p>
+            <p>- Requires PixInsight 1.9.4 or later.</p>
+            <p>Includes:</p>
+            <p>- SH Lazy Workflow Part 1: Smart plate solving (ASTAP), SPFC, variable previews, MultiscaleGradientCorrection, optional GradientCorrection and DynamicBackgroundExtraction.</p>
             <p>- SH Lazy Workflow Part 2: BlurXTerminator, Background finder with Exclusion Zones, SPCC, AutoColor, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator.</p>
             <p>- SH +Previews: Creates 1-6 full-size previews with preset or custom naming.</p>
             <p>- SH KillPreviews: Deletes all previews from the active image window.</p>

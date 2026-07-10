@@ -2374,15 +2374,18 @@ function runSPCC()
 // ----------------------------------------------------------------------------
 // V8 PORT NOTICE
 // ----------------------------------------------------------------------------
-// Ported to PixInsight 1.9.4 V8 JavaScript engine by Georg G Albrecht
-// (Space Hunter Scripts), July 2026.
-// Original AutoColor.js copyright remains with Hartmut V. Bornemann.
+// Ported to PixInsight 1.9.4 V8 JavaScript engine by Georg Albrecht
+// (ggalbch@gmail.com) with additional packaging by Peter Proulx
+// (peterproulx@gmail.com), Masters of PixInsight (www.mastersofpixinsight.com)
+// July 2026. Original script copyright remains with Hartmut V. Bornemann.
 // No rights to the original work are claimed or implied.
 //
-// V8 changes: replaced img.getPixels() with img.getSamples() using
-// Float64Array for V8 compatibility and significantly improved performance;
-// removed sort comparator (Float64Array.sort() is numeric by default);
-// removed .prototype from BackgroundNeutralization.TargetBackground.
+// V8 changes: added #engine v8 directive and version guard; replaced the
+// single .prototype. enum reference (BackgroundNeutralization.prototype.
+// TargetBackground -> BackgroundNeutralization.TargetBackground). Performance
+// optimization by Georg Albrecht: uses Float64Array instead of a plain JS
+// array for sky samples, giving faster sort and numeric operations on large
+// images. No dialogs, with() statements, or legacy prototype patterns present.
 // ----------------------------------------------------------------------------
 // ============================================================
 
@@ -3298,4 +3301,4 @@ function main()
    }
 }
 
-main();
+main();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
