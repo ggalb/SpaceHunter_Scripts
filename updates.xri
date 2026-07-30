@@ -11,8 +11,8 @@
    <!-- Legacy scripts for PixInsight 1.8.0 through 1.9.3 (SpiderMonkey engine) -->
    <platform os="all" arch="noarch" version="1.8.0:1.9.3">
       <package
-         fileName="SpaceHunter_Scripts_v1.4.zip"
-         sha1="be047b547549d5781d52a37a7f737dd04863ab6b"
+         fileName="SpaceHunter_Scripts_20260329.zip"
+         sha1="db83859a36628eb26f046482fb842cf93baa5b86"
          type="script"
          releaseDate="20260729"
          title="Space Hunter Scripts v1.4">
@@ -34,8 +34,8 @@
    <!-- V8 scripts for PixInsight 1.9.4+ (V8 JavaScript engine) -->
    <platform os="all" arch="noarch" version="1.9.4:1.9.9">
       <package
-         fileName="SpaceHunter_Scripts_V8_v2.1.zip"
-         sha1="f1d50ea9c3bf5ba5658a2e5d59acad9dd5ed2249"
+         fileName="SpaceHunter_Scripts_V8_v2.0.zip"
+         sha1="2452bddffdc0f744be29819a23dc5a8ca7ff78c4"
          type="script"
          releaseDate="20260729"
          title="Space Hunter Scripts V8 v2.1">
@@ -49,6 +49,7 @@
             <p>- Legacy Part 1 (with ImageSolver) bundled for convenience.</p>
             <p>- Updated workflow guide (PDF).</p>
             <p>- Requires PixInsight 1.9.4 or later.</p>
+            <p>NOTE: If you received the earlier v2.1 update and see duplicate scripts in your Space_Hunter menu, delete the files ending in _V8_v2.1.js from your Space_Hunter folder, then re-add the scripts via Feature Scripts.</p>
             <p>Includes:</p>
             <p>- SH Lazy Workflow Part 1 V8: Smart plate solving (ASTAP), SPFC, variable previews, MultiscaleGradientCorrection, optional GradientCorrection and DynamicBackgroundExtraction.</p>
             <p>- SH Lazy Workflow Part 1 (Legacy+ImageSolver): For users who need ImageSolver integrated in the script.</p>

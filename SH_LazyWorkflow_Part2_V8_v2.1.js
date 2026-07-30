@@ -1,7 +1,7 @@
 #engine v8
 #feature-id Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.0<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.1<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
 
 // Changes made to reflect all filters independent of location > Changes made to console output info showing parts enabled/disabled > 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.0
+// Space Hunter Lazy Workflow Part 2 v2.1
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.

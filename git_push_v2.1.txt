@@ -1,0 +1,29 @@
+# Space Hunter v2.1 / v1.4 — Corrective Push
+# Replaces broken v2.1 push that caused duplicate scripts
+# Run from Git Bash in SpaceHunter_Scripts folder
+# REMINDER: Use Shift+Insert to paste in Git Bash (not Ctrl+V)
+
+# 1. Stage corrected zips, xri, and updated JS source files
+git add SpaceHunter_Scripts_V8_v2.0.zip SpaceHunter_Scripts_20260329.zip updates.xri
+git add SH_LazyWorkflow_Part1_V8_v2.1.js SH_LazyWorkflow_Part2_V8_v2.1.js
+git add SH_LazyWorkflow_Part1_Legacy_v1.4.js SH_LazyWorkflow_Part1_v1.4.js
+git add git_push_v2.1.txt
+
+# 2. Remove the wrongly-named zips from git tracking
+git rm SpaceHunter_Scripts_V8_v2.1.zip SpaceHunter_Scripts_v1.4.zip
+
+# 3. Check what's staged
+git status
+
+# 4. Commit
+git commit -m "v2.1/v1.4 corrective release — fix duplicate scripts
+
+Replaces V8 v2.0 and legacy zip files with v2.1/v1.4 content
+using original filenames so PixInsight overwrites correctly.
+Removes wrongly-named v2.1/v1.4 zip files.
+Updates JS source files with corrected feature-info v2.1/v1.4.
+Updates updates.xri with correct SHA1 hashes.
+Adds orphan cleanup note for users who received broken push."
+
+# 5. Push
+git push origin main
