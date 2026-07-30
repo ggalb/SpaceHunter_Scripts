@@ -9,22 +9,22 @@ Copyright © 2026 Georg G Albrecht. MIT License.
 
 This repository provides two versions of the Space Hunter scripts:
 
-- **v2.0 (V8)** — For PixInsight 1.9.4 (Lockhart) and later. Ported to the V8 JavaScript engine with ES6 class inheritance, updated API calls, and significant performance improvements (AutoColor sky-background computation is up to 4x faster). Note: ImageSolver auto-include is temporarily disabled as ImageSolver.js is not yet V8-compatible — plate-solve manually via Script > Image Analysis > ImageSolver before running Part 1.
-- **v1.3 (Legacy)** — For PixInsight 1.8.0 through 1.9.3. Uses the original SpiderMonkey JavaScript engine.
+- **v2.1 (V8)** — For PixInsight 1.9.4 (Lockhart) and later. Ported to the V8 JavaScript engine with ES6 class inheritance, updated API calls, and significant performance improvements (AutoColor sky-background computation is up to 4x faster). Note: ImageSolver auto-include is temporarily disabled as ImageSolver.js is not yet V8-compatible — plate-solve manually via Script > Image Analysis > ImageSolver before running Part 1.
+- **v1.4 (Legacy)** — For PixInsight 1.8.0 through 1.9.3. Uses the original SpiderMonkey JavaScript engine.
 
 The update repository automatically delivers the correct version for your PixInsight installation.
 
-**ImageSolver workaround for 1.9.4 users:** PixInsight 1.9.4 still supports legacy SpiderMonkey scripts alongside V8. Until ImageSolver.js is updated for V8, you can run the legacy Part 1 v1.3 which includes ImageSolver and works fully on 1.9.4.
+**ImageSolver workaround for 1.9.4 users:** PixInsight 1.9.4 still supports legacy SpiderMonkey scripts alongside V8. Until ImageSolver.js is updated for V8, a legacy Part 1 v1.4 is included in the V8 package and appears in the menu as **SH Lazy Workflow Part 1 (Legacy+ImageSolver)**. It includes ImageSolver and works fully on 1.9.4.
 
 ---
 
 ## Prerequisites
 
 - Windows operating system (Windows 11 recommended)
-- PixInsight 1.9.4 or higher (for V8 v2.0) or PixInsight 1.8.0–1.9.3 (for legacy v1.3)
+- PixInsight 1.9.4 or higher (for V8 v2.1) or PixInsight 1.8.0–1.9.3 (for legacy v1.4)
 - PixInsight's MARS databases installed
 - ASTAP installed with D50 star maps
-- BlurXTerminator, StarXTerminator, NoiseXTerminator (optional but recommended)
+- BlurXTerminator, StarXTerminator, NoiseXTerminator v1.1.2.2 or later (optional but recommended)
 - StarNet2 (optional, alternative to StarXTerminator)
 - AutoColor (optional, alternative to SPCC)
 
@@ -56,7 +56,7 @@ The Lazy Workflow scripts are designed so you don't have to manually call and se
 Automated linear processing — smart plate solving (ASTAP, only runs if needed), ImageSolver, SpectroPhotometricFluxCalibration (SPFC), variable previews (1–4), MultiscaleGradientCorrection with per-preview gradient scale selection, optional GradientCorrection and DynamicBackgroundExtraction (cDBE). New Instance support.
 
 ### SH Lazy Workflow Part 2
-Continues from Part 1 — BlurXTerminator (correct only), Background finder with Exclusion Zones, SPCC with auto-detected ROI, AutoColor (alternative to Background Neutralization + SPCC), BlurXTerminator full with adjustable parameters, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator. New Instance support.
+Continues from Part 1 — BlurXTerminator (correct only), Background finder with Exclusion Zones, SPCC with auto-detected ROI, AutoColor (alternative to Background Neutralization + SPCC), BlurXTerminator full with adjustable parameters, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator. Supports RC-Astro v1.1.2.2 ML Version selection and Tile Overlap controls for BXT and SXT. Per-step timing in console output. New Instance support.
 
 ### Bonus Scripts
 
@@ -73,6 +73,33 @@ Continues from Part 1 — BlurXTerminator (correct only), Background finder with
 A detailed workflow guide is included: **SH_Workflow_Guide.pdf**
 
 After installation, the PDF can be opened directly from within the Lazy Workflow scripts using the PDF button in the script toolbar. The PDF is interactive with linked titles to description and left/right borders returning user to front of paragraph or previous paragraph.
+
+---
+
+## Changelog
+
+### v2.1 (V8) / v1.4 (Legacy) — July 2026
+
+**Part 2 (V8 only):**
+
+- RC-Astro v1.1.2.2 support: ML Version selection and Tile Overlap controls added to BlurXTerminator (Correct Only and Full) and StarXTerminator dialogs. Both BXT sections share settings with bidirectional sync.
+- NoiseXTerminator simplified — UI controls removed; the script now opens the NXT tool directly for manual configuration.
+- Section title tooltips added to BXT Correct Only, BXT Full, and SXT sections, reminding users to configure Download ML Models, Compute Device, and Find Fastest in the original tools first.
+- Per-step elapsed time added to console output for Background Finder (Step 3) and Adaptive Auto STF (Step 5).
+- UI alignment improvements for AutoPSF, SXT checkboxes, and StarNet2 checkboxes.
+
+**Part 1 (V8 and Legacy):**
+
+- Per-step elapsed time added to console output for SPFC (Step 1), Create Previews (Step 2), MGC (Step 3), and GC (Step 4).
+- Section title tooltip on GradientCorrection: "Runs 2 pre-set gradient extraction values on Preview GC and Preview GC1."
+- Section title tooltip on DynamicBackgroundExtraction: "Opens DynamicBackgroundExtraction with pre-set values."
+
+### v2.0 (V8) / v1.3 (Legacy) — June 2026
+
+- Initial V8 engine port for PixInsight 1.9.4 (Lockhart).
+- ES6 class inheritance, updated API calls, performance improvements.
+- AutoColor sky-background computation up to 4x faster (V8).
+- New Instance support for saving and restoring workflow parameters.
 
 ---
 
