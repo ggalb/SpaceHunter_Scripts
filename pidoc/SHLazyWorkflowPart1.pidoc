@@ -1,0 +1,388 @@
+\documentclass PIScriptDoc
+
+% ----------------------------------------------------------------------------
+% Space Hunter Lazy Workflow Part 1 -- PIDoc source (DRAFT)
+%
+% \script must be the script's MENU name (last part of the menu path
+% in #feature-id), not the ID: PixInsight's help button looks up
+% doc/scripts/<menu name>/<menu name>.html. Tested in PI 2026-10-12.
+%    #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
+% and the dialog's documentation button calls
+%    Dialog.browseScriptDocumentation( "SH Lazy Workflow Part 1" )
+% Written against script v2.5 (ScriptsTesting/Final Tests), 2026-10-11.
+% ----------------------------------------------------------------------------
+
+\script {SH Lazy Workflow Part 1}
+
+\keywords {
+   Space Hunter, OSC, ASTAP, ImageSolver, SPFC, flux calibration, RGB, dual-narrowband,
+   Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection,
+   DynamicBackgroundExtraction
+}
+
+\author {
+   Georg G. Albrecht
+}
+
+\copyright {
+   2026 Georg G. Albrecht. MIT License.
+}
+
+\brief {
+   Automates the linear OSC workflow from plate solving to background extraction: smart plate solve, SPFC, previews and MGC, with GC and DBE as alternatives.
+}
+
+\description {
+
+   The Space Hunter Lazy Workflow automates the repetitive, non-artistic steps
+   of processing a linear OSC image, so you only make the decisions that need
+   your judgment. It comes in two parts:
+
+   \list[spaced] {
+      { \s {Part 1} (this script) takes a cropped image from plate solving to
+        background extraction. }
+      { \s {Part 2} (\sref {SH Lazy Workflow Part 2} {SH Lazy Workflow Part 2})
+        continues from the background-extracted image to a star-separated
+        image that is ready to stretch. }
+   }
+
+   Every step can be switched on or off. If you prefer GradientCorrection (GC)
+   or DynamicBackgroundExtraction (DBE) to MultiscaleGradientCorrection (MGC),
+   you can switch with one checkbox.
+
+   \s {Part 1 sequence:} Plate Solve &rarr; (Ha/OIII separation) &rarr; SPFC
+   &rarr; Previews &rarr; MGC &rarr; choose and apply a background model.
+   Alternatives: GC or DBE.
+}
+
+\section { Requirements and License } {
+   \include SH_Common.pidoc
+}
+
+\usage {
+
+   \subsection { \label dialog The Dialog } {
+
+      \figure[numbered: part1_dialog] {
+         \figtag \s { Part 1 dialog }
+         \imageselect[menupos:right, imageWidth:400px] {
+            images/Part1_0.png { Overview }
+            images/Part1_1.png { Default settings }
+            images/Part1_2.png { Dual-band filter: narrowband mode, Ha/OIII
+                                 separation and MGC filter selection }
+         }
+      }
+
+      Each workflow step is a collapsible section with a checkbox. By default
+      Plate Solve, SPFC, Previews and MGC are on; GC and DBE are off.
+
+      \table[caption, header, numbered: part1_defaults] {
+         { \tbltag Workflow steps, defaults and dependencies }
+         { {Step} {Default} {Dependencies} }
+         { { \lref step_solve {1 Plate Solve} (with ASTAP) } {On}
+           { Can run alone. ASTAP can only be on while Plate Solve is on. } }
+         { { \lref step_spfc {2 SPFC} } {On}
+           { Turning it on also turns on Plate Solve and ASTAP. } }
+         { { \lref separation {Ha/OIII separation} } {Off}
+           { Only in narrowband filters mode. Runs just before SPFC. } }
+         { { \lref step_previews {3 Previews (MGC only)} } {On, 4 previews}
+           { Turned on by MGC; turned off by GC and DBE. } }
+         { { \lref step_mgc {4 MGC} } {On}
+           { Turning it on also turns on SPFC and Previews (and so Plate Solve). } }
+         { { \lref step_gc {5 GC} } {Off}
+           { Turning it on turns off SPFC, Previews, MGC and DBE, and turns on
+             Plate Solve. GC makes its own two previews. } }
+         { { \lref step_dbe {6 DBE} } {Off}
+           { Turning it on turns off SPFC, Previews, MGC and GC, and turns on
+             Plate Solve. } }
+      }
+   }
+
+   \subsection { \label step_solve Step 1 --- Smart Plate Solve } {
+
+      Checks whether the image already has an astrometric solution. If it
+      does, the step is skipped. If not, the script reads the FITS keywords:
+
+      \list[spaced] {
+         { If coordinates and image scale are present, the script solves the
+           image with PixInsight's ImageSolver engine. No dialog opens. }
+         { If they are missing and \s {ASTAP Blind Solve} is checked (the
+           default), ASTAP runs first and writes the WCS keywords. A blind
+           solve can take 10--30 seconds. }
+      }
+
+      If solving fails, the console says so. Solve the image manually with
+      \m {Script > Image Analysis > ImageSolver} and run Part 1 again.
+
+      SPFC and MGC need this astrometric solution, and so does SPCC in Part 2.
+   }
+
+   \subsection { \label step_spfc Step 2 --- SPFC (SpectrophotometricFluxCalibration) } {
+
+      Applies spectrophotometric flux calibration with the camera and filter
+      curves selected in the dialog. This linearises the colour response of
+      the image, and MGC needs it.
+
+      \definition {
+         { Camera / Sensor } { The camera's QE curve. \e {Ideal QE curve} if
+                               yours isn't listed. }
+         { Gray filter }     { The luminance (L) filter curve. }
+         { RGB filters }     { The colour filter set, e.g. the camera's own
+                               Bayer filters. }
+         { Generate graphs } { Lets SPFC show its calibration graphs. }
+         { Narrowband filters mode } { For a dual-band filter (e.g. Optolong
+                               L-eXtreme or L-Ultimate, Antlia ALP-T, Askar
+                               ColorMagic D1). The filter lists are replaced by
+                               wavelength and bandwidth (nm) for red, green
+                               and blue, e.g. 656.3 / 500.7 / 500.7 for
+                               Ha/OIII/OIII. }
+      }
+
+      \subsection { \label separation Ha/OIII Separation (dual-band only) } {
+
+         \center {
+            \image[width:560px] images/Part1_4.png
+         }
+
+         \s {Why.} With a dual-band filter on an OSC sensor, Ha light also
+         reaches the green and blue pixels. So G and B are not pure OIII, and
+         SPFC and MGC (with an OIII reference) work on the wrong signal. In
+         an Ha-rich field the green channel can look like an Ha image.
+
+         \s {What it does.} Before SPFC, the script subtracts a fraction of
+         the red (Ha) channel's signal above its median from G and B with
+         PixelMath. Red stays unchanged:
+
+         \code[lang:pmath] { #:
+R:  $T
+G:  $T - ( $T[0] - med( $T[0] ) ) * kG
+B:  $T - ( $T[0] - med( $T[0] ) ) * kB
+         :# }
+
+         The method is from the PixInsight video
+         \e {MultiscaleGradientCorrection --- Dual-Band OSC Images (II)}
+         \ref video_mgc_dnb.
+
+         \s {When it runs.} Only when SPFC, \s {Narrowband filters mode}
+         and \s {Ha/OIII separation before SPFC} are all checked. It runs
+         once per image: it is skipped if the image is not a colour image,
+         if both factors are 0, if it was already applied, or if SPFC was
+         already applied (undo SPFC in History Explorer first). If the
+         separation itself fails, the script stops.
+
+         \subsection { \label sep_factors Finding the Factors } {
+
+            The factors kG and kB depend on your camera and filter, not on the
+            target, so you find them once.
+
+            \list[ordered, spaced] {
+               { Click \s {PixelMath &amp; exit}. The dialog closes without
+                 processing and PixelMath opens with the separation
+                 expressions (0.5 if both factors are 0). }
+               { Create a preview over an area with Ha nebulosity and apply
+                 PixelMath to it. Look at G and B separately. }
+               { Lower the factor (Undo between tries) until the Ha
+                 structures just disappear in G and B, not until they turn
+                 dark. Real OIII (for example the Crescent Nebula's shell)
+                 stays. }
+               { Run Part 1 again, enter kG and kB, and click
+                 \s {Save profile...}. }
+            }
+
+            Example: IMX571 sensor with an Antlia ALP-T filter,
+            kG = 0.115, kB = 0.05.
+
+            \figure[numbered: pixelmath] {
+               \figtag \s { The separation expressions in PixelMath }
+               \imageselect[menupos:right, imageWidth:520px] {
+                  images/Part1_PixelMath_1.png { R/K: unchanged }
+                  images/Part1_PixelMath_2.png { G: kG }
+                  images/Part1_PixelMath_3.png { B: kB }
+               }
+            }
+         }
+
+         \subsection { \label sep_profiles Profiles } {
+
+            Keep one profile per camera and filter combination:
+
+            \list[spaced] {
+               { Choose a \s {Profile folder} once (folder button). The
+                 folder is remembered. }
+               { \s {Profile} lists the folder's \c .txt files. Choosing one
+                 fills in its factors; it is re-read from the file each time
+                 the script starts. }
+               { \s {Save profile...} writes the current kG and kB to a new
+                 file. Typing a factor switches the profile to \e {(manual
+                 values)}; save it to keep it. }
+               { You can also save PixelMath's \s {Instance Source Code}
+                 (the square button at the bottom right of PixelMath) as a
+                 \c .txt file in the folder. }
+            }
+
+            Profile files are only read for their two numbers. They are
+            never executed.
+
+            \figure[numbered: pixelmath_source] {
+               \figtag \s { PixelMath instance source code as a profile }
+               \imageselect[menupos:right, imageWidth:520px] {
+                  images/Part1_PixelMath_4.png { Instance Source Code button }
+                  images/Part1_PixelMath_5.png { The source code to save }
+               }
+            }
+         }
+      }
+   }
+
+   \subsection { \label step_previews Step 3 --- Create Previews (MGC only) } {
+
+      Creates 1 to 4 full-size previews (default 4), one for each MGC
+      gradient scale. Existing previews are deleted first. The names depend
+      on what runs:
+
+      \table[header, unnumbered] {
+         { {Situation} {Preview names} }
+         { {Default run (with MGC)} { \c BM_768, \c BM_1024, ...: one
+                                      background model per gradient scale.
+                                      The same scale twice gives
+                                      \c BM_1024_1 (as in +Previews). } }
+         { {Previews run alone}     { \c Preview, \c Preview1, ... } }
+         { {GC selected}            { GC creates its own \c GC_ and \c GC_1. } }
+         { {DBE selected}           { No previews are created. } }
+      }
+
+      To add more previews later, or to use previews on their own, use
+      \lref bonus_scripts {+Previews}.
+   }
+
+   \subsection { \label step_mgc Step 4 --- MGC (MultiscaleGradientCorrection) } {
+
+      Runs MGC on each preview with its own gradient scale (default 768,
+      1024, 2048 and 3072), using the MARS database as reference. Each
+      preview then shows its gradient model; the script pauses 3 seconds on
+      each so you can follow along.
+
+      By default MGC uses L/R/G/B. For a dual-band filter, check
+      \s {Filter selection} and choose L, Ha, OIII, OIII, together with
+      \lref step_spfc {narrowband filters mode} in SPFC and, ideally, the
+      \lref separation {Ha/OIII separation} (\figref part1_dialog).
+
+      \subsection { \label choose_model Choose Background Model } {
+
+         \center {
+            \image[width:420px] images/Part1_MGC.png
+         }
+
+         When all previews are done, the \s {Choose background model} window
+         opens. While it is open, PixInsight is busy: you can't zoom or pan
+         the image. Click a model in the list to show its preview.
+
+         \definition {
+            { Apply }       { Applies the selected model to the main image at
+                              once: image &minus; model + median(model). The
+                              model used is noted in the FITS history. }
+            { Add scale / Run MGC } { If none of the models is good enough,
+                              run MGC at another scale. It gets its own new
+                              \c BM_ preview with the same settings and
+                              appears in the list, ready to compare and
+                              apply. }
+            { Remove background model previews after applying } { On by
+                              default. }
+            { Open MGC tool instead } { Opens the MGC tool with the selected
+                              preview's settings, for manual testing. }
+            { Close }       { Leaves the image unchanged. }
+         }
+      }
+   }
+
+   \subsection { \label step_gc Step 5 --- GC (GradientCorrection) } {
+
+      Off by default. GC also starts automatically when SPFC or MGC fails,
+      for example when the MARS database doesn't cover the target.
+
+      GC runs with two presets on its own previews:
+
+      \table[header, unnumbered] {
+         { {Preview} {Preset} {Gradient model window} }
+         { { \c GC_ }  { GC defaults (protection 0.10 / 0.50): follows the
+                         gradient closely, but can leave blotches on
+                         nebula-rich fields. } { \c GC_gradient_model } }
+         { { \c GC_1 } { Stronger protection (0.05 / 0.70): smoother model
+                         that spares nebulae, but may under-correct. }
+                       { \c GC_gradient_model1 } }
+      }
+
+      The gradient model windows get an Adaptive Auto STF. Differences
+      usually show more clearly in the models than in the corrected previews.
+      Then the \s {Choose GC result} window opens:
+
+      \center {
+         \image[width:520px] images/Part1_GC.png
+      }
+
+      It works like
+      \lref choose_model {Choose background model}: \s {Apply} copies the
+      selected preview to the main image, \s {Remove GC previews and model
+      windows after applying} is on by default, and \s {Open GC tool
+      instead} opens GC with that preview's settings.
+
+      \note {
+         Close old \c GC_gradient_model windows before running GC. Otherwise
+         GC numbers the new models differently and they no longer match the
+         preview names.
+      }
+   }
+
+   \subsection { \label step_dbe Step 6 --- DBE (Custom DynamicBackgroundExtraction) } {
+
+      Off by default. Intended for a manual background extraction. The
+      DynamicBackgroundExtraction tool opens with preset values and sample
+      points around the frame. Adjust, add, move or delete samples, then
+      apply.
+   }
+
+   \subsection { \label notes1 Notes } {
+
+      \warning {
+         If a gradient correction from this script (MGC or GC) is already
+         applied, the script warns before it runs: correcting twice can damage
+         the image. To try another model, go back one step in History
+         Explorer first. The warning follows History Explorer: after undoing
+         the correction, it no longer appears.
+      }
+
+      The separation and SPFC are skipped automatically when they were
+      already applied to the image.
+
+      If you undo the image history back to the start, the astrometric
+      solution is lost and the next run solves the image again.
+   }
+}
+
+\acknowledgments {
+   Thanks to the PixInsight team (Pleiades Astrophoto) for PixInsight; to
+   Franklin Marek (SetiAstro) for Blind Solver 2000, whose approach inspired
+   the ASTAP solver step; and to Han Kleijn for ASTAP. Thanks also to the
+   beta testers Jeff, Mike and Stefan.
+}
+
+\relatedscripts {
+   SH Lazy Workflow Part 2, SH +Previews, ImageSolver
+}
+
+\relatedtools {
+   GradientCorrection, PixelMath
+}
+
+\related {https://www.youtube.com/playlist?list=PL0Nr1Pazdc5-vr7kVTj9OqgLrwp6CA_OQ} {PixInsight YouTube: MultiscaleGradientCorrection}
+\related {https://www.youtube.com/watch?v=ZYP7niz2hKU} {PixInsight YouTube: MultiscaleGradientCorrection --- Dual-Band OSC Images (II)}
+\related {https://www.youtube.com/watch?v=3fseL3oq2Tg} {PixInsight YouTube: GradientCorrection}
+\related {https://pixinsight.com/forum/index.php?threads/pixinsight-1-8-9-3-released.23507/} {PixInsight Forum: 1.8.9-3 released with SPFC}
+
+\reference video_mgc_dnb {
+   Pleiades Astrophoto, \e {MultiscaleGradientCorrection --- Dual-Band OSC
+   Images (II)}, PixInsight YouTube channel,
+   \xref {https://www.youtube.com/watch?v=ZYP7niz2hKU} {https://www.youtube.com/watch?v=ZYP7niz2hKU}
+}
+
+\make

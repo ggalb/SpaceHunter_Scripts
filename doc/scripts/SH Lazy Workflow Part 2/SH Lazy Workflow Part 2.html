@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+   <title>PixInsight Reference Documentation | SH Lazy Workflow Part 2</title>
+   <meta name="keywords" content="Space Hunter, OSC, BlurXTerminator, background, IFN, dust map, exclusion zones, SPCC, color calibration, AutoColor, screen transfer function, StarXTerminator, StarNet2, NoiseXTerminator, MLDenoise" />
+   <meta name="author" content="Georg G. Albrecht" />
+   <meta name="description" content="Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto STF, star removal and noise reduction." />
+   <meta name="robots" content="INDEX,FOLLOW" />
+   <meta name="generator" content="PixInsight Documentation Compiler script version 1.8.0" />
+   <meta name="pidoc-document-class" content="PIScriptDoc" />
+   <script type="text/javascript" src="../../pidoc/scripts/pidoc-utility.js"></script>
+   <link type="text/css" href="../../pidoc/css/pidoc-common.css" rel="stylesheet" />
+   <link type="text/css" href="../../pidoc/css/pidoc-highlight.css" rel="stylesheet" />
+   <link type="text/css" href="../../pidoc/css/pidoc-tool.css" rel="stylesheet" />
+   <link rel="icon" href="../../pidoc/icons/pidoc-icon.svg" />
+</head>
+<body>
+<script type="text/javascript">
+   pidoc_generateDynamicContents();
+</script>
+
+<h1>SH Lazy Workflow Part 2</h1>
+
+<div id="authors">
+<p>By Georg G. Albrecht</p>
+</div>
+
+<hr class="separator"/>
+
+<div id="brief">
+<p>Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto STF, star removal and noise reduction. <a href="#__contents__">[more]</a></p></div>
+
+<div id="keywords">
+<p><strong>Keywords:</strong> Space Hunter, OSC, BlurXTerminator, background, IFN, dust map, exclusion zones, SPCC, color calibration, AutoColor, screen transfer function, StarXTerminator, StarNet2, NoiseXTerminator, MLDenoise</p>
+</div>
+
+<h3 class="pidoc_sectionTitle" id="__toc__">Contents</h3>
+<p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'toc', this );">[hide]</p>
+<div id="toc">
+<ul>
+<li class="pidoc_tocItem"><a href="#__Description__">1&emsp;Description</a></li>
+<li class="pidoc_tocItem"><a href="#__Usage__">2&emsp;Usage</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_The_Dialog__">2.1&emsp;The Dialog</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_1_mdash_BXT_Correct_Only__">2.2&emsp;Step 1 &mdash; BXT Correct Only</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_2_mdash_Find_Background__">2.3&emsp;Step 2 &mdash; Find Background</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_2_mdash_Find_Background_:_Background_Precheck__">2.3.1&emsp;Background Pre-check</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_2_mdash_Find_Background_:_Exclusion_Zones__">2.3.2&emsp;Exclusion Zones</a></li>
+</ul>
+</li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_3_mdash_SPCC_SpectrophotometricColorCalibration__">2.4&emsp;Step 3 &mdash; SPCC (SpectrophotometricColorCalibration)</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_AutoColor__">2.5&emsp;Step 4 &mdash; AutoColor</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_5_mdash_Adaptive_Auto_STF__">2.6&emsp;Step 5 &mdash; Adaptive Auto STF</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_6_mdash_BXT_Full__">2.7&emsp;Step 6 &mdash; BXT Full</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_7_mdash_SXT_StarXTerminator__">2.8&emsp;Step 7 &mdash; SXT (StarXTerminator)</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_8_mdash_StarNet2__">2.9&emsp;Step 8 &mdash; StarNet2</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_9_mdash_NXT_NoiseXTerminator__">2.10&emsp;Step 9 &mdash; NXT (NoiseXTerminator)</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_10_mdash_MLDenoise__">2.11&emsp;Step 10 &mdash; MLDenoise</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Notes__">2.12&emsp;Notes</a></li>
+</ul>
+</li>
+<li class="pidoc_tocItem"><a href="#__Requirements_and_License__">3&emsp;Requirements and License</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_Requirements__">3.1&emsp;Requirements</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_The_Button_Bar__">3.2&emsp;The Button Bar</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_License__">3.3&emsp;License</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_Bonus_Scripts__">3.4&emsp;Bonus Scripts</a></li>
+</ul>
+</li>
+<li class="pidoc_tocItem"><a href="#__Acknowledgments__">4&emsp;Acknowledgments</a></li>
+<li class="pidoc_tocItem"><a href="#__references__">References</a></li>
+<li class="pidoc_tocItem"><a href="#__related_tools__">Related Tools</a></li>
+<li class="pidoc_tocItem"><a href="#__related_scripts__">Related Scripts</a></li>
+<li class="pidoc_tocItem"><a href="#__related_resources__">Related Resources</a></li>
+</ul>
+</div>
+
+<div id="__contents__">
+
+<div class="pidoc_section" id="__Description__">
+   <h3 class="pidoc_sectionTitle">1&emsp;Description</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Description', this );">[hide]</p>
+   <div id="Description">
+<p>Part 2 of the Space Hunter Lazy Workflow continues where <a href="../../scripts/SH%20Lazy%20Workflow%20Part%201/SH%20Lazy%20Workflow%20Part%201.html" title="../../scripts/SH Lazy Workflow Part 1/SH Lazy Workflow Part 1.html">SH Lazy Workflow Part 1</a> ends. Start it on the image after you have applied your chosen background extraction.</p>
+<p>It corrects the optics, calibrates colour, sharpens and removes the stars. At the end the starless image is in front with NoiseXTerminator (or MLDenoise) open, and your creative work can begin.</p>
+<p><strong>Part 2 sequence:</strong> BXT correct &rarr; Find Background &rarr; SPCC (or AutoColor) &rarr; Adaptive Auto STF &rarr; BXT full &rarr; SXT (or StarNet2) &rarr; NXT (or MLDenoise).</p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__Usage__">
+   <h3 class="pidoc_sectionTitle">2&emsp;Usage</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Usage', this );">[hide]</p>
+   <div id="Usage">
+<div class="pidoc_subsection" id="__Usage_:_The_Dialog__">
+   <h4 class="pidoc_subsectionTitle">2.1&emsp;<a id="dialog"></a>The Dialog</h4>
+
+<div class="pidoc_figure">
+<a id="__figure_1__"></a>
+<p><span class="pidoc_figure_title">Figure 1 &mdash;</span>  <strong>Part 2 dialog</strong></p>
+<div class="pidoc_mouseover">
+<img class="pidoc_image_right" src="images/Part2_0.png" style="width:400px;" id="k5uqZYMy1H099x58" alt="" />
+<ul>
+<li><span class="pidoc_indicator_default" id="k5uqZYMy1H099x58_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('k5uqZYMy1H099x58', 'images/Part2_0.png'); pidoc_hideGroup('k5uqZYMy1H099x58', 3); pidoc_setOpacity('k5uqZYMy1H099x58_1', 1.0);">Overview (sections collapsed)</a></li>
+<li><span class="pidoc_indicator" id="k5uqZYMy1H099x58_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('k5uqZYMy1H099x58', 'images/Part2_1.png'); pidoc_hideGroup('k5uqZYMy1H099x58', 3); pidoc_setOpacity('k5uqZYMy1H099x58_2', 1.0);">Default settings</a></li>
+<li><span class="pidoc_indicator" id="k5uqZYMy1H099x58_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('k5uqZYMy1H099x58', 'images/Part2_3.png'); pidoc_hideGroup('k5uqZYMy1H099x58', 3); pidoc_setOpacity('k5uqZYMy1H099x58_3', 1.0);">Narrowband filter mode (SPCC)</a></li>
+</ul>
+</div>
+</div>
+<p>Each workflow step is a collapsible section with a checkbox.</p>
+
+<table class="pidoc_table">
+<caption><a id="__table_1__"></a>
+<span class="pidoc_table_title">Table 1 &mdash;  Workflow steps, defaults and dependencies</span></caption>
+<tr>
+<th><p>Step</p>
+</th>
+<th><p>Default</p>
+</th>
+<th><p>Dependencies</p>
+</th>
+</tr>
+<tr>
+<td><p><a href="#step_bxtc">1 BXT correct only</a></p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Independent.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_fdb">2 Find Background</a></p>
+</td>
+<td><p>On, with pre-check</p>
+</td>
+<td><p>Turned on by SPCC. Turning it on turns off AutoColor.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_spcc">3 SPCC</a></p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Turning it on also turns on Find Background and Adaptive Auto STF. To run either of those alone, turn SPCC off first.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_autocolor">4 AutoColor</a></p>
+</td>
+<td><p>Off</p>
+</td>
+<td><p>Turning it on turns off Find Background and SPCC.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_stf">5 Adaptive Auto STF</a></p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Turned on by SPCC.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_bxtf">6 BXT full</a></p>
+</td>
+<td><p>On, Automatic PSF</p>
+</td>
+<td><p>Independent.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_sxt">7 SXT</a></p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Mutually exclusive with StarNet2.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_starnet">8 StarNet2</a></p>
+</td>
+<td><p>Off</p>
+</td>
+<td><p>Mutually exclusive with SXT.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_nxt">9 NXT</a></p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Mutually exclusive with MLDenoise.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_mld">10 MLDenoise</a></p>
+</td>
+<td><p>Off</p>
+</td>
+<td><p>Mutually exclusive with NXT.</p>
+</td>
+</tr>
+</table>
+
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_1_mdash_BXT_Correct_Only__">
+   <h4 class="pidoc_subsectionTitle">2.2&emsp;<a id="step_bxtc"></a>Step 1 &mdash; BXT Correct Only</h4>
+<p>Runs BlurXTerminator in correction-only mode: no sharpening, only correction of optical aberrations, so the stars are clean before colour calibration. <strong>ML Version</strong> (default: latest) and <strong>Tile Overlap</strong> are set separately from <a href="#step_bxtf">BXT full</a>. Skipped if BlurXTerminator isn't installed.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_Find_Background__">
+   <h4 class="pidoc_subsectionTitle">2.3&emsp;<a id="step_fdb"></a>Step 2 &mdash; Find Background</h4>
+<p>Finds a clean, typical patch of sky and marks it with a preview named <span class="pidoc_code">Background.</span> SPCC uses it as its background reference, and Adaptive Auto STF takes its statistics from it.</p>
+<p><strong>How the search works.</strong> The frame, minus a 3% border, is cut into square tiles (5% of the image height, at most 50 px). For every tile the script measures the median, the noise and how much stars or galaxies lift the mean above the median; star-rich tiles are rejected. It then looks for tiles at the <em>typical</em> sky level (10th percentile of the clean tiles), not the darkest ones: the darkest tiles are usually dark nebulae or over-corrected holes. Among those, the flattest tile that matches its surroundings and isn't near the edge wins.</p>
+<p>So the finder avoids dark nebulae on its own. Faint IFN (integrated flux nebula) or galactic cirrus can still pull the pick. For that there are the pre-check, the dust map and exclusion zones.</p>
+<div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_Find_Background_:_Background_Precheck__">
+   <h5 class="pidoc_subsectionTitle">2.3.1&emsp;<a id="precheck"></a>Background Pre-check</h5>
+
+<div class="pidoc_figure">
+<a id="__figure_2__"></a>
+<p><span class="pidoc_figure_title">Figure 2 &mdash;</span>  <strong>Background pre-check</strong></p>
+<div class="pidoc_mouseover">
+<img class="pidoc_image_right" src="images/Part2_Background_1.png" style="width:560px;" id="REYL0eIhqEP8SvOC" alt="" />
+<ul>
+<li><span class="pidoc_indicator_default" id="REYL0eIhqEP8SvOC_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('REYL0eIhqEP8SvOC', 'images/Part2_Background_1.png'); pidoc_hideGroup('REYL0eIhqEP8SvOC', 2); pidoc_setOpacity('REYL0eIhqEP8SvOC_1', 1.0);">Before the dust map check</a></li>
+<li><span class="pidoc_indicator" id="REYL0eIhqEP8SvOC_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('REYL0eIhqEP8SvOC', 'images/Part2_Background_2.png'); pidoc_hideGroup('REYL0eIhqEP8SvOC', 2); pidoc_setOpacity('REYL0eIhqEP8SvOC_2', 1.0);">After Check dust map</a></li>
+</ul>
+</div>
+</div>
+<p>Before anything is processed, the <strong>Background Pre-check</strong> window lists the previews in the image:</p>
+
+<ul class="pidoc_list">
+<li><strong>Exclude previews</strong> are used as exclusion zones. A warning appears if one covers more than half the image (a leftover?).</li>
+<li class="pidoc_spaced_list_item"><strong>Other previews</strong> are <em>not</em> used and will be deleted. If one was meant as an exclusion zone, click <strong>Cancel</strong>, rename it to start with <span class="pidoc_code">Exclude</span> (case-sensitive) and run again.</li>
+</ul>
+
+<p>The window is skipped when the image already has only sensible <span class="pidoc_code">Exclude</span> previews.</p>
+<p><strong>Check dust map</strong> (optional, internet required) uses the image's astrometric solution to query the NASA/IPAC IRSA dust service (Schlegel, Finkbeiner and Davis 1998 map) <sup><a href="#__reference_1__" class="pidoc_referenceTooltip" onmouseover="pidoc_showReferenceToolTip( this );" onmouseout="pidoc_hideReferenceToolTip();" data-tooltip="[Reference 1]<br/>
+NASA/IPAC Infrared Science Archive, <em>Galactic Dust Reddening and Extinction</em>, <a href='https://irsa.ipac.caltech.edu/applications/DUST/' title='https://irsa.ipac.caltech.edu/applications/DUST/'>https://irsa.ipac.caltech.edu/applications/DUST/</a>; map by D. J. Schlegel, D. P. Finkbeiner and M. Davis (1998).">[1]</a></sup>. It shows where in the frame dust or IFN is expected: the expected IFN level, the dustiest and clearest areas, their contrast, and the Galactic latitude. The thresholds are rules of thumb, not hard limits; near the Milky Way plane the map is less reliable. If the service doesn't answer within 30 seconds, the window says so; you can still click <strong>Continue</strong> without the map.</p>
+
+<dl class="pidoc_list">
+<dt>
+<p>Use dust map in the background pick</p>
+</dt>
+<dd>
+<p>The dustier half of the tiles is set aside and the rest are scored by dust. It is pre-checked only when the map shows clear contrast (1.15&times; or more), real dust, and a Galactic latitude of at least 10&deg;.</p>
+</dd>
+<dt>
+<p>Don't show this pre-check again</p>
+</dt>
+<dd>
+<p>Turns the pre-check off. Turn it back on with <strong>Show background pre-check before processing</strong> under Find Background.</p>
+</dd>
+<dt>
+<p>Cancel</p>
+</dt>
+<dd>
+<p>Stops the script, for example to add an <span class="pidoc_code">Exclude</span> preview over cirrus the map points to.</p>
+</dd>
+<dt>
+<p>Continue</p>
+</dt>
+<dd>
+<p>Starts the workflow.</p>
+</dd>
+</dl>
+
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_Find_Background_:_Exclusion_Zones__">
+   <h5 class="pidoc_subsectionTitle">2.3.2&emsp;<a id="exclusion_zones"></a>Exclusion Zones</h5>
+
+<div style="float:right;margin-left:16px;">
+<img style="width:300px;" src="images/ExclusionZones.png" alt=""/>
+</div>
+<p>Exclusion zones are optional. To keep the search away from an area:</p>
+
+<ol class="pidoc_list">
+<li>Draw a preview over each area to exclude (IFN, cirrus, a dark nebula).</li>
+<li class="pidoc_spaced_list_item">Rename each one so it starts with <span class="pidoc_code">Exclude</span> (<span class="pidoc_code">Exclude1,</span> <span class="pidoc_code">Exclude2,</span> ...). <a href="#bonus_scripts">NamePreviews</a> does this for you.</li>
+<li class="pidoc_spaced_list_item">Run Part 2.</li>
+</ol>
+
+<p>After the search, all previews are deleted (the <span class="pidoc_code">Exclude</span> previews and any leftovers such as Part 1's <span class="pidoc_code">BM_</span> previews) and only <span class="pidoc_code">Background</span> remains. If the search fails, your <span class="pidoc_code">Exclude</span> previews are kept. <br class="pidoc_clearfix"/></p>
+</div>
+
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_3_mdash_SPCC_SpectrophotometricColorCalibration__">
+   <h4 class="pidoc_subsectionTitle">2.4&emsp;<a id="step_spcc"></a>Step 3 &mdash; SPCC (SpectrophotometricColorCalibration)</h4>
+<p>Calibrates the colour balance by matching catalogue star spectra, with the <strong>White Reference</strong>, <strong>Camera / Sensor</strong> and <strong>Filter</strong> selected in the dialog and the <span class="pidoc_code">Background</span> preview as background reference. <strong>Generate graphs</strong> lets SPCC show its graphs.</p>
+<p>For a dual-band filter, check <strong>Narrowband filters mode</strong> and enter wavelength and bandwidth (nm), as in Part 1 (<a href="#__figure_1__" class="pidoc_referenceTooltip" onmouseover="pidoc_showReferenceToolTip( this );" onmouseout="pidoc_hideReferenceToolTip();" data-tooltip="[Figure 1]">[1]</a>).</p>
+<p>SPCC needs the astrometric solution from Part 1. Without it, solve the image with ImageSolver first.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_4_mdash_AutoColor__">
+   <h4 class="pidoc_subsectionTitle">2.5&emsp;<a id="step_autocolor"></a>Step 4 &mdash; AutoColor</h4>
+<p>Off by default. An alternative to Find Background and SPCC: background neutralization and colour calibration in one step, without catalogue stars or an astrometric solution. It uses the method of Hartmut V. Bornemann's AutoColor script <sup><a href="#__reference_2__" class="pidoc_referenceTooltip" onmouseover="pidoc_showReferenceToolTip( this );" onmouseout="pidoc_hideReferenceToolTip();" data-tooltip="[Reference 2]<br/>
+Hartmut V. Bornemann, <em>AutoColor</em>, <a href='https://www.skypixels.at/pixinsight_scripts.html#autocolor' title='https://www.skypixels.at/pixinsight_scripts.html#autocolor'>https://www.skypixels.at/pixinsight_scripts.html</a>">[2]</a></sup>, built into Part 2 with his written permission. AutoColor is fully integrated: you don't need to install or load the AutoColor script separately (see <a href="#requirements">Requirements</a>).</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_5_mdash_Adaptive_Auto_STF__">
+   <h4 class="pidoc_subsectionTitle">2.6&emsp;<a id="step_stf"></a>Step 5 &mdash; Adaptive Auto STF</h4>
+<p>Applies an automatic screen stretch to the linear image so you can judge the colour calibration. It is a display stretch only: pixel data are not changed.</p>
+<p>It uses the method of PixInsight's AutoSTF (Juan Conejero, Pleiades Astrophoto) in its own implementation:</p>
+
+<ul class="pidoc_list">
+<li><strong>Statistics from the sky:</strong> measured in the <span class="pidoc_code">Background</span> preview (the whole image if there is none). With sky-only noise the black point sits close to the sky, which gives the nebula more depth.</li>
+<li class="pidoc_spaced_list_item"><strong>Target background</strong> 0.225 (PixInsight's default is 0.25).</li>
+<li class="pidoc_spaced_list_item"><strong>Linked or unlinked, chosen automatically:</strong> linked after SPCC, to keep SPCC's colour balance; otherwise linked when the channels' background levels are close, unlinked when they are not.</li>
+</ul>
+
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_6_mdash_BXT_Full__">
+   <h4 class="pidoc_subsectionTitle">2.7&emsp;<a id="step_bxtf"></a>Step 6 &mdash; BXT Full</h4>
+<p>The main deconvolution and sharpening pass, with the settings from the dialog: ML Version, Sharpen Stars, Adjust Star Halos, Sharpen Nonstellar, PSF Diameter and Tile Overlap. Skipped if BlurXTerminator isn't installed.</p>
+
+<div class="pidoc_warning">
+<p><strong>PSF Diameter</strong> is only used when <strong>Automatic PSF</strong> is unchecked. Measure the value before you run the script, for example with DynamicPSF or the PSFImage script.</p>
+</div>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_7_mdash_SXT_StarXTerminator__">
+   <h4 class="pidoc_subsectionTitle">2.8&emsp;<a id="step_sxt"></a>Step 7 &mdash; SXT (StarXTerminator)</h4>
+<p>Removes the stars. Options: <strong>ML Version</strong>, <strong>Generate Star Image</strong>, <strong>Unscreen Stars</strong> and <strong>Tile Overlap</strong>. With Generate Star Image, a star-only image named <span class="pidoc_code">stars</span> is created and the starless image is brought to front. If StarXTerminator isn't installed, the script uses StarNet2.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_8_mdash_StarNet2__">
+   <h4 class="pidoc_subsectionTitle">2.9&emsp;<a id="step_starnet"></a>Step 8 &mdash; StarNet2</h4>
+<p>Off by default. Options: <strong>Stride</strong>, <strong>Create starmask</strong>, <strong>2x upsample</strong> and <strong>Linear data</strong>. With Create starmask, a star-only image named <span class="pidoc_code">stars</span> is created and the starless image is brought to front. Install StarNet2 from its PixInsight repository, <a href="https://pixinsight.starnetastro.com/" title="https://pixinsight.starnetastro.com/">https://pixinsight.starnetastro.com/</a>.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_9_mdash_NXT_NoiseXTerminator__">
+   <h4 class="pidoc_subsectionTitle">2.10&emsp;<a id="step_nxt"></a>Step 9 &mdash; NXT (NoiseXTerminator)</h4>
+<p>Opens NoiseXTerminator at the end of the workflow; it is not applied automatically. With the starless image active, drag the instance triangle from the NXT dialog onto the image. Skipped if NoiseXTerminator isn't installed.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_10_mdash_MLDenoise__">
+   <h4 class="pidoc_subsectionTitle">2.11&emsp;<a id="step_mld"></a>Step 10 &mdash; MLDenoise</h4>
+<p>Off by default. An alternative to NXT: opens MLDenoise with the model file (<span class="pidoc_code">.xmlm)</span> selected in the dialog. Other settings use MLDenoise's own defaults; adjust them in the tool, then drag the instance triangle onto the image.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Notes__">
+   <h4 class="pidoc_subsectionTitle">2.12&emsp;<a id="notes2"></a>Notes</h4>
+
+<div class="pidoc_warning">
+<p>The script marks each step on the image as it runs. If you start it again on an image that already went through Part 2, it warns you: running the same steps twice alters or damages the image data. The marks follow History Explorer (undo a step and its mark is gone) and are kept when you save and reopen the image.</p>
+</div>
+</div>
+
+   </div>
+</div>
+
+<div class="pidoc_section" id="__Requirements_and_License__">
+   <h3 class="pidoc_sectionTitle">3&emsp;Requirements and License</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Requirements_and_License', this );">[hide]</p>
+   <div id="Requirements_and_License">
+<div class="pidoc_subsection" id="__Requirements_and_License_:_Requirements__">
+   <h4 class="pidoc_subsectionTitle">3.1&emsp;<a id="requirements"></a>Requirements</h4>
+<p><strong>Both parts</strong></p>
+
+<ul class="pidoc_list">
+<li>Windows operating system.</li>
+<li class="pidoc_spaced_list_item">PixInsight 1.9.5 or later.</li>
+<li class="pidoc_spaced_list_item">An image from a <strong>one-shot colour (OSC)</strong> camera, captured with a broadband, light-pollution or single dual-narrowband (DNB) filter. The RGB channels are <em>not</em> split into separate greyscale images.</li>
+<li class="pidoc_spaced_list_item">An image that is already cropped. If you stack in WBPP with <em>Auto Crop</em> and <em>Astrometric Solution</em> enabled, you can start without cropping and the plate solve step is skipped.</li>
+</ul>
+
+<p><strong>Part 1</strong></p>
+
+<ul class="pidoc_list">
+<li>The MARS database (any drive).</li>
+<li class="pidoc_spaced_list_item"><a href="https://www.hnsky.org/astap.htm" title="https://www.hnsky.org/astap.htm">ASTAP</a> with the D50 star database, preferably in <span class="pidoc_code">C:\Program Files\astap</span>.</li>
+</ul>
+
+<p><strong>Part 2</strong></p>
+
+<ul class="pidoc_list">
+<li><a href="https://www.rc-astro.com/" title="https://www.rc-astro.com/">BlurXTerminator, StarXTerminator and NoiseXTerminator</a>.</li>
+<li class="pidoc_spaced_list_item">Optional: <a href="https://www.starnetastro.com/download/" title="https://www.starnetastro.com/download/">StarNet2</a>, installed from its PixInsight repository.</li>
+<li class="pidoc_spaced_list_item">Optional: MLDenoise and its model file (<span class="pidoc_code">.xmlm),</span> saved on this computer. They are available only to licensed PixInsight users: log in on <a href="https://pixinsight.com/" title="https://pixinsight.com/">pixinsight.com</a> with your license to download them.</li>
+<li class="pidoc_spaced_list_item">AutoColor is fully integrated into Part 2. You don't need to install or load the AutoColor script separately. (The stand-alone AutoColor V8 script is in the <a href="https://mopscripts.github.io/mop-v8-scripts/" title="https://mopscripts.github.io/mop-v8-scripts/">MOP V8 scripts repository</a>, if you want to use it on its own.)</li>
+<li class="pidoc_spaced_list_item">Internet access only if you use <em>Check dust map</em> in the background pre-check.</li>
+</ul>
+
+
+<div class="pidoc_note">
+<p>If the scripts can't find the MARS database or ASTAP the first time they run, they ask you to locate it. The path is saved for later runs. If BlurXTerminator or NoiseXTerminator isn't installed, that step is skipped. If StarXTerminator isn't installed, Part 2 uses StarNet2 instead.</p>
+</div>
+<p>If you combine two DNB filters (Ha/OIII and SII/OIII) into a Hubble-palette image, these scripts are not the right tool.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Requirements_and_License_:_The_Button_Bar__">
+   <h4 class="pidoc_subsectionTitle">3.2&emsp;<a id="buttons"></a>The Button Bar</h4>
+
+<div style="text-align:center;">
+<img style="width:480px;" src="images/Part1_3.png" alt=""/>
+</div>
+<p>The buttons at the bottom of the dialog, from left to right:</p>
+
+<dl class="pidoc_list">
+<dt>
+<p>New Instance</p>
+</dt>
+<dd>
+<p>Drag the triangle onto the workspace to save the current settings as a process icon.</p>
+</dd>
+<dt>
+<p>User Guide</p>
+</dt>
+<dd>
+<p>Opens the user guide.</p>
+</dd>
+<dt>
+<p>Deselect All</p>
+</dt>
+<dd>
+<p>Clears every workflow step.</p>
+</dd>
+<dt>
+<p>Reset Workflow</p>
+</dt>
+<dd>
+<p>Returns the workflow steps to their defaults. Equipment settings are not changed.</p>
+</dd>
+<dt>
+<p>Reset Settings</p>
+</dt>
+<dd>
+<p>(gear) Returns the equipment settings (camera, filters, white reference, gradient scales) to their defaults. Workflow steps are not changed.</p>
+</dd>
+</dl>
+
+<p>All workflow and equipment settings are saved when you run the script and come back the next time you open it.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Requirements_and_License_:_License__">
+   <h4 class="pidoc_subsectionTitle">3.3&emsp;<a id="license"></a>License</h4>
+<p>Both scripts are released under the MIT License, Copyright &copy; 2026 Georg G. Albrecht. You may use, modify and redistribute them. <strong>Exception:</strong> the AutoColor code in Part 2 (&copy; 2016 Hartmut V. Bornemann, used with written permission) must be kept in its original form and needs a separate written agreement with its author. See the <a href="https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE" title="https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE">LICENSE</a> on GitHub.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Requirements_and_License_:_Bonus_Scripts__">
+   <h4 class="pidoc_subsectionTitle">3.4&emsp;<a id="bonus_scripts"></a>Bonus Scripts</h4>
+<p>Three small helper scripts come with the Lazy Workflow:</p>
+
+<table class="pidoc_table" style="margin-left:20px;">
+<tr>
+<td><img style="height:32px;" src="images/Icon_KillPreviews.png" alt=""/>
+</td>
+<td><p><strong>KillPreviews</strong>: deletes all previews in the active image. Part 1's apply windows and Part 2's background finder now remove their previews themselves, so you only need it for leftovers, for example after closing Part 1's apply window without applying.</p>
+</td>
+</tr>
+<tr>
+<td><img style="height:32px;" src="images/Icon_NamePreviews.png" alt=""/>
+</td>
+<td><p><strong>NamePreviews</strong>: if you decide to use exclusion zones in Part 2, draw previews over the areas to exclude and run NamePreviews. It renames <em>all</em> previews in the image to <span class="pidoc_code">Exclude1,</span> <span class="pidoc_code">Exclude2,</span> ..., so remove any other previews first. Part 2 also runs without exclusion zones.</p>
+</td>
+</tr>
+<tr>
+<td><img style="height:32px;" src="images/Icon_PlusPreviews.png" alt=""/>
+</td>
+<td><p><strong>+Previews</strong> (<a href="../../scripts/SH%20+Previews/SH%20+Previews.html" title="../../scripts/SH +Previews/SH +Previews.html">manual</a>): creates 1&ndash;6 full-size previews and zooms each to fit. Prefixes: <span class="pidoc_code">BM_</span> (MGC background models, with a gradient scale per preview), <span class="pidoc_code">GC_</span> (continues the <span class="pidoc_code">GC_,</span> <span class="pidoc_code">GC_1,</span> ... numbering, matching GC's model names), <span class="pidoc_code">Preview,</span> or your own text. Use it after Part 1 to add more models, or on its own for any process where a full-size preview is useful.</p>
+</td>
+</tr>
+</table>
+
+</div>
+
+   </div>
+</div>
+
+<div class="pidoc_section" id="__Acknowledgments__">
+   <h3 class="pidoc_sectionTitle">4&emsp;Acknowledgments</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Acknowledgments', this );">[hide]</p>
+   <div id="Acknowledgments">
+<p>Thanks to the PixInsight team (Pleiades Astrophoto); to Franklin Marek and Gerrit Erdt for FindBackground, which inspired the background search; to Russell Croman for BlurXTerminator, StarXTerminator and NoiseXTerminator; to Nikita Misiura for StarNet2; to Hartmut V. Bornemann for permission to use AutoColor; and to the beta testers Jeff, Mike and Stefan.</p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__references__">
+   <h3 class="pidoc_sectionTitle">References</h3>
+   <div id="references">
+      <p id="__reference_1__"><strong>[1]</strong> NASA/IPAC Infrared Science Archive, <em>Galactic Dust Reddening and Extinction</em>, <a href="https://irsa.ipac.caltech.edu/applications/DUST/" title="https://irsa.ipac.caltech.edu/applications/DUST/">https://irsa.ipac.caltech.edu/applications/DUST/</a>; map by D. J. Schlegel, D. P. Finkbeiner and M. Davis (1998).</p>
+      <p id="__reference_2__"><strong>[2]</strong> Hartmut V. Bornemann, <em>AutoColor</em>, <a href="https://www.skypixels.at/pixinsight_scripts.html#autocolor" title="https://www.skypixels.at/pixinsight_scripts.html#autocolor">https://www.skypixels.at/pixinsight_scripts.html</a></p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__related_tools__">
+   <h3 class="pidoc_sectionTitle">Related Tools</h3>
+   <div id="related_tools">
+<p><a href="../../tools/BlurXTerminator/BlurXTerminator.html" title="../../tools/BlurXTerminator/BlurXTerminator.html">BlurXTerminator</a>, <a href="../../tools/StarNet2/StarNet2.html" title="../../tools/StarNet2/StarNet2.html">StarNet2</a>, <a href="../../tools/ScreenTransferFunction/ScreenTransferFunction.html" title="../../tools/ScreenTransferFunction/ScreenTransferFunction.html">ScreenTransferFunction</a>, <a href="../../tools/BackgroundNeutralization/BackgroundNeutralization.html" title="../../tools/BackgroundNeutralization/BackgroundNeutralization.html">BackgroundNeutralization</a>, <a href="../../tools/ColorCalibration/ColorCalibration.html" title="../../tools/ColorCalibration/ColorCalibration.html">ColorCalibration</a></p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__related_scripts__">
+   <h3 class="pidoc_sectionTitle">Related Scripts</h3>
+   <div id="related_scripts">
+<p><a href="../../scripts/SH%20Lazy%20Workflow%20Part%201/SH%20Lazy%20Workflow%20Part%201.html" title="../../scripts/SH Lazy Workflow Part 1/SH Lazy Workflow Part 1.html">SH Lazy Workflow Part 1</a>, <a href="../../scripts/SH%20+Previews/SH%20+Previews.html" title="../../scripts/SH +Previews/SH +Previews.html">SH +Previews</a>, <a href="../../scripts/ImageSolver/ImageSolver.html" title="../../scripts/ImageSolver/ImageSolver.html">ImageSolver</a></p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__related_resources__">
+   <h3 class="pidoc_sectionTitle">Related Resources</h3>
+   <div id="related_resources">
+<ul>
+   <li><a href="https://www.youtube.com/watch?v=tBHKdt-lzNQ" title="https://www.youtube.com/watch?v=tBHKdt-lzNQ">PixInsight YouTube: SpectrophotometricColorCalibration</a></li>
+   <li><a href="https://www.youtube.com/watch?v=ZYP7niz2hKU" title="https://www.youtube.com/watch?v=ZYP7niz2hKU">PixInsight YouTube: MultiscaleGradientCorrection &mdash; Dual-Band OSC Images (II)</a></li>
+   <li><a href="https://www.youtube.com/watch?v=IrnBcw-G7uQ" title="https://www.youtube.com/watch?v=IrnBcw-G7uQ">PixInsight YouTube: MLDenoise</a></li>
+   <li><a href="https://www.rc-astro.com/" title="https://www.rc-astro.com/">RC Astro: BlurXTerminator, StarXTerminator, NoiseXTerminator</a></li>
+   <li><a href="https://www.starnetastro.com/download/" title="https://www.starnetastro.com/download/">StarNet2</a></li>
+   <li><a href="https://mopscripts.github.io/mop-v8-scripts/" title="https://mopscripts.github.io/mop-v8-scripts/">MOP V8 scripts repository (AutoColor V8)</a></li>
+</ul>
+   </div>
+</div>
+
+<hr class="separator"/>
+
+<div id="copyright">
+   <p>2026 Georg G. Albrecht. MIT License. AutoColor.js &copy; 2016 Hartmut V. Bornemann, used with written permission.</p>
+</div>
+
+<div id="footer">
+   <p>Generated by the PixInsight Documentation Compiler script version 1.8.0 on 2026-10-13 00:03:02 UTC</p>
+</div>
+<br/>
+<br/>
+
+</div> <!-- contents -->
+
+</body>
+</html>

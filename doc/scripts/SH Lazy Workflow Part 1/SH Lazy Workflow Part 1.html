@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+   <title>PixInsight Reference Documentation | SH Lazy Workflow Part 1</title>
+   <meta name="keywords" content="Space Hunter, OSC, ASTAP, ImageSolver, SPFC, flux calibration, RGB, dual-narrowband, Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction" />
+   <meta name="author" content="Georg G. Albrecht" />
+   <meta name="description" content="Automates the linear OSC workflow from plate solving to background extraction: smart plate solve, SPFC, previews and MGC, with GC and DBE as alternatives." />
+   <meta name="robots" content="INDEX,FOLLOW" />
+   <meta name="generator" content="PixInsight Documentation Compiler script version 1.8.0" />
+   <meta name="pidoc-document-class" content="PIScriptDoc" />
+   <script type="text/javascript" src="../../pidoc/scripts/pidoc-utility.js"></script>
+   <link type="text/css" href="../../pidoc/css/pidoc-common.css" rel="stylesheet" />
+   <link type="text/css" href="../../pidoc/css/pidoc-highlight.css" rel="stylesheet" />
+   <link type="text/css" href="../../pidoc/css/pidoc-tool.css" rel="stylesheet" />
+   <link rel="icon" href="../../pidoc/icons/pidoc-icon.svg" />
+</head>
+<body>
+<script type="text/javascript">
+   pidoc_generateDynamicContents();
+</script>
+
+<h1>SH Lazy Workflow Part 1</h1>
+
+<div id="authors">
+<p>By Georg G. Albrecht</p>
+</div>
+
+<hr class="separator"/>
+
+<div id="brief">
+<p>Automates the linear OSC workflow from plate solving to background extraction: smart plate solve, SPFC, previews and MGC, with GC and DBE as alternatives. <a href="#__contents__">[more]</a></p></div>
+
+<div id="keywords">
+<p><strong>Keywords:</strong> Space Hunter, OSC, ASTAP, ImageSolver, SPFC, flux calibration, RGB, dual-narrowband, Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction</p>
+</div>
+
+<h3 class="pidoc_sectionTitle" id="__toc__">Contents</h3>
+<p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'toc', this );">[hide]</p>
+<div id="toc">
+<ul>
+<li class="pidoc_tocItem"><a href="#__Description__">1&emsp;Description</a></li>
+<li class="pidoc_tocItem"><a href="#__Usage__">2&emsp;Usage</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_The_Dialog__">2.1&emsp;The Dialog</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_1_mdash_Smart_Plate_Solve__">2.2&emsp;Step 1 &mdash; Smart Plate Solve</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration__">2.3&emsp;Step 2 &mdash; SPFC (SpectrophotometricFluxCalibration)</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration_:_HaOIII_Separation_dualband_only__">2.3.1&emsp;Ha/OIII Separation (dual-band only)</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration_:_HaOIII_Separation_dualband_only_:_Finding_the_Factors__">2.3.1.1&emsp;Finding the Factors</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration_:_HaOIII_Separation_dualband_only_:_Profiles__">2.3.1.2&emsp;Profiles</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_3_mdash_Create_Previews_MGC_only__">2.4&emsp;Step 3 &mdash; Create Previews (MGC only)</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection__">2.5&emsp;Step 4 &mdash; MGC (MultiscaleGradientCorrection)</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Choose_Background_Model__">2.5.1&emsp;Choose Background Model</a></li>
+</ul>
+</li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_5_mdash_GC_GradientCorrection__">2.6&emsp;Step 5 &mdash; GC (GradientCorrection)</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_6_mdash_DBE_Custom_DynamicBackgroundExtraction__">2.7&emsp;Step 6 &mdash; DBE (Custom DynamicBackgroundExtraction)</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Notes__">2.8&emsp;Notes</a></li>
+</ul>
+</li>
+<li class="pidoc_tocItem"><a href="#__Requirements_and_License__">3&emsp;Requirements and License</a>
+<ul>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_Requirements__">3.1&emsp;Requirements</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_The_Button_Bar__">3.2&emsp;The Button Bar</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_License__">3.3&emsp;License</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Requirements_and_License_:_Bonus_Scripts__">3.4&emsp;Bonus Scripts</a></li>
+</ul>
+</li>
+<li class="pidoc_tocItem"><a href="#__Acknowledgments__">4&emsp;Acknowledgments</a></li>
+<li class="pidoc_tocItem"><a href="#__references__">References</a></li>
+<li class="pidoc_tocItem"><a href="#__related_tools__">Related Tools</a></li>
+<li class="pidoc_tocItem"><a href="#__related_scripts__">Related Scripts</a></li>
+<li class="pidoc_tocItem"><a href="#__related_resources__">Related Resources</a></li>
+</ul>
+</div>
+
+<div id="__contents__">
+
+<div class="pidoc_section" id="__Description__">
+   <h3 class="pidoc_sectionTitle">1&emsp;Description</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Description', this );">[hide]</p>
+   <div id="Description">
+<p>The Space Hunter Lazy Workflow automates the repetitive, non-artistic steps of processing a linear OSC image, so you only make the decisions that need your judgment. It comes in two parts:</p>
+
+<ul class="pidoc_list">
+<li><strong>Part 1</strong> (this script) takes a cropped image from plate solving to background extraction.</li>
+<li class="pidoc_spaced_list_item"><strong>Part 2</strong> (<a href="../../scripts/SH%20Lazy%20Workflow%20Part%202/SH%20Lazy%20Workflow%20Part%202.html" title="../../scripts/SH Lazy Workflow Part 2/SH Lazy Workflow Part 2.html">SH Lazy Workflow Part 2</a>) continues from the background-extracted image to a star-separated image that is ready to stretch.</li>
+</ul>
+
+<p>Every step can be switched on or off. If you prefer GradientCorrection (GC) or DynamicBackgroundExtraction (DBE) to MultiscaleGradientCorrection (MGC), you can switch with one checkbox.</p>
+<p><strong>Part 1 sequence:</strong> Plate Solve &rarr; (Ha/OIII separation) &rarr; SPFC &rarr; Previews &rarr; MGC &rarr; choose and apply a background model. Alternatives: GC or DBE.</p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__Usage__">
+   <h3 class="pidoc_sectionTitle">2&emsp;Usage</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Usage', this );">[hide]</p>
+   <div id="Usage">
+<div class="pidoc_subsection" id="__Usage_:_The_Dialog__">
+   <h4 class="pidoc_subsectionTitle">2.1&emsp;<a id="dialog"></a>The Dialog</h4>
+
+<div class="pidoc_figure">
+<a id="__figure_1__"></a>
+<p><span class="pidoc_figure_title">Figure 1 &mdash;</span>  <strong>Part 1 dialog</strong></p>
+<div class="pidoc_mouseover">
+<img class="pidoc_image_right" src="images/Part1_0.png" style="width:400px;" id="xED8dIA2QEm9BKEF" alt="" />
+<ul>
+<li><span class="pidoc_indicator_default" id="xED8dIA2QEm9BKEF_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('xED8dIA2QEm9BKEF', 'images/Part1_0.png'); pidoc_hideGroup('xED8dIA2QEm9BKEF', 3); pidoc_setOpacity('xED8dIA2QEm9BKEF_1', 1.0);">Overview</a></li>
+<li><span class="pidoc_indicator" id="xED8dIA2QEm9BKEF_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('xED8dIA2QEm9BKEF', 'images/Part1_1.png'); pidoc_hideGroup('xED8dIA2QEm9BKEF', 3); pidoc_setOpacity('xED8dIA2QEm9BKEF_2', 1.0);">Default settings</a></li>
+<li><span class="pidoc_indicator" id="xED8dIA2QEm9BKEF_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('xED8dIA2QEm9BKEF', 'images/Part1_2.png'); pidoc_hideGroup('xED8dIA2QEm9BKEF', 3); pidoc_setOpacity('xED8dIA2QEm9BKEF_3', 1.0);">Dual-band filter: narrowband mode, Ha/OIII separation and MGC filter selection</a></li>
+</ul>
+</div>
+</div>
+<p>Each workflow step is a collapsible section with a checkbox. By default Plate Solve, SPFC, Previews and MGC are on; GC and DBE are off.</p>
+
+<table class="pidoc_table">
+<caption><a id="__table_1__"></a>
+<span class="pidoc_table_title">Table 1 &mdash;  Workflow steps, defaults and dependencies</span></caption>
+<tr>
+<th><p>Step</p>
+</th>
+<th><p>Default</p>
+</th>
+<th><p>Dependencies</p>
+</th>
+</tr>
+<tr>
+<td><p><a href="#step_solve">1 Plate Solve</a> (with ASTAP)</p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Can run alone. ASTAP can only be on while Plate Solve is on.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_spfc">2 SPFC</a></p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Turning it on also turns on Plate Solve and ASTAP.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#separation">Ha/OIII separation</a></p>
+</td>
+<td><p>Off</p>
+</td>
+<td><p>Only in narrowband filters mode. Runs just before SPFC.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_previews">3 Previews (MGC only)</a></p>
+</td>
+<td><p>On, 4 previews</p>
+</td>
+<td><p>Turned on by MGC; turned off by GC and DBE.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_mgc">4 MGC</a></p>
+</td>
+<td><p>On</p>
+</td>
+<td><p>Turning it on also turns on SPFC and Previews (and so Plate Solve).</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_gc">5 GC</a></p>
+</td>
+<td><p>Off</p>
+</td>
+<td><p>Turning it on turns off SPFC, Previews, MGC and DBE, and turns on Plate Solve. GC makes its own two previews.</p>
+</td>
+</tr>
+<tr>
+<td><p><a href="#step_dbe">6 DBE</a></p>
+</td>
+<td><p>Off</p>
+</td>
+<td><p>Turning it on turns off SPFC, Previews, MGC and GC, and turns on Plate Solve.</p>
+</td>
+</tr>
+</table>
+
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_1_mdash_Smart_Plate_Solve__">
+   <h4 class="pidoc_subsectionTitle">2.2&emsp;<a id="step_solve"></a>Step 1 &mdash; Smart Plate Solve</h4>
+<p>Checks whether the image already has an astrometric solution. If it does, the step is skipped. If not, the script reads the FITS keywords:</p>
+
+<ul class="pidoc_list">
+<li>If coordinates and image scale are present, the script solves the image with PixInsight's ImageSolver engine. No dialog opens.</li>
+<li class="pidoc_spaced_list_item">If they are missing and <strong>ASTAP Blind Solve</strong> is checked (the default), ASTAP runs first and writes the WCS keywords. A blind solve can take 10&ndash;30 seconds.</li>
+</ul>
+
+<p>If solving fails, the console says so. Solve the image manually with <span class="pidoc_menu">Script &gt; Image Analysis &gt; ImageSolver</span> and run Part 1 again.</p>
+<p>SPFC and MGC need this astrometric solution, and so does SPCC in Part 2.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration__">
+   <h4 class="pidoc_subsectionTitle">2.3&emsp;<a id="step_spfc"></a>Step 2 &mdash; SPFC (SpectrophotometricFluxCalibration)</h4>
+<p>Applies spectrophotometric flux calibration with the camera and filter curves selected in the dialog. This linearises the colour response of the image, and MGC needs it.</p>
+
+<dl class="pidoc_list">
+<dt>
+<p>Camera / Sensor</p>
+</dt>
+<dd>
+<p>The camera's QE curve. <em>Ideal QE curve</em> if yours isn't listed.</p>
+</dd>
+<dt>
+<p>Gray filter</p>
+</dt>
+<dd>
+<p>The luminance (L) filter curve.</p>
+</dd>
+<dt>
+<p>RGB filters</p>
+</dt>
+<dd>
+<p>The colour filter set, e.g. the camera's own Bayer filters.</p>
+</dd>
+<dt>
+<p>Generate graphs</p>
+</dt>
+<dd>
+<p>Lets SPFC show its calibration graphs.</p>
+</dd>
+<dt>
+<p>Narrowband filters mode</p>
+</dt>
+<dd>
+<p>For a dual-band filter (e.g. Optolong L-eXtreme or L-Ultimate, Antlia ALP-T, Askar ColorMagic D1). The filter lists are replaced by wavelength and bandwidth (nm) for red, green and blue, e.g. 656.3 / 500.7 / 500.7 for Ha/OIII/OIII.</p>
+</dd>
+</dl>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration_:_HaOIII_Separation_dualband_only__">
+   <h5 class="pidoc_subsectionTitle">2.3.1&emsp;<a id="separation"></a>Ha/OIII Separation (dual-band only)</h5>
+
+<div style="text-align:center;">
+<img style="width:560px;" src="images/Part1_4.png" alt=""/>
+</div>
+<p><strong>Why.</strong> With a dual-band filter on an OSC sensor, Ha light also reaches the green and blue pixels. So G and B are not pure OIII, and SPFC and MGC (with an OIII reference) work on the wrong signal. In an Ha-rich field the green channel can look like an Ha image.</p>
+<p><strong>What it does.</strong> Before SPFC, the script subtracts a fraction of the red (Ha) channel's signal above its median from G and B with PixelMath. Red stays unchanged:</p>
+
+<pre class="code">R:  <span class="pidoc_sh_keyword">$T</span>
+G:  <span class="pidoc_sh_keyword">$T</span> - ( <span class="pidoc_sh_keyword">$T</span>[<span class="pidoc_sh_number">0</span>] - <span class="pidoc_sh_function">med</span>( <span class="pidoc_sh_keyword">$T</span>[<span class="pidoc_sh_number">0</span>] ) ) * kG
+B:  <span class="pidoc_sh_keyword">$T</span> - ( <span class="pidoc_sh_keyword">$T</span>[<span class="pidoc_sh_number">0</span>] - <span class="pidoc_sh_function">med</span>( <span class="pidoc_sh_keyword">$T</span>[<span class="pidoc_sh_number">0</span>] ) ) * kB</pre>
+
+<p>The method is from the PixInsight video <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Images (II)</em> <sup><a href="#__reference_1__" class="pidoc_referenceTooltip" onmouseover="pidoc_showReferenceToolTip( this );" onmouseout="pidoc_hideReferenceToolTip();" data-tooltip="[Reference 1]<br/>
+Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Images (II)</em>, PixInsight YouTube channel, <a href='https://www.youtube.com/watch?v=ZYP7niz2hKU' title='https://www.youtube.com/watch?v=ZYP7niz2hKU'>https://www.youtube.com/watch?v=ZYP7niz2hKU</a>">[1]</a></sup>.</p>
+<p><strong>When it runs.</strong> Only when SPFC, <strong>Narrowband filters mode</strong> and <strong>Ha/OIII separation before SPFC</strong> are all checked. It runs once per image: it is skipped if the image is not a colour image, if both factors are 0, if it was already applied, or if SPFC was already applied (undo SPFC in History Explorer first). If the separation itself fails, the script stops.</p>
+<div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration_:_HaOIII_Separation_dualband_only_:_Finding_the_Factors__">
+   <h5 class="pidoc_subsectionTitle">2.3.1.1&emsp;<a id="sep_factors"></a>Finding the Factors</h5>
+<p>The factors kG and kB depend on your camera and filter, not on the target, so you find them once.</p>
+
+<ol class="pidoc_list">
+<li>Click <strong>PixelMath &amp; exit</strong>. The dialog closes without processing and PixelMath opens with the separation expressions (0.5 if both factors are 0).</li>
+<li class="pidoc_spaced_list_item">Create a preview over an area with Ha nebulosity and apply PixelMath to it. Look at G and B separately.</li>
+<li class="pidoc_spaced_list_item">Lower the factor (Undo between tries) until the Ha structures just disappear in G and B, not until they turn dark. Real OIII (for example the Crescent Nebula's shell) stays.</li>
+<li class="pidoc_spaced_list_item">Run Part 1 again, enter kG and kB, and click <strong>Save profile...</strong>.</li>
+</ol>
+
+<p>Example: IMX571 sensor with an Antlia ALP-T filter, kG = 0.115, kB = 0.05.</p>
+
+<div class="pidoc_figure">
+<a id="__figure_2__"></a>
+<p><span class="pidoc_figure_title">Figure 2 &mdash;</span>  <strong>The separation expressions in PixelMath</strong></p>
+<div class="pidoc_mouseover">
+<img class="pidoc_image_right" src="images/Part1_PixelMath_1.png" style="width:520px;" id="WQ3TBpyVYg7PU7LO" alt="" />
+<ul>
+<li><span class="pidoc_indicator_default" id="WQ3TBpyVYg7PU7LO_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('WQ3TBpyVYg7PU7LO', 'images/Part1_PixelMath_1.png'); pidoc_hideGroup('WQ3TBpyVYg7PU7LO', 3); pidoc_setOpacity('WQ3TBpyVYg7PU7LO_1', 1.0);">R/K: unchanged</a></li>
+<li><span class="pidoc_indicator" id="WQ3TBpyVYg7PU7LO_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('WQ3TBpyVYg7PU7LO', 'images/Part1_PixelMath_2.png'); pidoc_hideGroup('WQ3TBpyVYg7PU7LO', 3); pidoc_setOpacity('WQ3TBpyVYg7PU7LO_2', 1.0);">G: kG</a></li>
+<li><span class="pidoc_indicator" id="WQ3TBpyVYg7PU7LO_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('WQ3TBpyVYg7PU7LO', 'images/Part1_PixelMath_3.png'); pidoc_hideGroup('WQ3TBpyVYg7PU7LO', 3); pidoc_setOpacity('WQ3TBpyVYg7PU7LO_3', 1.0);">B: kB</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_SPFC_SpectrophotometricFluxCalibration_:_HaOIII_Separation_dualband_only_:_Profiles__">
+   <h5 class="pidoc_subsectionTitle">2.3.1.2&emsp;<a id="sep_profiles"></a>Profiles</h5>
+<p>Keep one profile per camera and filter combination:</p>
+
+<ul class="pidoc_list">
+<li>Choose a <strong>Profile folder</strong> once (folder button). The folder is remembered.</li>
+<li class="pidoc_spaced_list_item"><strong>Profile</strong> lists the folder's <span class="pidoc_code">.txt</span> files. Choosing one fills in its factors; it is re-read from the file each time the script starts.</li>
+<li class="pidoc_spaced_list_item"><strong>Save profile...</strong> writes the current kG and kB to a new file. Typing a factor switches the profile to <em>(manual values)</em>; save it to keep it.</li>
+<li class="pidoc_spaced_list_item">You can also save PixelMath's <strong>Instance Source Code</strong> (the square button at the bottom right of PixelMath) as a <span class="pidoc_code">.txt</span> file in the folder.</li>
+</ul>
+
+<p>Profile files are only read for their two numbers. They are never executed.</p>
+
+<div class="pidoc_figure">
+<a id="__figure_3__"></a>
+<p><span class="pidoc_figure_title">Figure 3 &mdash;</span>  <strong>PixelMath instance source code as a profile</strong></p>
+<div class="pidoc_mouseover">
+<img class="pidoc_image_right" src="images/Part1_PixelMath_4.png" style="width:520px;" id="F2z5xkChDi8w5o1H" alt="" />
+<ul>
+<li><span class="pidoc_indicator_default" id="F2z5xkChDi8w5o1H_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('F2z5xkChDi8w5o1H', 'images/Part1_PixelMath_4.png'); pidoc_hideGroup('F2z5xkChDi8w5o1H', 2); pidoc_setOpacity('F2z5xkChDi8w5o1H_1', 1.0);">Instance Source Code button</a></li>
+<li><span class="pidoc_indicator" id="F2z5xkChDi8w5o1H_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('F2z5xkChDi8w5o1H', 'images/Part1_PixelMath_5.png'); pidoc_hideGroup('F2z5xkChDi8w5o1H', 2); pidoc_setOpacity('F2z5xkChDi8w5o1H_2', 1.0);">The source code to save</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_3_mdash_Create_Previews_MGC_only__">
+   <h4 class="pidoc_subsectionTitle">2.4&emsp;<a id="step_previews"></a>Step 3 &mdash; Create Previews (MGC only)</h4>
+<p>Creates 1 to 4 full-size previews (default 4), one for each MGC gradient scale. Existing previews are deleted first. The names depend on what runs:</p>
+
+<table class="pidoc_table">
+<tr>
+<th><p>Situation</p>
+</th>
+<th><p>Preview names</p>
+</th>
+</tr>
+<tr>
+<td><p>Default run (with MGC)</p>
+</td>
+<td><p><span class="pidoc_code">BM_768,</span> <span class="pidoc_code">BM_1024,</span> ...: one background model per gradient scale. The same scale twice gives <span class="pidoc_code">BM_1024_1</span> (as in +Previews).</p>
+</td>
+</tr>
+<tr>
+<td><p>Previews run alone</p>
+</td>
+<td><p><span class="pidoc_code">Preview,</span> <span class="pidoc_code">Preview1,</span> ...</p>
+</td>
+</tr>
+<tr>
+<td><p>GC selected</p>
+</td>
+<td><p>GC creates its own <span class="pidoc_code">GC_</span> and <span class="pidoc_code">GC_1.</span></p>
+</td>
+</tr>
+<tr>
+<td><p>DBE selected</p>
+</td>
+<td><p>No previews are created.</p>
+</td>
+</tr>
+</table>
+
+<p>To add more previews later, or to use previews on their own, use <a href="#bonus_scripts">+Previews</a>.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection__">
+   <h4 class="pidoc_subsectionTitle">2.5&emsp;<a id="step_mgc"></a>Step 4 &mdash; MGC (MultiscaleGradientCorrection)</h4>
+<p>Runs MGC on each preview with its own gradient scale (default 768, 1024, 2048 and 3072), using the MARS database as reference. Each preview then shows its gradient model; the script pauses 3 seconds on each so you can follow along.</p>
+<p>By default MGC uses L/R/G/B. For a dual-band filter, check <strong>Filter selection</strong> and choose L, Ha, OIII, OIII, together with <a href="#step_spfc">narrowband filters mode</a> in SPFC and, ideally, the <a href="#separation">Ha/OIII separation</a> (<a href="#__figure_1__" class="pidoc_referenceTooltip" onmouseover="pidoc_showReferenceToolTip( this );" onmouseout="pidoc_hideReferenceToolTip();" data-tooltip="[Figure 1]">[1]</a>).</p>
+<div class="pidoc_subsection" id="__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Choose_Background_Model__">
+   <h5 class="pidoc_subsectionTitle">2.5.1&emsp;<a id="choose_model"></a>Choose Background Model</h5>
+
+<div style="text-align:center;">
+<img style="width:420px;" src="images/Part1_MGC.png" alt=""/>
+</div>
+<p>When all previews are done, the <strong>Choose background model</strong> window opens. While it is open, PixInsight is busy: you can't zoom or pan the image. Click a model in the list to show its preview.</p>
+
+<dl class="pidoc_list">
+<dt>
+<p>Apply</p>
+</dt>
+<dd>
+<p>Applies the selected model to the main image at once: image &minus; model + median(model). The model used is noted in the FITS history.</p>
+</dd>
+<dt>
+<p>Add scale / Run MGC</p>
+</dt>
+<dd>
+<p>If none of the models is good enough, run MGC at another scale. It gets its own new <span class="pidoc_code">BM_</span> preview with the same settings and appears in the list, ready to compare and apply.</p>
+</dd>
+<dt>
+<p>Remove background model previews after applying</p>
+</dt>
+<dd>
+<p>On by default.</p>
+</dd>
+<dt>
+<p>Open MGC tool instead</p>
+</dt>
+<dd>
+<p>Opens the MGC tool with the selected preview's settings, for manual testing.</p>
+</dd>
+<dt>
+<p>Close</p>
+</dt>
+<dd>
+<p>Leaves the image unchanged.</p>
+</dd>
+</dl>
+
+</div>
+
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_5_mdash_GC_GradientCorrection__">
+   <h4 class="pidoc_subsectionTitle">2.6&emsp;<a id="step_gc"></a>Step 5 &mdash; GC (GradientCorrection)</h4>
+<p>Off by default. GC also starts automatically when SPFC or MGC fails, for example when the MARS database doesn't cover the target.</p>
+<p>GC runs with two presets on its own previews:</p>
+
+<table class="pidoc_table">
+<tr>
+<th><p>Preview</p>
+</th>
+<th><p>Preset</p>
+</th>
+<th><p>Gradient model window</p>
+</th>
+</tr>
+<tr>
+<td><p><span class="pidoc_code">GC_</span></p>
+</td>
+<td><p>GC defaults (protection 0.10 / 0.50): follows the gradient closely, but can leave blotches on nebula-rich fields.</p>
+</td>
+<td><p><span class="pidoc_code">GC_gradient_model</span></p>
+</td>
+</tr>
+<tr>
+<td><p><span class="pidoc_code">GC_1</span></p>
+</td>
+<td><p>Stronger protection (0.05 / 0.70): smoother model that spares nebulae, but may under-correct.</p>
+</td>
+<td><p><span class="pidoc_code">GC_gradient_model1</span></p>
+</td>
+</tr>
+</table>
+
+<p>The gradient model windows get an Adaptive Auto STF. Differences usually show more clearly in the models than in the corrected previews. Then the <strong>Choose GC result</strong> window opens:</p>
+
+<div style="text-align:center;">
+<img style="width:520px;" src="images/Part1_GC.png" alt=""/>
+</div>
+<p>It works like <a href="#choose_model">Choose background model</a>: <strong>Apply</strong> copies the selected preview to the main image, <strong>Remove GC previews and model windows after applying</strong> is on by default, and <strong>Open GC tool instead</strong> opens GC with that preview's settings.</p>
+
+<div class="pidoc_note">
+<p>Close old <span class="pidoc_code">GC_gradient_model</span> windows before running GC. Otherwise GC numbers the new models differently and they no longer match the preview names.</p>
+</div>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_6_mdash_DBE_Custom_DynamicBackgroundExtraction__">
+   <h4 class="pidoc_subsectionTitle">2.7&emsp;<a id="step_dbe"></a>Step 6 &mdash; DBE (Custom DynamicBackgroundExtraction)</h4>
+<p>Off by default. Intended for a manual background extraction. The DynamicBackgroundExtraction tool opens with preset values and sample points around the frame. Adjust, add, move or delete samples, then apply.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Notes__">
+   <h4 class="pidoc_subsectionTitle">2.8&emsp;<a id="notes1"></a>Notes</h4>
+
+<div class="pidoc_warning">
+<p>If a gradient correction from this script (MGC or GC) is already applied, the script warns before it runs: correcting twice can damage the image. To try another model, go back one step in History Explorer first. The warning follows History Explorer: after undoing the correction, it no longer appears.</p>
+</div>
+<p>The separation and SPFC are skipped automatically when they were already applied to the image.</p>
+<p>If you undo the image history back to the start, the astrometric solution is lost and the next run solves the image again.</p>
+</div>
+
+   </div>
+</div>
+
+<div class="pidoc_section" id="__Requirements_and_License__">
+   <h3 class="pidoc_sectionTitle">3&emsp;Requirements and License</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Requirements_and_License', this );">[hide]</p>
+   <div id="Requirements_and_License">
+<div class="pidoc_subsection" id="__Requirements_and_License_:_Requirements__">
+   <h4 class="pidoc_subsectionTitle">3.1&emsp;<a id="requirements"></a>Requirements</h4>
+<p><strong>Both parts</strong></p>
+
+<ul class="pidoc_list">
+<li>Windows operating system.</li>
+<li class="pidoc_spaced_list_item">PixInsight 1.9.5 or later.</li>
+<li class="pidoc_spaced_list_item">An image from a <strong>one-shot colour (OSC)</strong> camera, captured with a broadband, light-pollution or single dual-narrowband (DNB) filter. The RGB channels are <em>not</em> split into separate greyscale images.</li>
+<li class="pidoc_spaced_list_item">An image that is already cropped. If you stack in WBPP with <em>Auto Crop</em> and <em>Astrometric Solution</em> enabled, you can start without cropping and the plate solve step is skipped.</li>
+</ul>
+
+<p><strong>Part 1</strong></p>
+
+<ul class="pidoc_list">
+<li>The MARS database (any drive).</li>
+<li class="pidoc_spaced_list_item"><a href="https://www.hnsky.org/astap.htm" title="https://www.hnsky.org/astap.htm">ASTAP</a> with the D50 star database, preferably in <span class="pidoc_code">C:\Program Files\astap</span>.</li>
+</ul>
+
+<p><strong>Part 2</strong></p>
+
+<ul class="pidoc_list">
+<li><a href="https://www.rc-astro.com/" title="https://www.rc-astro.com/">BlurXTerminator, StarXTerminator and NoiseXTerminator</a>.</li>
+<li class="pidoc_spaced_list_item">Optional: <a href="https://www.starnetastro.com/download/" title="https://www.starnetastro.com/download/">StarNet2</a>, installed from its PixInsight repository.</li>
+<li class="pidoc_spaced_list_item">Optional: MLDenoise and its model file (<span class="pidoc_code">.xmlm),</span> saved on this computer. They are available only to licensed PixInsight users: log in on <a href="https://pixinsight.com/" title="https://pixinsight.com/">pixinsight.com</a> with your license to download them.</li>
+<li class="pidoc_spaced_list_item">AutoColor is fully integrated into Part 2. You don't need to install or load the AutoColor script separately. (The stand-alone AutoColor V8 script is in the <a href="https://mopscripts.github.io/mop-v8-scripts/" title="https://mopscripts.github.io/mop-v8-scripts/">MOP V8 scripts repository</a>, if you want to use it on its own.)</li>
+<li class="pidoc_spaced_list_item">Internet access only if you use <em>Check dust map</em> in the background pre-check.</li>
+</ul>
+
+
+<div class="pidoc_note">
+<p>If the scripts can't find the MARS database or ASTAP the first time they run, they ask you to locate it. The path is saved for later runs. If BlurXTerminator or NoiseXTerminator isn't installed, that step is skipped. If StarXTerminator isn't installed, Part 2 uses StarNet2 instead.</p>
+</div>
+<p>If you combine two DNB filters (Ha/OIII and SII/OIII) into a Hubble-palette image, these scripts are not the right tool.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Requirements_and_License_:_The_Button_Bar__">
+   <h4 class="pidoc_subsectionTitle">3.2&emsp;<a id="buttons"></a>The Button Bar</h4>
+
+<div style="text-align:center;">
+<img style="width:480px;" src="images/Part1_3.png" alt=""/>
+</div>
+<p>The buttons at the bottom of the dialog, from left to right:</p>
+
+<dl class="pidoc_list">
+<dt>
+<p>New Instance</p>
+</dt>
+<dd>
+<p>Drag the triangle onto the workspace to save the current settings as a process icon.</p>
+</dd>
+<dt>
+<p>User Guide</p>
+</dt>
+<dd>
+<p>Opens the user guide.</p>
+</dd>
+<dt>
+<p>Deselect All</p>
+</dt>
+<dd>
+<p>Clears every workflow step.</p>
+</dd>
+<dt>
+<p>Reset Workflow</p>
+</dt>
+<dd>
+<p>Returns the workflow steps to their defaults. Equipment settings are not changed.</p>
+</dd>
+<dt>
+<p>Reset Settings</p>
+</dt>
+<dd>
+<p>(gear) Returns the equipment settings (camera, filters, white reference, gradient scales) to their defaults. Workflow steps are not changed.</p>
+</dd>
+</dl>
+
+<p>All workflow and equipment settings are saved when you run the script and come back the next time you open it.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Requirements_and_License_:_License__">
+   <h4 class="pidoc_subsectionTitle">3.3&emsp;<a id="license"></a>License</h4>
+<p>Both scripts are released under the MIT License, Copyright &copy; 2026 Georg G. Albrecht. You may use, modify and redistribute them. <strong>Exception:</strong> the AutoColor code in Part 2 (&copy; 2016 Hartmut V. Bornemann, used with written permission) must be kept in its original form and needs a separate written agreement with its author. See the <a href="https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE" title="https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE">LICENSE</a> on GitHub.</p>
+</div>
+
+<div class="pidoc_subsection" id="__Requirements_and_License_:_Bonus_Scripts__">
+   <h4 class="pidoc_subsectionTitle">3.4&emsp;<a id="bonus_scripts"></a>Bonus Scripts</h4>
+<p>Three small helper scripts come with the Lazy Workflow:</p>
+
+<table class="pidoc_table" style="margin-left:20px;">
+<tr>
+<td><img style="height:32px;" src="images/Icon_KillPreviews.png" alt=""/>
+</td>
+<td><p><strong>KillPreviews</strong>: deletes all previews in the active image. Part 1's apply windows and Part 2's background finder now remove their previews themselves, so you only need it for leftovers, for example after closing Part 1's apply window without applying.</p>
+</td>
+</tr>
+<tr>
+<td><img style="height:32px;" src="images/Icon_NamePreviews.png" alt=""/>
+</td>
+<td><p><strong>NamePreviews</strong>: if you decide to use exclusion zones in Part 2, draw previews over the areas to exclude and run NamePreviews. It renames <em>all</em> previews in the image to <span class="pidoc_code">Exclude1,</span> <span class="pidoc_code">Exclude2,</span> ..., so remove any other previews first. Part 2 also runs without exclusion zones.</p>
+</td>
+</tr>
+<tr>
+<td><img style="height:32px;" src="images/Icon_PlusPreviews.png" alt=""/>
+</td>
+<td><p><strong>+Previews</strong> (<a href="../../scripts/SH%20+Previews/SH%20+Previews.html" title="../../scripts/SH +Previews/SH +Previews.html">manual</a>): creates 1&ndash;6 full-size previews and zooms each to fit. Prefixes: <span class="pidoc_code">BM_</span> (MGC background models, with a gradient scale per preview), <span class="pidoc_code">GC_</span> (continues the <span class="pidoc_code">GC_,</span> <span class="pidoc_code">GC_1,</span> ... numbering, matching GC's model names), <span class="pidoc_code">Preview,</span> or your own text. Use it after Part 1 to add more models, or on its own for any process where a full-size preview is useful.</p>
+</td>
+</tr>
+</table>
+
+</div>
+
+   </div>
+</div>
+
+<div class="pidoc_section" id="__Acknowledgments__">
+   <h3 class="pidoc_sectionTitle">4&emsp;Acknowledgments</h3>
+   <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Acknowledgments', this );">[hide]</p>
+   <div id="Acknowledgments">
+<p>Thanks to the PixInsight team (Pleiades Astrophoto) for PixInsight; to Franklin Marek (SetiAstro) for Blind Solver 2000, whose approach inspired the ASTAP solver step; and to Han Kleijn for ASTAP. Thanks also to the beta testers Jeff, Mike and Stefan.</p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__references__">
+   <h3 class="pidoc_sectionTitle">References</h3>
+   <div id="references">
+      <p id="__reference_1__"><strong>[1]</strong> Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Images (II)</em>, PixInsight YouTube channel, <a href="https://www.youtube.com/watch?v=ZYP7niz2hKU" title="https://www.youtube.com/watch?v=ZYP7niz2hKU">https://www.youtube.com/watch?v=ZYP7niz2hKU</a></p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__related_tools__">
+   <h3 class="pidoc_sectionTitle">Related Tools</h3>
+   <div id="related_tools">
+<p><a href="../../tools/GradientCorrection/GradientCorrection.html" title="../../tools/GradientCorrection/GradientCorrection.html">GradientCorrection</a>, <a href="../../tools/PixelMath/PixelMath.html" title="../../tools/PixelMath/PixelMath.html">PixelMath</a></p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__related_scripts__">
+   <h3 class="pidoc_sectionTitle">Related Scripts</h3>
+   <div id="related_scripts">
+<p><a href="../../scripts/SH%20Lazy%20Workflow%20Part%202/SH%20Lazy%20Workflow%20Part%202.html" title="../../scripts/SH Lazy Workflow Part 2/SH Lazy Workflow Part 2.html">SH Lazy Workflow Part 2</a>, <a href="../../scripts/SH%20+Previews/SH%20+Previews.html" title="../../scripts/SH +Previews/SH +Previews.html">SH +Previews</a>, <a href="../../scripts/ImageSolver/ImageSolver.html" title="../../scripts/ImageSolver/ImageSolver.html">ImageSolver</a></p>
+   </div>
+</div>
+
+<div class="pidoc_section" id="__related_resources__">
+   <h3 class="pidoc_sectionTitle">Related Resources</h3>
+   <div id="related_resources">
+<ul>
+   <li><a href="https://www.youtube.com/playlist?list=PL0Nr1Pazdc5-vr7kVTj9OqgLrwp6CA_OQ" title="https://www.youtube.com/playlist?list=PL0Nr1Pazdc5-vr7kVTj9OqgLrwp6CA_OQ">PixInsight YouTube: MultiscaleGradientCorrection</a></li>
+   <li><a href="https://www.youtube.com/watch?v=ZYP7niz2hKU" title="https://www.youtube.com/watch?v=ZYP7niz2hKU">PixInsight YouTube: MultiscaleGradientCorrection &mdash; Dual-Band OSC Images (II)</a></li>
+   <li><a href="https://www.youtube.com/watch?v=3fseL3oq2Tg" title="https://www.youtube.com/watch?v=3fseL3oq2Tg">PixInsight YouTube: GradientCorrection</a></li>
+   <li><a href="https://pixinsight.com/forum/index.php?threads/pixinsight-1-8-9-3-released.23507/" title="https://pixinsight.com/forum/index.php?threads/pixinsight-1-8-9-3-released.23507/">PixInsight Forum: 1.8.9-3 released with SPFC</a></li>
+</ul>
+   </div>
+</div>
+
+<hr class="separator"/>
+
+<div id="copyright">
+   <p>Copyright &copy; 2026 Georg G. Albrecht. MIT License.</p>
+</div>
+
+<div id="footer">
+   <p>Generated by the PixInsight Documentation Compiler script version 1.8.0 on 2026-10-13 00:03:02 UTC</p>
+</div>
+<br/>
+<br/>
+
+</div> <!-- contents -->
+
+</body>
+</html>

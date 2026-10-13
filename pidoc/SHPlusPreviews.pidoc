@@ -1,0 +1,141 @@
+\documentclass PIScriptDoc
+
+% ----------------------------------------------------------------------------
+% Space Hunter +Previews -- PIDoc source (DRAFT)
+%
+% \script must be the script's MENU name (last part of the menu path
+% in #feature-id), not the ID: PixInsight's help button looks up
+% doc/scripts/<menu name>/<menu name>.html. Tested in PI 2026-10-12.
+%    #feature-id SHPlusPreviews : Space_Hunter > SH +Previews
+% and the dialog's documentation button calls
+%    Dialog.browseScriptDocumentation( "SH +Previews" )
+% Written against ScriptsTesting/Final Tests/SH_+Preview_V8_v2.2.js, 2026-10-11.
+% ----------------------------------------------------------------------------
+
+\script {SH +Previews}
+
+\keywords {
+   Space Hunter, previews, full-size previews, preview names, background model, MGC,
+   GradientCorrection
+}
+
+\author {
+   Georg G. Albrecht
+}
+
+\copyright {
+   2026 Georg G. Albrecht. MIT License.
+}
+
+\brief {
+   Creates 1 to 6 full-size previews of the active image, named for MGC background models, GradientCorrection or your own use, and zooms each to fit.
+}
+
+\description {
+
+   +Previews is a small helper of the Space Hunter Lazy Workflow
+   (\sref {SH Lazy Workflow Part 1} {Part 1}, \sref {SH Lazy Workflow Part 2} {Part 2}).
+   It adds full-size previews to the active image in one step, with names
+   that the Lazy Workflow and the gradient tools understand.
+
+   Use it after Part 1 to add more background models or GradientCorrection
+   runs, or on its own whenever a full-size preview is useful: to compare
+   settings of any process before applying it to the whole image.
+}
+
+\usage {
+
+   \subsection { \label dialog The Dialog } {
+
+      \center {
+         \image[width:460px] images/PlusPreviews_0.png
+      }
+
+      \definition {
+         { Number of Previews } { How many previews to create, 1 to 6. Only
+                                  that many rows below are active. }
+         { Preview Prefix }     { How the previews are named: \c BM_,
+                                  \c GC_, \c Preview or \e {Custom TXT}
+                                  (see \lref naming {Preview Names}). With
+                                  Custom TXT, type your prefix in the box to
+                                  the right. }
+         { Suffix 1 }           { \c BM_ only: the MGC gradient scale for
+                                  this preview (128 to 8192). Required for
+                                  every active row. }
+         { Suffix 2 --- Custom } { \c BM_ and Custom TXT: optional text added
+                                  to the name, e.g. \c A gives \c BM_128_A. }
+         { Preview Overwrite }  { Off (default): existing previews are kept,
+                                  and a name that already exists is skipped.
+                                  On: all existing previews of the image are
+                                  deleted first. }
+      }
+
+      The buttons at the bottom left:
+
+      \definition {
+         { New Instance } { Drag the triangle onto the workspace to save the
+                            current settings as a process icon. Double-click
+                            the icon, or drop it on an image, to open the
+                            dialog with these settings again. }
+         { Documentation } { Opens this manual. }
+      }
+   }
+
+   \subsection { \label naming Preview Names } {
+
+      \table[caption, header, numbered: names] {
+         { \tbltag Preview names by prefix }
+         { {Prefix} {Names} {Notes} }
+         { { \c BM_ } { \c BM_1024, \c BM_2048_A, ... }
+           { One background model per row: \c BM_ + scale (+ Suffix 2). The
+             same name twice gets \c _1, \c _2: \c BM_1024, \c BM_1024_1,
+             \c BM_1024_2. } }
+         { { \c GC_ } { \c GC_, \c GC_1, \c GC_2, ... }
+           { Continues after existing \c GC_ previews, so preview numbers
+             match GradientCorrection's model windows
+             (\c GC_gradient_model, \c GC_gradient_model1, ...). } }
+         { { \c Preview } { \c Preview, \c Preview1, \c Preview2, ... }
+           { Continues after existing \c Preview previews. } }
+         { { Custom TXT } { \c NGC2237, \c NGC2237_1, ... }
+           { Continues after existing ones. With Suffix 2 a row is named
+             \c NGC2237_<suffix>. Without a prefix, the \c Preview names are
+             used. } }
+      }
+
+      Names may only contain letters, digits and \c _, with no spaces. A
+      custom prefix must start with a letter. The dialog tells you if a name
+      can't be used.
+   }
+
+   \subsection { \label result Result } {
+
+      The new previews cover the whole image. Each one is zoomed to fit, and
+      the first new preview is shown at the end. The console lists every
+      preview created or skipped.
+   }
+
+   \subsection { \label tips Tips } {
+
+      \list[spaced] {
+         { \s {More MGC models after Part 1:} create \c BM_ previews with the
+           scales you want and run MGC on each. For a single extra scale,
+           \e {Add scale} in Part 1's \e {Choose background model} window is
+           quicker. }
+         { \s {More GradientCorrection runs:} choose \c GC_. The new previews
+           continue the numbering, so each one matches the next
+           \c GC_gradient_model window. Close old model windows first to keep
+           the numbers matched. }
+         { \s {Remove previews} again with KillPreviews. }
+      }
+   }
+}
+
+\relatedscripts {
+   SH Lazy Workflow Part 1, SH Lazy Workflow Part 2
+}
+
+\relatedtools {
+   GradientCorrection
+}
+
+\make

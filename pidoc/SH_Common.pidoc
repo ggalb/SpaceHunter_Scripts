@@ -1,0 +1,130 @@
+!<
+% ----------------------------------------------------------------------------
+% Space Hunter Lazy Workflow -- shared content.
+% Included by SHLazyWorkflowPart1.pidoc and SHLazyWorkflowPart2.pidoc inside
+% their "Requirements and License" section. Do not compile on its own (the
+% "!<" line above makes the compiler skip it if you do).
+% Checked against Part 1 v2.5 / Part 2 v2.3 TEST, 2026-10-11.
+% ----------------------------------------------------------------------------
+
+\subsection { \label requirements Requirements } {
+
+   \s {Both parts}
+
+   \list[spaced] {
+      { Windows operating system. }
+      { PixInsight 1.9.5 or later. }
+      { An image from a \s {one-shot colour (OSC)} camera, captured with a
+        broadband, light-pollution or single dual-narrowband (DNB) filter.
+        The RGB channels are \e not split into separate greyscale images. }
+      { An image that is already cropped. If you stack in WBPP with
+        \e {Auto Crop} and \e {Astrometric Solution} enabled, you can start
+        without cropping and the plate solve step is skipped. }
+   }
+
+   \s {Part 1}
+
+   \list[spaced] {
+      { The MARS database (any drive). }
+      { \xref {https://www.hnsky.org/astap.htm} {ASTAP} with the D50 star
+        database, preferably in \c {C:\\Program Files\\astap}. }
+   }
+
+   \s {Part 2}
+
+   \list[spaced] {
+      { \xref {https://www.rc-astro.com/} {BlurXTerminator, StarXTerminator
+        and NoiseXTerminator}. }
+      { Optional: \xref {https://www.starnetastro.com/download/} {StarNet2},
+        installed from its PixInsight repository. }
+      { Optional: MLDenoise and its model file (\c .xmlm), saved on this
+        computer. They are available only to licensed PixInsight users: log
+        in on \xref {https://pixinsight.com/} {pixinsight.com} with your
+        license to download them. }
+      { AutoColor is fully integrated into Part 2. You don't need to install
+        or load the AutoColor script separately. (The stand-alone AutoColor
+        V8 script is in the
+        \xref {https://mopscripts.github.io/mop-v8-scripts/} {MOP V8 scripts
+        repository}, if you want to use it on its own.) }
+      { Internet access only if you use \e {Check dust map} in the background
+        pre-check. }
+   }
+
+   \note {
+      If the scripts can't find the MARS database or ASTAP the first time
+      they run, they ask you to locate it. The path is saved for later runs.
+      If BlurXTerminator or NoiseXTerminator isn't installed, that step is
+      skipped. If StarXTerminator isn't installed, Part 2 uses StarNet2
+      instead.
+   }
+
+   If you combine two DNB filters (Ha/OIII and SII/OIII) into a Hubble-palette
+   image, these scripts are not the right tool.
+}
+
+\subsection { \label buttons The Button Bar } {
+
+   \center {
+      \image[width:480px] images/Part1_3.png
+   }
+
+   The buttons at the bottom of the dialog, from left to right:
+
+   \definition {
+      { New Instance }     { Drag the triangle onto the workspace to save
+                             the current settings as a process icon. }
+      { User Guide }       { Opens the user guide. }
+      { Deselect All }     { Clears every workflow step. }
+      { Reset Workflow }   { Returns the workflow steps to their defaults.
+                             Equipment settings are not changed. }
+      { Reset Settings }   { (gear) Returns the equipment settings (camera,
+                             filters, white reference, gradient scales) to
+                             their defaults. Workflow steps are not changed. }
+   }
+
+   All workflow and equipment settings are saved when you run the script and
+   come back the next time you open it.
+}
+
+\subsection { \label license License } {
+
+   Both scripts are released under the MIT License, Copyright \copy 2026
+   Georg G. Albrecht. You may use, modify and redistribute them.
+   \s {Exception:} the AutoColor code in Part 2 (\copy 2016 Hartmut V.
+   Bornemann, used with written permission) must be kept in its original
+   form and needs a separate written agreement with its author. See the
+   \xref {https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE} {LICENSE}
+   on GitHub.
+}
+
+\subsection { \label bonus_scripts Bonus Scripts } {
+
+   Three small helper scripts come with the Lazy Workflow:
+
+   \table[unnumbered, marginLeft: 20px] {
+      {
+         { \image[height: 32px] images/Icon_KillPreviews.png }
+         { \s {KillPreviews}: deletes all previews in the active image.
+           Part 1's apply windows and Part 2's background finder now remove
+           their previews themselves, so you only need it for leftovers, for
+           example after closing Part 1's apply window without applying. }
+      }
+      {
+         { \image[height: 32px] images/Icon_NamePreviews.png }
+         { \s {NamePreviews}: if you decide to use exclusion zones in Part 2,
+           draw previews over the areas to exclude and run NamePreviews. It
+           renames \e all previews in the image to \c Exclude1, \c Exclude2,
+           ..., so remove any other previews first. Part 2 also runs without
+           exclusion zones. }
+      }
+      {
+         { \image[height: 32px] images/Icon_PlusPreviews.png }
+         { \s {+Previews} (\sref {SH +Previews} {manual}): creates 1--6 full-size previews and zooms each to
+           fit. Prefixes: \c BM_ (MGC background models, with a gradient
+           scale per preview), \c GC_ (continues the \c GC_, \c GC_1, ...
+           numbering, matching GC's model names), \c Preview, or your own
+           text. Use it after Part 1 to add more models, or on its own for
+           any process where a full-size preview is useful. }
+      }
+   }
+}

@@ -7,26 +7,31 @@ Copyright © 2026 Georg G Albrecht. MIT License.
 
 ## Versions
 
-This repository provides two versions of the Space Hunter scripts:
+The update repository delivers the right package for your PixInsight version:
 
-- **v2.1 (V8)** — For PixInsight 1.9.4 (Lockhart) and later. Ported to the V8 JavaScript engine with ES6 class inheritance, updated API calls, and significant performance improvements (AutoColor sky-background computation is up to 4x faster). Note: ImageSolver auto-include is temporarily disabled as ImageSolver.js is not yet V8-compatible — plate-solve manually via Script > Image Analysis > ImageSolver before running Part 1.
-- **v1.4 (Legacy)** — For PixInsight 1.8.0 through 1.9.3. Uses the original SpiderMonkey JavaScript engine.
+| PixInsight | Package | Scripts |
+|---|---|---|
+| 1.9.5 and later | V8, October 2026 | Part 1 v2.5.2, Part 2 v2.3.2, +Previews v2.2.1, NamePreviews v2.1, KillPreviews v2.0 |
+| 1.9.4 | V8, July 2026 (unchanged) | Part 1 / Part 2 v2.1, Legacy Part 1 v1.4 (with ImageSolver) |
+| 1.8.0 – 1.9.3 | Legacy (unchanged) | v1.4 |
 
-The update repository automatically delivers the correct version for your PixInsight installation.
-
-**ImageSolver workaround for 1.9.4 users:** PixInsight 1.9.4 still supports legacy SpiderMonkey scripts alongside V8. Until ImageSolver.js is updated for V8, a legacy Part 1 v1.4 is included in the V8 package and appears in the menu as **SH Lazy Workflow Part 1 (Legacy+ImageSolver)**. It includes ImageSolver and works fully on 1.9.4.
+From the October 2026 package on, script file names no longer carry a version number
+(e.g. `SH_LazyWorkflow_Part1_V8.js`). The version is shown in each script's dialog.
+The update removes the old versioned files automatically. Saved settings are kept.
 
 ---
 
 ## Prerequisites
 
 - Windows operating system (Windows 11 recommended)
-- PixInsight 1.9.4 or higher (for V8 v2.1) or PixInsight 1.8.0–1.9.3 (for legacy v1.4)
+- PixInsight 1.9.5 or later (1.9.4: July 2026 package; 1.8.0–1.9.3: legacy v1.4)
 - PixInsight's MARS databases installed
-- ASTAP installed with D50 star maps
+- ASTAP installed with D50 star maps (fallback, used when an image has no astrometric solution)
 - BlurXTerminator, StarXTerminator, NoiseXTerminator v1.1.2.2 or later (optional but recommended)
 - StarNet2 (optional, alternative to StarXTerminator)
+- MLDenoise (optional, alternative to NoiseXTerminator)
 - AutoColor (optional, alternative to SPCC)
+- Internet connection (optional, for the dust-map check in Part 2)
 
 ---
 
@@ -48,35 +53,74 @@ The scripts will appear under **Script → Space_Hunter** in the menu.
 
 ## What the Scripts Do
 
-The Lazy Workflow scripts are designed so you don't have to manually call and select several tools on the way to processing an OSC image — whether UV/IR filter images, Light Pollution filter images, or single Dual-Narrowband (DNB) filter images — from a pre-cropped image, first to the background extraction (which shouldn't be left to a tool's predetermination without examination), and from there to a stretch-ready image.
+The Lazy Workflow scripts are designed so you don't have to manually call and select several tools on the way to processing an OSC image — whether UV/IR filter images, Light Pollution filter images, or Dual-Narrowband (DNB) filter images — from a pre-cropped image, first to the background extraction (which shouldn't be left to a tool's predetermination without examination), and from there to a stretch-ready image.
 
 > **Note:** If you are using two DNB filters collecting Ha/Oiii and Sii/Oiii(Hb) to be split into greyscale images for combining into Hubble palette images, this may not be the right script for you.
 
 ### SH Lazy Workflow Part 1
-Automated linear processing — smart plate solving (ASTAP, only runs if needed), ImageSolver, SpectroPhotometricFluxCalibration (SPFC), variable previews (1–4), MultiscaleGradientCorrection with per-preview gradient scale selection, optional GradientCorrection and DynamicBackgroundExtraction (cDBE). New Instance support.
+Automated linear processing: plate solving with PixInsight's ImageSolver (ASTAP only if needed), optional Ha/OIII separation for dual-band OSC images, SpectrophotometricFluxCalibration (SPFC), variable previews (1–4), MultiscaleGradientCorrection with per-preview gradient scale selection and instant background-model apply, optional GradientCorrection with result chooser, and DynamicBackgroundExtraction (cDBE). New Instance support.
 
 ### SH Lazy Workflow Part 2
-Continues from Part 1 — BlurXTerminator (correct only), Background finder with Exclusion Zones, SPCC with auto-detected ROI, AutoColor (alternative to Background Neutralization + SPCC), BlurXTerminator full with adjustable parameters, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator. Supports RC-Astro v1.1.2.2 ML Version selection and Tile Overlap controls for BXT and SXT. Per-step timing in console output. New Instance support.
+Continues from Part 1: BlurXTerminator (correct only), tiled background finder with a pre-check and optional dust map, SPCC with auto-detected ROI, AutoColor (alternative to Background Neutralization + SPCC), BlurXTerminator full with adjustable parameters, Adaptive Auto STF (linked/unlinked chosen automatically), StarXTerminator or StarNet2, NoiseXTerminator or MLDenoise. Separate ML Version and Tile Overlap for BXT Correct Only and BXT Full. Per-step timing in console output. New Instance support.
 
 ### Bonus Scripts
 
 **SH KillPreviews** — Deletes all previews of the active image in one click.
 
-**SH NamePreviews** — Renames drawn previews to Exclude1, Exclude2, etc. for use as FindDarkestBackground exclusion zones.
+**SH NamePreviews** — Renames drawn previews to Exclude1, Exclude2, etc., for use as (optional) background-finder exclusion zones.
 
-**SH +Previews** — Creates 1–6 independent full-size previews of the active image. Useful for adding Background Model previews for MGC or GC, or simply creating full-size previews. Also supports custom-named previews.
+**SH +Previews** — Creates 1–6 independent full-size previews of the active image. Useful for adding Background Model previews for MGC or GC, or simply creating full-size previews. Also supports custom-named previews. New Instance support.
 
 ---
 
 ## Documentation
 
-A detailed workflow guide is included: **SH_Workflow_Guide.pdf**
+Each Lazy Workflow script and +Previews has a manual in PixInsight's documentation format. It is installed with the scripts and opens from the documentation button in the script dialog.
 
-After installation, the PDF can be opened directly from within the Lazy Workflow scripts using the PDF button in the script toolbar. The PDF is interactive with linked titles to description and left/right borders returning user to front of paragraph or previous paragraph.
+The PDF guide (`SH_Workflow_Guide.pdf`) is no longer included in the 1.9.5 package.
 
 ---
 
 ## Changelog
+
+### October 2026 (V8, PixInsight 1.9.5+)
+
+**General:**
+
+- Requires PixInsight 1.9.5. Users on 1.9.4 keep the July 2026 package.
+- Fixed script file names without version numbers. Old versioned files are removed by the update.
+- Documentation buttons open the installed PixInsight manuals instead of the PDF.
+- Legacy Part 1 (Legacy+ImageSolver), the PDF guide and the old toolbar icons are no longer included.
+- Re-run protection: Part 1 and Part 2 warn when a step was already applied. The warning follows History Explorer undo and survives save and reopen.
+
+**Part 1 (v2.5.2):**
+
+- Plate solving uses PixInsight's current ImageSolver engine automatically. The manual ImageSolver workaround is no longer needed.
+- Optional Ha/OIII separation for dual-band OSC images (narrowband mode), run before SPFC. Factors per camera/filter, stored in profile files. "PixelMath & exit" helps find the factors. Runs once per image.
+- SPFC: gray filter and RGB filter set chosen in separate dropdowns.
+- MGC: "Choose background model" window applies any preview's model instantly. Repeated scales are named `BM_1024`, `BM_1024_1`, `BM_1024_2`.
+- GradientCorrection: runs on its own two previews, with a result chooser.
+
+**Part 2 (v2.3.2):**
+
+- New background finder: deterministic tiles, robust statistics and a target sky level instead of "darkest". It no longer lands in dark nebulae or on frame edges; Exclude previews are optional.
+- Pre-check before processing: lists previews (warns about leftovers) and offers an optional IRSA dust-map check to steer the background away from IFN. The check gives up after 30 s if the service does not answer.
+- **Fix:** SPCC now uses the Background preview for background neutralization. Earlier versions passed it under a wrong parameter name, so SPCC used the whole image.
+- Adaptive Auto STF: linked after SPCC, unlinked otherwise; statistics from the Background preview.
+- New: MLDenoise as an alternative to NoiseXTerminator. Opens MLDenoise with your model file (path stored in your own preferences).
+- BXT Correct Only and BXT Full have their own ML Version and Tile Overlap.
+- Ticking NXT or MLDenoise no longer expands its section.
+
+**+Previews (v2.2.1):**
+
+- New Instance support.
+- Repeated names get `_1`, `_2`, … (was `_2`, `_3`, …).
+
+**NamePreviews (v2.1):**
+
+- Re-running no longer produces names like `Exclude11`.
+
+**KillPreviews (v2.0):** unchanged.
 
 ### v2.1 (V8) / v1.4 (Legacy) — July 2026
 
@@ -114,8 +158,14 @@ See the full [LICENSE](https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LI
 ## Acknowledgments
 
 - [PixInsight](https://pixinsight.com/) by Pleiades Astrophoto S.L.
+- ImageSolver by Andrés del Pozo and Juan Conejero (PTeam)
+- Adaptive Auto STF based on PixInsight's AutoSTF method by Juan Conejero (Pleiades Astrophoto)
+- Ha/OIII separation method from the PixInsight video "MultiscaleGradientCorrection — Dual-Band OSC Images (II)" — [youtube.com/watch?v=ZYP7niz2hKU](https://www.youtube.com/watch?v=ZYP7niz2hKU)
+- Background finder concept inspired by FindBackground by Gerrit Erdt and Franklin Marek (SetiAstro)
+- Dust map: [IRSA Galactic Dust Reddening and Extinction](https://irsa.ipac.caltech.edu/applications/DUST/) (NASA/IPAC), SFD map by Schlegel, Finkbeiner & Davis (1998)
 - ASTAP by Han Kleijn — [hnsky.org](https://www.hnsky.org/astap.htm) (Mozilla Public License 2.0)
 - AutoColor.js by Hartmut V. Bornemann — used with written permission
 - BlurXTerminator, StarXTerminator, NoiseXTerminator by Russell Croman — [rc-astro.com](https://www.rc-astro.com/)
 - StarNet2 by Nikita Misiura — [starnetastro.com](https://www.starnetastro.com/)
+- MLDenoise by Juan Conejero and Roberto Sartori (Pleiades Astrophoto)
 - Developed with assistance from Claude AI (Anthropic)

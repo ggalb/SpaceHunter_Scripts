@@ -1,0 +1,335 @@
+\documentclass PIScriptDoc
+
+% ----------------------------------------------------------------------------
+% Space Hunter Lazy Workflow Part 2 -- PIDoc source (DRAFT)
+%
+% \script must be the script's MENU name (last part of the menu path
+% in #feature-id), not the ID: PixInsight's help button looks up
+% doc/scripts/<menu name>/<menu name>.html. Tested in PI 2026-10-12.
+%    #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
+% and the dialog's documentation button calls
+%    Dialog.browseScriptDocumentation( "SH Lazy Workflow Part 2" )
+% Written against script v2.3 (ScriptsTesting/Final Tests/SH_LazyWorkflow_Part2_V8_v2.3.js), 2026-10-11.
+% ----------------------------------------------------------------------------
+
+\script {SH Lazy Workflow Part 2}
+
+\keywords {
+   Space Hunter, OSC, BlurXTerminator, background, IFN, dust map, exclusion zones, SPCC,
+   color calibration, AutoColor, screen transfer function, StarXTerminator,
+   StarNet2, NoiseXTerminator, MLDenoise
+}
+
+\author {
+   Georg G. Albrecht
+}
+
+\copyright {
+   2026 Georg G. Albrecht. MIT License. AutoColor.js \copy 2016 Hartmut V. Bornemann, used with written permission.
+}
+
+\brief {
+   Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto STF, star removal and noise reduction.
+}
+
+\description {
+
+   Part 2 of the Space Hunter Lazy Workflow continues where
+   \sref {SH Lazy Workflow Part 1} {SH Lazy Workflow Part 1} ends. Start it on
+   the image after you have applied your chosen background extraction.
+
+   It corrects the optics, calibrates colour, sharpens and removes the
+   stars. At the end the starless image is in front with NoiseXTerminator
+   (or MLDenoise) open, and your creative work can begin.
+
+   \s {Part 2 sequence:} BXT correct &rarr; Find Background &rarr;
+   SPCC (or AutoColor) &rarr; Adaptive Auto STF &rarr; BXT full &rarr;
+   SXT (or StarNet2) &rarr; NXT (or MLDenoise).
+}
+
+\section { Requirements and License } {
+   \include SH_Common.pidoc
+}
+
+\usage {
+
+   \subsection { \label dialog The Dialog } {
+
+      \figure[numbered: part2_dialog] {
+         \figtag \s { Part 2 dialog }
+         \imageselect[menupos:right, imageWidth:400px] {
+            images/Part2_0.png { Overview (sections collapsed) }
+            images/Part2_1.png { Default settings }
+            images/Part2_3.png { Narrowband filter mode (SPCC) }
+         }
+      }
+
+      Each workflow step is a collapsible section with a checkbox.
+
+      \table[caption, header, numbered: part2_defaults] {
+         { \tbltag Workflow steps, defaults and dependencies }
+         { {Step} {Default} {Dependencies} }
+         { { \lref step_bxtc {1 BXT correct only} } {On} {Independent.} }
+         { { \lref step_fdb {2 Find Background} } {On, with pre-check}
+           { Turned on by SPCC. Turning it on turns off AutoColor. } }
+         { { \lref step_spcc {3 SPCC} } {On}
+           { Turning it on also turns on Find Background and Adaptive Auto
+             STF. To run either of those alone, turn SPCC off first. } }
+         { { \lref step_autocolor {4 AutoColor} } {Off}
+           { Turning it on turns off Find Background and SPCC. } }
+         { { \lref step_stf {5 Adaptive Auto STF} } {On} { Turned on by SPCC. } }
+         { { \lref step_bxtf {6 BXT full} } {On, Automatic PSF} {Independent.} }
+         { { \lref step_sxt {7 SXT} } {On} { Mutually exclusive with StarNet2. } }
+         { { \lref step_starnet {8 StarNet2} } {Off} { Mutually exclusive with SXT. } }
+         { { \lref step_nxt {9 NXT} } {On} { Mutually exclusive with MLDenoise. } }
+         { { \lref step_mld {10 MLDenoise} } {Off} { Mutually exclusive with NXT. } }
+      }
+   }
+
+   \subsection { \label step_bxtc Step 1 --- BXT Correct Only } {
+
+      Runs BlurXTerminator in correction-only mode: no sharpening, only
+      correction of optical aberrations, so the stars are clean before colour
+      calibration. \s {ML Version} (default: latest) and \s {Tile Overlap}
+      are set separately from \lref step_bxtf {BXT full}. Skipped if
+      BlurXTerminator isn't installed.
+   }
+
+   \subsection { \label step_fdb Step 2 --- Find Background } {
+
+      Finds a clean, typical patch of sky and marks it with a preview named
+      \c Background. SPCC uses it as its background reference, and Adaptive
+      Auto STF takes its statistics from it.
+
+      \s {How the search works.} The frame, minus a 3\% border, is cut into
+      square tiles (5\% of the image height, at most 50 px). For every tile
+      the script measures the median, the noise and how much stars or
+      galaxies lift the mean above the median; star-rich tiles are rejected.
+      It then looks for tiles at the \e typical sky level (10th percentile
+      of the clean tiles), not the darkest ones: the darkest tiles are
+      usually dark nebulae or over-corrected holes. Among those, the
+      flattest tile that matches its surroundings and isn't near the edge
+      wins.
+
+      So the finder avoids dark nebulae on its own. Faint IFN (integrated
+      flux nebula) or galactic cirrus can still pull the pick. For that
+      there are the pre-check, the dust map and exclusion zones.
+
+      \subsection { \label precheck Background Pre-check } {
+
+         \figure[numbered: precheck_fig] {
+            \figtag \s { Background pre-check }
+            \imageselect[menupos:right, imageWidth:560px] {
+               images/Part2_Background_1.png { Before the dust map check }
+               images/Part2_Background_2.png { After Check dust map }
+            }
+         }
+
+         Before anything is processed, the \s {Background Pre-check} window
+         lists the previews in the image:
+
+         \list[spaced] {
+            { \s {Exclude previews} are used as exclusion zones. A warning
+              appears if one covers more than half the image (a leftover?). }
+            { \s {Other previews} are \e not used and will be deleted. If one
+              was meant as an exclusion zone, click \s {Cancel}, rename it to
+              start with \c Exclude (case-sensitive) and run again. }
+         }
+
+         The window is skipped when the image already has only sensible
+         \c Exclude previews.
+
+         \s {Check dust map} (optional, internet required) uses the image's
+         astrometric solution to query the NASA/IPAC IRSA dust service
+         (Schlegel, Finkbeiner and Davis 1998 map) \ref irsa_dust. It shows
+         where in the frame dust or IFN is expected: the expected IFN level,
+         the dustiest and clearest areas, their contrast, and the Galactic
+         latitude. The thresholds are rules of thumb, not hard limits; near
+         the Milky Way plane the map is less reliable. If the service doesn't answer within 30
+         seconds, the window says so; you can still click \s {Continue} without
+         the map.
+
+         \definition {
+            { Use dust map in the background pick } { The dustier half of the
+              tiles is set aside and the rest are scored by dust. It is
+              pre-checked only when the map shows clear contrast (1.15\times
+              or more), real dust, and a Galactic latitude of at least
+              10\deg. }
+            { Don't show this pre-check again } { Turns the pre-check off.
+              Turn it back on with \s {Show background pre-check before
+              processing} under Find Background. }
+            { Cancel } { Stops the script, for example to add an
+              \c Exclude preview over cirrus the map points to. }
+            { Continue } { Starts the workflow. }
+         }
+      }
+
+      \subsection { \label exclusion_zones Exclusion Zones } {
+
+         \block[float:right, marginLeft: 16px] {
+            \image[width:300px] images/ExclusionZones.png
+         }
+
+         Exclusion zones are optional. To keep the search away from an area:
+
+         \list[ordered, spaced] {
+            { Draw a preview over each area to exclude (IFN, cirrus, a dark
+              nebula). }
+            { Rename each one so it starts with \c Exclude (\c Exclude1,
+              \c Exclude2, ...). \lref bonus_scripts {NamePreviews} does this
+              for you. }
+            { Run Part 2. }
+         }
+
+         After the search, all previews are deleted (the \c Exclude previews
+         and any leftovers such as Part 1's \c BM_ previews) and only
+         \c Background remains. If the search fails, your \c Exclude
+         previews are kept.
+         \nf
+      }
+   }
+
+   \subsection { \label step_spcc Step 3 --- SPCC (SpectrophotometricColorCalibration) } {
+
+      Calibrates the colour balance by matching catalogue star spectra, with
+      the \s {White Reference}, \s {Camera / Sensor} and \s {Filter} selected
+      in the dialog and the \c Background preview as background reference.
+      \s {Generate graphs} lets SPCC show its graphs.
+
+      For a dual-band filter, check \s {Narrowband filters mode} and enter
+      wavelength and bandwidth (nm), as in Part 1 (\figref part2_dialog).
+
+      SPCC needs the astrometric solution from Part 1. Without it, solve the
+      image with ImageSolver first.
+   }
+
+   \subsection { \label step_autocolor Step 4 --- AutoColor } {
+
+      Off by default. An alternative to Find Background and SPCC: background
+      neutralization and colour calibration in one step, without catalogue
+      stars or an astrometric solution. It uses the method of Hartmut V.
+      Bornemann's AutoColor script \ref autocolor, built into Part 2 with his
+      written permission. AutoColor is fully integrated: you don't need to
+      install or load the AutoColor script separately (see
+      \lref requirements {Requirements}).
+   }
+
+   \subsection { \label step_stf Step 5 --- Adaptive Auto STF } {
+
+      Applies an automatic screen stretch to the linear image so you can
+      judge the colour calibration. It is a display stretch only: pixel data
+      are not changed.
+
+      It uses the method of PixInsight's AutoSTF (Juan Conejero, Pleiades
+      Astrophoto) in its own implementation:
+
+      \list[spaced] {
+         { \s {Statistics from the sky:} measured in the \c Background
+           preview (the whole image if there is none). With sky-only noise
+           the black point sits close to the sky, which gives the nebula more
+           depth. }
+         { \s {Target background} 0.225 (PixInsight's default is 0.25). }
+         { \s {Linked or unlinked, chosen automatically:} linked after SPCC,
+           to keep SPCC's colour balance; otherwise linked when the channels'
+           background levels are close, unlinked when they are not. }
+      }
+   }
+
+   \subsection { \label step_bxtf Step 6 --- BXT Full } {
+
+      The main deconvolution and sharpening pass, with the settings from the
+      dialog: ML Version, Sharpen Stars, Adjust Star Halos, Sharpen
+      Nonstellar, PSF Diameter and Tile Overlap. Skipped if BlurXTerminator
+      isn't installed.
+
+      \warning {
+         \s {PSF Diameter} is only used when \s {Automatic PSF} is unchecked.
+         Measure the value before you run the script, for example with
+         DynamicPSF or the PSFImage script.
+      }
+   }
+
+   \subsection { \label step_sxt Step 7 --- SXT (StarXTerminator) } {
+
+      Removes the stars. Options: \s {ML Version}, \s {Generate Star Image},
+      \s {Unscreen Stars} and \s {Tile Overlap}. With Generate Star Image, a
+      star-only image named \c stars is created and the starless image is
+      brought to front. If StarXTerminator isn't installed, the script uses
+      StarNet2.
+   }
+
+   \subsection { \label step_starnet Step 8 --- StarNet2 } {
+
+      Off by default. Options: \s {Stride}, \s {Create starmask},
+      \s {2x upsample} and \s {Linear data}. With Create starmask, a
+      star-only image named \c stars is created and the starless image is
+      brought to front. Install StarNet2 from its PixInsight repository,
+      \xref {https://pixinsight.starnetastro.com/} {https://pixinsight.starnetastro.com/}.
+   }
+
+   \subsection { \label step_nxt Step 9 --- NXT (NoiseXTerminator) } {
+
+      Opens NoiseXTerminator at the end of the workflow; it is not applied
+      automatically. With the starless image active, drag the instance
+      triangle from the NXT dialog onto the image. Skipped if
+      NoiseXTerminator isn't installed.
+   }
+
+   \subsection { \label step_mld Step 10 --- MLDenoise } {
+
+      Off by default. An alternative to NXT: opens MLDenoise with the model
+      file (\c .xmlm) selected in the dialog. Other settings use MLDenoise's
+      own defaults; adjust them in the tool, then drag the instance triangle
+      onto the image.
+   }
+
+   \subsection { \label notes2 Notes } {
+
+      \warning {
+         The script marks each step on the image as it runs. If you start it
+         again on an image that already went through Part 2, it warns you:
+         running the same steps twice alters or damages the image data. The
+         marks follow History Explorer (undo a step and its mark is gone) and
+         are kept when you save and reopen the image.
+      }
+   }
+}
+
+\acknowledgments {
+   Thanks to the PixInsight team (Pleiades Astrophoto); to Franklin Marek
+   and Gerrit Erdt for FindBackground, which inspired the background search;
+   to Russell Croman for BlurXTerminator, StarXTerminator and
+   NoiseXTerminator; to Nikita Misiura for StarNet2; to Hartmut V. Bornemann
+   for permission to use AutoColor; and to the beta testers Jeff, Mike and
+   Stefan.
+}
+
+\relatedscripts {
+   SH Lazy Workflow Part 1, SH +Previews, ImageSolver
+}
+
+\relatedtools {
+   BlurXTerminator, StarNet2, ScreenTransferFunction, BackgroundNeutralization,
+   ColorCalibration
+}
+
+\related {https://www.youtube.com/watch?v=tBHKdt-lzNQ} {PixInsight YouTube: SpectrophotometricColorCalibration}
+\related {https://www.youtube.com/watch?v=ZYP7niz2hKU} {PixInsight YouTube: MultiscaleGradientCorrection --- Dual-Band OSC Images (II)}
+\related {https://www.youtube.com/watch?v=IrnBcw-G7uQ} {PixInsight YouTube: MLDenoise}
+\related {https://www.rc-astro.com/} {RC Astro: BlurXTerminator, StarXTerminator, NoiseXTerminator}
+\related {https://www.starnetastro.com/download/} {StarNet2}
+\related {https://mopscripts.github.io/mop-v8-scripts/} {MOP V8 scripts repository (AutoColor V8)}
+
+\reference irsa_dust {
+   NASA/IPAC Infrared Science Archive, \e {Galactic Dust Reddening and
+   Extinction},
+   \xref {https://irsa.ipac.caltech.edu/applications/DUST/} {https://irsa.ipac.caltech.edu/applications/DUST/};
+   map by D. J. Schlegel, D. P. Finkbeiner and M. Davis (1998).
+}
+
+\reference autocolor {
+   Hartmut V. Bornemann, \e {AutoColor},
+   \xref {https://www.skypixels.at/pixinsight_scripts.html#autocolor} {https://www.skypixels.at/pixinsight_scripts.html}
+}
+
+\make
