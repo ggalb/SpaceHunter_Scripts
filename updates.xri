@@ -65,7 +65,7 @@
    <platform os="all" arch="noarch" version="1.9.5:1.9.9">
       <package
          fileName="SpaceHunter_Scripts_20261013.zip"
-         sha1="ecef5b94c0bcbab1d54fa7c799fc057e0306d146"
+         sha1="7fe3c1fddd771d914ec633a2e093dad5ee8bde35"
          type="script"
          releaseDate="20261013"
          title="Space Hunter Scripts 20261013">

@@ -40,6 +40,9 @@ def main():
         sys.exit("%s already exists - pick another name (add a time suffix)." % out)
     files = collect()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        # The comment makes the checksum unique even if the contents equal an
+        # earlier (test) package: PI must never see two packages with one SHA-1.
+        z.comment = ("Space Hunter Scripts %s" % date).encode()
         for arc in files:
             z.write(os.path.join(REPO, arc), arc)
     with open(out, "rb") as f:
