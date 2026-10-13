@@ -31,8 +31,8 @@
       </package>
    </platform>
 
-   <!-- V8 scripts for PixInsight 1.9.4+ (V8 JavaScript engine) -->
-   <platform os="all" arch="noarch" version="1.9.4:1.9.9">
+   <!-- V8 scripts for PixInsight 1.9.4 only (frozen since the 20261013 release) -->
+   <platform os="all" arch="noarch" version="1.9.4:1.9.4">
       <package
          fileName="SpaceHunter_Scripts_V8_v2.0.zip"
          sha1="2452bddffdc0f744be29819a23dc5a8ca7ff78c4"
@@ -58,6 +58,41 @@
             <p>- SH KillPreviews: Deletes all previews from the active image window.</p>
             <p>- SH NamePreviews: Renames previews to Exclude1, Exclude2, etc.</p>
          </description>
+      </package>
+   </platform>
+
+   <!-- V8 scripts for PixInsight 1.9.5+ : one dated zip per release, fixed script file names -->
+   <platform os="all" arch="noarch" version="1.9.5:1.9.9">
+      <package
+         fileName="SpaceHunter_Scripts_20261013.zip"
+         sha1="ecef5b94c0bcbab1d54fa7c799fc057e0306d146"
+         type="script"
+         releaseDate="20261013"
+         title="Space Hunter Scripts 20261013">
+         <description>
+            <p><b>Space Hunter Scripts, October 2026</b> (requires PixInsight 1.9.5)</p>
+            <p>Part 1 v2.5.2, Part 2 v2.3.2, +Previews v2.2.1, NamePreviews v2.1, KillPreviews v2.0.</p>
+            <p>- Script file names no longer carry a version number. Old versioned files, the Legacy Part 1 and the PDF guide are removed automatically. Your saved settings are kept.</p>
+            <p>- Manuals in PixInsight's documentation format, opened from the documentation button in each dialog.</p>
+            <p>- Part 1: automatic plate solving with PixInsight's ImageSolver (ASTAP only as fallback), optional Ha/OIII separation for dual-band OSC images, separate SPFC filter dropdowns, instant background-model apply, GradientCorrection result chooser.</p>
+            <p>- Part 2: new tiled background finder (Exclude previews optional), pre-check with optional IRSA dust map, SPCC background-reference fix, Adaptive Auto STF with automatic linked/unlinked, MLDenoise as alternative to NoiseXTerminator, separate ML Version and Tile Overlap for BXT Correct Only and BXT Full.</p>
+            <p>- Re-run protection in Part 1 and Part 2.</p>
+            <p>- +Previews: New Instance support; repeated names get _1, _2, ...  NamePreviews: re-running no longer produces names like Exclude11.</p>
+            <p>Full changelog: https://github.com/ggalb/SpaceHunter_Scripts</p>
+         </description>
+         <remove>
+            src/scripts/Space_Hunter/SH_LazyWorkflow_Part1_V8_v2.0.js,
+            src/scripts/Space_Hunter/SH_LazyWorkflow_Part1_V8_v2.1.js,
+            src/scripts/Space_Hunter/SH_LazyWorkflow_Part2_V8_v2.0.js,
+            src/scripts/Space_Hunter/SH_LazyWorkflow_Part2_V8_v2.1.js,
+            src/scripts/Space_Hunter/SH_+Preview_V8_v2.0.js,
+            src/scripts/Space_Hunter/SH_KillPreviews_V8_v2.0.js,
+            src/scripts/Space_Hunter/SH_NamePreviews_V8_v2.0.js,
+            src/scripts/Space_Hunter/SH_LazyWorkflow_Part1_Legacy_v1.4.js,
+            src/scripts/Space_Hunter/SH_Cog.png,
+            src/scripts/Space_Hunter/SH_pdfIcon.png,
+            src/scripts/Space_Hunter/SH_Workflow_Guide.pdf
+         </remove>
       </package>
    </platform>
 
