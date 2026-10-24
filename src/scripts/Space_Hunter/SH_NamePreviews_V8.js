@@ -1,8 +1,8 @@
 #engine v8
 
-#feature-id Space_Hunter > SH NamePreviews
-#feature-icon  SH_NamePreviews.svg
-#feature-info Space Hunter NamePreviews v2.1<br/>\
+#feature-id SHNamePreviews : Space_Hunter > SH NamePreviews
+#feature-icon  @script_icons_dir/SH_NamePreviews.svg
+#feature-info Space Hunter NamePreviews v2.1.1<br/>\
    <br/>\
    Renames all previews in the active image window to Exclude1, Exclude2, etc.<br/>\
    <br/>\

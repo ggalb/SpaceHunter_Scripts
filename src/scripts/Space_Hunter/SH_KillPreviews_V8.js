@@ -1,8 +1,8 @@
 #engine v8
 
-#feature-id Space_Hunter > SH KillPreviews
-#feature-icon  SH_KillPreviews.svg
-#feature-info Space Hunter KillPreviews v2.0.1<br/>\
+#feature-id SHKillPreviews : Space_Hunter > SH KillPreviews
+#feature-icon  @script_icons_dir/SH_KillPreviews.svg
+#feature-info Space Hunter KillPreviews v2.0.2<br/>\
    <br/>\
    Deletes all previews from the active image window.<br/>\
    <br/>\

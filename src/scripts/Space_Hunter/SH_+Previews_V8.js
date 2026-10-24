@@ -1,8 +1,8 @@
 #engine v8
 
 #feature-id    SHPlusPreviews : Space_Hunter > SH +Previews
-#feature-icon  SH_PlusPreviews.svg
-#feature-info  Space Hunter +Previews v2.2.2<br/>\
+#feature-icon  @script_icons_dir/SH_PlusPreviews.svg
+#feature-info  Space Hunter +Previews v2.2.3<br/>\
    <br/>\
    Creates 1-6 full-view previews with preset or custom naming<br/>\
    and zooms each to optimal fit.<br/>\
@@ -135,7 +135,7 @@ var PreviewDialog = class extends Dialog
       this.helpLabel.wordWrapping = true;
       this.helpLabel.useRichText  = true;
       this.helpLabel.text =
-         "<p><b>+Previews v2.2.2</b> &mdash; Space Hunter Toolset<br/>" +
+         "<p><b>+Previews v2.2.3</b> &mdash; Space Hunter Toolset<br/>" +
          "Creates 1&ndash;6 full-image previews zoomed to fit.<br/>" +
          "Copyright &copy; 2026 Georg G Albrecht. MIT License.</p>";
 

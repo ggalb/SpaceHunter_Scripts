@@ -1,4 +1,4 @@
-"""Build the PixInsight 1.9.5+ release zip from src/ and doc/.
+"""Build the PixInsight 1.9.5+ release zip from src/, doc/ and rsc/.
 
 Usage (from the repo root):  python -I tools/make_release.py YYYYMMDD [out_dir]
 
@@ -18,11 +18,16 @@ REMOVE = [P + x for x in [
     "SH_LazyWorkflow_Part2_V8_v2.0.js", "SH_LazyWorkflow_Part2_V8_v2.1.js",
     "SH_+Preview_V8_v2.0.js", "SH_KillPreviews_V8_v2.0.js", "SH_NamePreviews_V8_v2.0.js",
     "SH_LazyWorkflow_Part1_Legacy_v1.4.js", "SH_Cog.png", "SH_pdfIcon.png",
-    "SH_Workflow_Guide.pdf"]]
+    "SH_Workflow_Guide.pdf",
+    # Menu icons moved to rsc/icons/script/<script-id>/ (@script_icons_dir)
+    "SH_WorkFlow1.svg", "SH_WorkFlow2.svg", "SH_PlusPreviews.svg",
+    "SH_KillPreviews.svg", "SH_NamePreviews.svg",
+    # Part 2 uses PI's own :/messages/warning.png instead
+    "SH_WarningSign.png"]]
 
 def collect():
     files = []
-    for top in ("src", "doc"):
+    for top in ("src", "doc", "rsc"):
         for root, _, names in os.walk(os.path.join(REPO, top)):
             for n in names:
                 full = os.path.join(root, n)

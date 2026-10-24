@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
-#feature-icon  SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.3.8<br/>\
+#feature-icon  @script_icons_dir/SH_WorkFlow2.svg
+#feature-info Space Hunter Lazy Workflow Part 2 v2.3.10<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -16,7 +16,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.3.8
+// Space Hunter Lazy Workflow Part 2 v2.3.10
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -60,6 +60,10 @@
 //       Star image log shows the name PI actually gave (stars1, ...).
 // v2.3.8: Narrowband 'Wavelength (nm)' header sized from the font (was cut
 //       to 'Wavelengt' at higher display scaling).
+// v2.3.9: Menu icon from PixInsight's standard icon folder
+//       (@script_icons_dir = rsc/icons/script/SHLazyWorkflowPart2/).
+// v2.3.10: Warning icons use PixInsight's own :/messages/warning.png (with
+//       1.5x/2x versions); SH_WarningSign.png is no longer shipped.
 //
 // Part 0: Process & Equipment selection dialog (SectionBar UI)
 // Part 1: Run BlurXTerminator correct only
@@ -92,8 +96,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 5);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.3.8"
-var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
+#define SCRIPT_VERSION "v2.3.10"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -1001,9 +1004,7 @@ var SpaceHunterDialog2 = class extends Dialog
       WorkflowParameters.saveUserPrefs();
    };
    this.exclusionWarning_Icon = new ToolButton( this.background_Control );
-   var warningIconPath = SCRIPT_DIR + "/SH_WarningSign.png";
-   if (File.exists(warningIconPath))
-      this.exclusionWarning_Icon.icon = new Bitmap(warningIconPath);
+   this.exclusionWarning_Icon.icon = this.scaledResource( ":/messages/warning.png" );
    this.exclusionWarning_Icon.setScaledFixedSize( 24, 24 );
    this.exclusionWarning_Icon.toolTip = this.exclusionZones_CheckBox.toolTip;
 
@@ -1426,9 +1427,7 @@ var SpaceHunterDialog2 = class extends Dialog
    };
 
    this.bxtAutoPSF_Warning_Icon = new ToolButton( this );
-   var psfWarningIconPath = SCRIPT_DIR + "/SH_WarningSign.png";
-   if (File.exists(psfWarningIconPath))
-      this.bxtAutoPSF_Warning_Icon.icon = new Bitmap(psfWarningIconPath);
+   this.bxtAutoPSF_Warning_Icon.icon = this.scaledResource( ":/messages/warning.png" );
    this.bxtAutoPSF_Warning_Icon.setScaledFixedSize( 24, 24 );
    this.bxtAutoPSF_Warning_Icon.toolTip = this.bxtAutoPSF_CheckBox.toolTip;
 

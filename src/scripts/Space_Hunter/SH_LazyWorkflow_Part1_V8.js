@@ -1,8 +1,8 @@
 #engine v8
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
-#feature-icon  SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.5.11<br/>\
+#feature-icon  @script_icons_dir/SH_WorkFlow1.svg
+#feature-info Space Hunter Lazy Workflow Part 1 v2.5.12<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -15,7 +15,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.5.11
+// Space Hunter Lazy Workflow Part 1 v2.5.12
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -85,6 +85,8 @@
 //       failed solve with 'plate-solve manually').
 // v2.5.11: Narrowband 'Wavelength (nm)' header sized from the font (was cut
 //       to 'Wavelengt' at higher display scaling).
+// v2.5.12: Menu icon from PixInsight's standard icon folder
+//       (@script_icons_dir = rsc/icons/script/SHLazyWorkflowPart1/).
 // Part 7: cDBE - DynamicBackgroundExtraction
 // ============================================================
 //
@@ -313,7 +315,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.5.11"
+#define SCRIPT_VERSION "v2.5.12"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
