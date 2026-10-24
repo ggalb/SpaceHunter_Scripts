@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.3.10<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.3.11<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -16,7 +16,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.3.10
+// Space Hunter Lazy Workflow Part 2 v2.3.11
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -64,6 +64,8 @@
 //       (@script_icons_dir = rsc/icons/script/SHLazyWorkflowPart2/).
 // v2.3.10: Warning icons use PixInsight's own :/messages/warning.png (with
 //       1.5x/2x versions); SH_WarningSign.png is no longer shipped.
+// v2.3.11: MLDenoise model browser reads .filePath instead of the deprecated
+//       .fileName (no console warning).
 //
 // Part 0: Process & Equipment selection dialog (SectionBar UI)
 // Part 1: Run BlurXTerminator correct only
@@ -96,7 +98,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 5);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.3.10"
+#define SCRIPT_VERSION "v2.3.11"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -1850,8 +1852,8 @@ var SpaceHunterDialog2 = class extends Dialog
       fd.caption = "Select MLDenoise Model File";
       fd.filters = [["MLDenoise models (*.xmlm)", "*.xmlm"], ["All Files (*)", "*"]];
       if (fd.execute()) {
-         WorkflowParameters.mldModelPath = fd.fileName;   // full path (machine-specific)
-         dlg.mldModelPath_Edit.text = fd.fileName;
+         WorkflowParameters.mldModelPath = fd.filePath;   // full path (machine-specific)
+         dlg.mldModelPath_Edit.text = fd.filePath;
          WorkflowParameters.saveUserPrefs();
       }
    };

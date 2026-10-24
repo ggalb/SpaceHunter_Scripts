@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.5.12<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.5.13<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -15,7 +15,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.5.12
+// Space Hunter Lazy Workflow Part 1 v2.5.13
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -87,6 +87,8 @@
 //       to 'Wavelengt' at higher display scaling).
 // v2.5.12: Menu icon from PixInsight's standard icon folder
 //       (@script_icons_dir = rsc/icons/script/SHLazyWorkflowPart1/).
+// v2.5.13: File dialogs read .filePath instead of the deprecated .fileName
+//       (no console warning when locating ASTAP or saving a profile).
 // Part 7: cDBE - DynamicBackgroundExtraction
 // ============================================================
 //
@@ -185,7 +187,7 @@ function resolveASTAPPath()
    ];
 
    if (ofd.execute()) {
-      let selectedPath = ofd.fileName;
+      let selectedPath = ofd.filePath;
       if (File.exists(selectedPath)) {
          console.writeln("ASTAP selected by user: " + selectedPath);
          Settings.write(SETTINGS_KEY_ASTAP, DataType.String, selectedPath);
@@ -315,7 +317,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.5.12"
+#define SCRIPT_VERSION "v2.5.13"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -1724,7 +1726,7 @@ constructor()
       d.overwritePrompt = true;
       if ( !d.execute() )
          return;
-      var path = d.fileName;
+      var path = d.filePath;
       if ( File.extractExtension( path ).toLowerCase() !== ".txt" )
          path += ".txt";
       try {
