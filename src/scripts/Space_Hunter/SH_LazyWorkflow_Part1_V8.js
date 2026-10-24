@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.5.2<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.5.11<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -15,7 +15,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.5.2
+// Space Hunter Lazy Workflow Part 1 v2.5.11
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -53,6 +53,38 @@
 //       instead of SH_Workflow_Guide.pdf.
 // v2.5.2: Documentation button passes the menu name "SH Lazy Workflow Part 1"
 //       (PI looks up doc/scripts/SH Lazy Workflow Part 1/SH Lazy Workflow Part 1.html).
+// v2.5.3: ASTAP is started directly (ExternalProcess with an argument list)
+//       instead of through a generated run_astap.bat and cmd.exe. Old
+//       .wcs/.ini results are deleted before each solve.
+// v2.5.4: Targeted ASTAP solve passes the right units: -ra in hours (was
+//       degrees) and -spd = Dec + 90 (was 90 - Dec, i.e. mirrored Dec), so
+//       ASTAP now starts at the image's real position instead of widening
+//       its search until it is effectively blind.
+// v2.5.5: ASTAP time limit (targeted 2 min, blind 5 min): ASTAP is stopped
+//       and Part 1 reports it instead of PixInsight waiting forever. Console
+//       shows ASTAP's run time and a "still running" line every 30 s.
+// v2.5.6: Review fixes. RA/Dec parsing: OBJCTRA = hours, RA keyword = degrees
+//       (was: any value <= 24 taken as hours), the sign of decimal Dec is kept
+//       (was dropped), d/m/s and degree-sign formats read in full. Blind mode
+//       only when RA/Dec are missing (a missing FOCALLEN no longer forces it).
+//       ASTAP run: Abort stops ASTAP and the script, 100 ms pause in the wait
+//       loop (no busy core), ASTAP never left running, a failed start and
+//       ASTAP's exit codes are reported, old results that cannot be deleted
+//       stop the solve, temp files removed after failures too, blind limit
+//       10 min, no fixed 2 s wait.
+// v2.5.7: Abort button switched on while waiting for ASTAP (console.abortEnabled,
+//       as PI's ImageSolver does); in v2.5.6 it was greyed out there.
+// v2.5.8: Deep-review fixes. Abort button on for the whole run (MGC pauses,
+//       model/GC panels). A PI process stopped with Abort counts as cancel:
+//       no more 'ERROR: undefined', and an aborted SPFC/MGC no longer falls
+//       back to GC. temp_astap window closed even if the export fails. White
+//       reference saved by name (as in Part 2), invalid index falls back.
+// v2.5.9: Settings saved once on OK (Deselect All / Reset Defaults are kept).
+//       Preview log shows the name PI actually gave.
+// v2.5.10: Abort during ImageSolver counts as cancel (was reported as a
+//       failed solve with 'plate-solve manually').
+// v2.5.11: Narrowband 'Wavelength (nm)' header sized from the font (was cut
+//       to 'Wavelengt' at higher display scaling).
 // Part 7: cDBE - DynamicBackgroundExtraction
 // ============================================================
 //
@@ -105,6 +137,11 @@ CoreApplication.ensureMinimumVersion( 1, 9, 5 );
 // ============================================================
 
 var SETTINGS_KEY_ASTAP = "SpaceHunter/ASTAPPath";
+
+// Seconds before ASTAP is stopped: a targeted solve normally takes 10-30 s,
+// a blind solve 1-3 min (slower PCs need more; Abort stops it sooner).
+var ASTAP_TIMEOUT_TARGETED_S = 120;
+var ASTAP_TIMEOUT_BLIND_S    = 600;
 
 function resolveASTAPPath()
 {
@@ -276,7 +313,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.5.2"
+#define SCRIPT_VERSION "v2.5.11"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -386,6 +423,7 @@ var WorkflowParameters = {
    selectedFilterLabel: "",
    selectedGrayName:    "",
    selectedCameraName:  "",
+   selectedWhiteRefName: "",
 
    // SPFC Narrowband
    enableNarrowband:    false,
@@ -442,6 +480,7 @@ var WorkflowParameters = {
       Parameters.set("selectedFilterLabel", this.selectedFilterLabel);
       Parameters.set("selectedGrayName",    this.selectedGrayName);
       Parameters.set("selectedCameraName",  this.selectedCameraName);
+      Parameters.set("selectedWhiteRefName", this.selectedWhiteRefName);
 
       Parameters.set("enableNarrowband",  this.enableNarrowband);
       Parameters.set("nbRedWavelength",   this.nbRedWavelength);
@@ -491,6 +530,7 @@ var WorkflowParameters = {
          selectedFilterLabel: this.selectedFilterLabel,
          selectedGrayName:    this.selectedGrayName,
          selectedCameraName:  this.selectedCameraName,
+         selectedWhiteRefName: this.selectedWhiteRefName,
          enableNarrowband:    this.enableNarrowband,
          nbRedWavelength:     this.nbRedWavelength,
          nbRedBandwidth:      this.nbRedBandwidth,
@@ -543,6 +583,7 @@ var WorkflowParameters = {
             if (prefs.selectedFilterLabel !== undefined) this.selectedFilterLabel = prefs.selectedFilterLabel;
             if (prefs.selectedGrayName    !== undefined) this.selectedGrayName    = prefs.selectedGrayName;
             if (prefs.selectedCameraName  !== undefined) this.selectedCameraName  = prefs.selectedCameraName;
+            if (prefs.selectedWhiteRefName !== undefined) this.selectedWhiteRefName = prefs.selectedWhiteRefName;
             if (prefs.enableNarrowband    !== undefined) this.enableNarrowband    = prefs.enableNarrowband;
             if (prefs.nbRedWavelength     !== undefined) this.nbRedWavelength     = prefs.nbRedWavelength;
             if (prefs.nbRedBandwidth      !== undefined) this.nbRedBandwidth      = prefs.nbRedBandwidth;
@@ -582,6 +623,7 @@ var WorkflowParameters = {
       this.selectedWhiteRefIdx = spiralIdx;
       this.selectedCameraIdx   = -1;
       this.selectedCameraName  = "";
+      this.selectedWhiteRefName = "";
       this.selectedFilterLabel = "";
       this.selectedGrayName    = "";
       this.resolveFilterSelection();
@@ -642,6 +684,8 @@ var WorkflowParameters = {
          this.selectedGrayName = Parameters.getString("selectedGrayName");
       if (Parameters.has("selectedCameraName"))
          this.selectedCameraName = Parameters.getString("selectedCameraName");
+      if (Parameters.has("selectedWhiteRefName"))
+         this.selectedWhiteRefName = Parameters.getString("selectedWhiteRefName");
 
       if (Parameters.has("enableNarrowband"))
          this.enableNarrowband = Parameters.getBoolean("enableNarrowband");
@@ -707,12 +751,24 @@ var WorkflowParameters = {
          this.selectedGrayName = grayFilterList[this.selectedGrayIdx].name;
       if (cameraList[this.selectedCameraIdx])
          this.selectedCameraName = cameraList[this.selectedCameraIdx].xspdName;
+      if (whiteRefList[this.selectedWhiteRefIdx])
+         this.selectedWhiteRefName = whiteRefList[this.selectedWhiteRefIdx].name;
    },
 
    // Call after the lists are built and the saved names are loaded.
    resolveFilterSelection: function()
    {
-      var idx = shIndexBy(filterList, "label", this.selectedFilterLabel);
+      // White reference: by name like Part 2; an old saved index is kept only
+      // if still valid, otherwise Average Spiral Galaxy.
+      var idx = shIndexBy(whiteRefList, "name", this.selectedWhiteRefName);
+      if (idx >= 0)
+         this.selectedWhiteRefIdx = idx;
+      else if (!(this.selectedWhiteRefIdx >= 0 && this.selectedWhiteRefIdx < whiteRefList.length)) {
+         idx = shIndexBy(whiteRefList, "name", "Average Spiral Galaxy");
+         this.selectedWhiteRefIdx = idx >= 0 ? idx : 0;
+      }
+
+      idx = shIndexBy(filterList, "label", this.selectedFilterLabel);
       this.selectedFilterIdx = (idx >= 0) ? idx : 0;
 
       idx = shIndexBy(grayFilterList, "name", this.selectedGrayName);
@@ -1428,7 +1484,10 @@ constructor()
    this.nbHeader_Sizer.addUnscaledSpacing( labelWidth + 6 );
    var nbWaveLabel = new Label( this );
    nbWaveLabel.text = "Wavelength (nm)";
-   nbWaveLabel.setFixedWidth( 120 );
+   // Column width from the font, so "Wavelength (nm)" fits at any display
+   // scaling; the wavelength edits below use the same width to stay aligned.
+   var nbColW = Math.max( 120, this.font.width( "Wavelength (nm)" ) + 12 );
+   nbWaveLabel.setFixedWidth( nbColW );
    var nbBwLabel = new Label( this );
    nbBwLabel.text = "Bandwidth (nm)";
    this.nbHeader_Sizer.add( nbWaveLabel );
@@ -1442,7 +1501,7 @@ constructor()
    this.nbRedLabel.setFixedWidth( labelWidth );
    this.nbRedWave_Edit = new Edit( this );
    this.nbRedWave_Edit.text = WorkflowParameters.nbRedWavelength.toFixed(2);
-   this.nbRedWave_Edit.setFixedWidth( 120 );
+   this.nbRedWave_Edit.setFixedWidth( nbColW );
    this.nbRedWave_Edit.toolTip = "<p>Common emission line wavelengths (nm):<br/>" +
       "H&alpha; &mdash; 656.3<br/>H&beta; &mdash; 486.1<br/>OIII &mdash; 500.7<br/>SII &mdash; 671.6</p>";
    this.nbRedWave_Edit.onEditCompleted = function()
@@ -1476,7 +1535,7 @@ constructor()
    this.nbGreenLabel.setFixedWidth( labelWidth );
    this.nbGreenWave_Edit = new Edit( this );
    this.nbGreenWave_Edit.text = WorkflowParameters.nbGreenWavelength.toFixed(2);
-   this.nbGreenWave_Edit.setFixedWidth( 120 );
+   this.nbGreenWave_Edit.setFixedWidth( nbColW );
    this.nbGreenWave_Edit.toolTip = "<p>Common emission line wavelengths (nm):<br/>" +
       "H&alpha; &mdash; 656.3<br/>H&beta; &mdash; 486.1<br/>OIII &mdash; 500.7<br/>SII &mdash; 671.6</p>";
    this.nbGreenWave_Edit.onEditCompleted = function()
@@ -1510,7 +1569,7 @@ constructor()
    this.nbBlueLabel.setFixedWidth( labelWidth );
    this.nbBlueWave_Edit = new Edit( this );
    this.nbBlueWave_Edit.text = WorkflowParameters.nbBlueWavelength.toFixed(2);
-   this.nbBlueWave_Edit.setFixedWidth( 120 );
+   this.nbBlueWave_Edit.setFixedWidth( nbColW );
    this.nbBlueWave_Edit.toolTip = "<p>Common emission line wavelengths (nm):<br/>" +
       "H&alpha; &mdash; 656.3<br/>H&beta; &mdash; 486.1<br/>OIII &mdash; 500.7<br/>SII &mdash; 671.6</p>";
    this.nbBlueWave_Edit.onEditCompleted = function()
@@ -2471,6 +2530,10 @@ function selectEquipment()
       throw new Error("Script cancelled by user.");
    }
 
+   // Save everything once on OK, so buttons like Deselect All and Reset
+   // Defaults are kept too (the manual: settings are saved when you run).
+   WorkflowParameters.saveUserPrefs();
+
    // Log selections
    var wr = whiteRefList[WorkflowParameters.selectedWhiteRefIdx];
    var cam = cameraList[WorkflowParameters.selectedCameraIdx];
@@ -2582,9 +2645,6 @@ function runASTAPWorkflow() {
         return false;
     }
 
-    let raStr = null, decStr = null;
-    let pixelSize = null, focalLength = null;
-
     function stripQuotes(str) {
         str = str.trim();
         while (str.length > 0 && (str[0] == "'" || str[0] == '"'))
@@ -2594,59 +2654,64 @@ function runASTAPWorkflow() {
         return str.trim();
     }
 
+    let kw = {};
     for (let i = 0; i < keywords.length; i++) {
         let name = keywords[i].name;
-        let value = keywords[i].value;
-
-        if (name == "OBJCTRA" || (name == "RA" && !raStr)) raStr = stripQuotes(value);
-        if (name == "OBJCTDEC" || (name == "DEC" && !decStr)) decStr = stripQuotes(value);
-        if (name == "XPIXSZ") pixelSize = parseFloat(value);
-        if (name == "FOCALLEN") focalLength = parseFloat(value);
+        if (name == "OBJCTRA" || name == "RA" || name == "OBJCTDEC" || name == "DEC")
+            kw[name] = stripQuotes(keywords[i].value);
     }
 
+    // Reads "21 01 04.3", "21:01:04", "-05d23m28s", "+44 04 31.9" or a plain
+    // decimal number. Returns { value, sexagesimal } with the sign applied to
+    // the whole angle, or null if the text holds no number.
+    function parseAngle(str) {
+        if (!str) return null;
+        let s = str.trim();
+        let sign = 1;
+        if (s.charAt(0) == "-") { sign = -1; s = s.substring(1); }
+        else if (s.charAt(0) == "+") s = s.substring(1);
+        // arcmin/arcsec quote marks via split/join: a regex holding a lone
+        // quote can confuse PI's preprocessor
+        s = s.split("'").join(" ").split("\"").join(" ");
+        let parts = s.replace(/[hdms:°]/gi, " ").trim().split(/\s+/);
+        let a = parseFloat(parts[0]);
+        if (isNaN(a)) return null;
+        let b = parts.length > 1 ? parseFloat(parts[1]) : 0;
+        let c = parts.length > 2 ? parseFloat(parts[2]) : 0;
+        return { value: sign * (Math.abs(a) + (b || 0)/60.0 + (c || 0)/3600.0),
+                 sexagesimal: parts.length > 1 };
+    }
+
+    // OBJCTRA is in hours; the RA keyword is in degrees when it is a plain
+    // number, in hours when written as "hh mm ss". Dec is degrees either way.
+    let raDeg = NaN, decDeg = NaN;
+    let ra = parseAngle(kw["OBJCTRA"]);
+    if (ra)
+        raDeg = ra.value * 15.0;
+    else if ((ra = parseAngle(kw["RA"])) != null)
+        raDeg = ra.sexagesimal ? ra.value * 15.0 : ra.value;
+    let dec = parseAngle(kw["OBJCTDEC"]) || parseAngle(kw["DEC"]);
+    if (dec)
+        decDeg = dec.value;
+
+    // Only RA/Dec decide the mode: the field size is left to ASTAP (-fov 0)
     var blindMode = false;
-    if (!raStr || !decStr) {
+    if (isNaN(raDeg) || isNaN(decDeg)) {
         console.writeln("  No RA/Dec coordinates found - switching to blind solve mode (-r 179)");
         blindMode = true;
-    } else if (!focalLength) {
-        console.writeln("  FOCALLEN missing from master - switching to blind solve mode (-r 179)");
+    } else if (raDeg < 0 || raDeg >= 360 || decDeg < -90 || decDeg > 90) {
+        console.warningln("  RA/Dec out of range (RA " + raDeg.toFixed(3) + ", Dec " + decDeg.toFixed(3) +
+                          ") - switching to blind solve mode (-r 179)");
         blindMode = true;
     }
 
-    function parseRA(str) {
-        str = str.replace(/[hms: '"]/g, ' ').replace(/\s+/g, ' ').trim();
-        let parts = str.split(' ');
-        if (parts.length >= 3) {
-            let h = parseFloat(parts[0]);
-            let m = parseFloat(parts[1]);
-            let s = parseFloat(parts[2]);
-            return (h + m/60.0 + s/3600.0) * 15.0;
-        }
-        let val = parseFloat(str);
-        if (val <= 24) val *= 15.0;
-        return val;
-    }
-
-    function parseDec(str) {
-        let sign = str.indexOf('-') >= 0 ? -1 : 1;
-        str = str.replace(/[hms: '"+-]/g, ' ').replace(/\s+/g, ' ').trim();
-        let parts = str.split(' ');
-        if (parts.length >= 3) {
-            let d = parseFloat(parts[0]);
-            let m = parseFloat(parts[1]);
-            let s = parseFloat(parts[2]);
-            return sign * (Math.abs(d) + m/60.0 + s/3600.0);
-        }
-        return parseFloat(str);
-    }
-
-    var raDeg = 0, decDeg = 0, spd = 0;
+    // ASTAP's -ra is in HOURS and -spd is the south pole distance (Dec + 90)
+    var raHours = 0, spd = 0;
     if (!blindMode) {
-        raDeg = parseRA(raStr);
-        decDeg = parseDec(decStr);
-        spd = 90.0 - decDeg;
-        console.writeln("  RA:  " + raDeg.toFixed(3) + " ");
-        console.writeln("  Dec: " + decDeg.toFixed(3) + " ");
+        raHours = raDeg / 15.0;
+        spd = decDeg + 90.0;
+        console.writeln("  RA:  " + raDeg.toFixed(3) + " deg");
+        console.writeln("  Dec: " + decDeg.toFixed(3) + " deg");
     }
 
     let tempJpg = File.systemTempDirectory + "/astap_solve.jpg";
@@ -2657,75 +2722,153 @@ function runASTAPWorkflow() {
         view.image.isColor, "temp_astap"
     );
 
-    exportWin.mainView.beginProcess(UndoFlag.NoSwapFile);
-    exportWin.mainView.image.assign(view.image);
-
-    // Auto-stretch if linear (median < 0.1) so ASTAP can detect stars
-    let median = exportWin.mainView.image.median();
-    if (median < 0.1) {
-        console.writeln("  Image is linear (median=" + median.toFixed(4) + ") - applying auto-stretch for ASTAP...");
-        let P = new PixelMath;
-        P.expression = "mtf(mtf(0.25,med($T)-min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1)),max(0,($T-min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1))/~min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1)))";
-        P.useSingleExpression = true;
-        P.createNewImage = false;
-        P.executeOn(exportWin.mainView);
-    }
-
-    exportWin.mainView.endProcess();
-    exportWin.saveAs(tempJpg, false, false, false, false);
-    exportWin.forceClose();
-
-    if (blindMode)
-        console.writeln("\nRunning ASTAP blind solve (may take 1-3 minutes)...");
-    else
-        console.writeln("\nRunning ASTAP targeted solve (10-30 seconds)...");
-
-    let scriptPath = File.systemTempDirectory + "/run_astap.bat";
-    let astapDir = File.extractDrive(astapPath) + File.extractDirectory(astapPath);
-    let scriptContent = "@echo on\n";
-    scriptContent += "cd /d \"" + astapDir.replace(new RegExp("/", "g"), "\\") + "\"\n";
-    if (blindMode) {
-        let tempJpgWin = tempJpg.replace(new RegExp("/", "g"), "\\");
-        scriptContent += "\"astap.exe\" -f \"" + tempJpgWin + "\" -r 179 -fov 0 -z 0 -wcs\n";
-        console.writeln("BAT content: " + scriptContent);
-        console.writeln("ASTAP command: blind solve (-r 179, full sky search)");
-    } else {
-        let tempJpgWin = tempJpg.replace(new RegExp("/", "g"), "\\");
-        scriptContent += "\"astap.exe\" -f \"" + tempJpgWin + "\" -ra " + raDeg.toFixed(3);
-        scriptContent += " -spd " + spd.toFixed(3) + " -fov 0 -z 0 -wcs\n";
-        console.writeln("BAT content: " + scriptContent);
-        console.writeln("ASTAP command: targeted solve (RA=" + raDeg.toFixed(3) + " SPD=" + spd.toFixed(3) + ")");
-    }
-    scriptContent += "exit\n";
-
-    File.writeTextFile(scriptPath, scriptContent);
-
-    let process = new ExternalProcess;
-
-    process.onFinished = function(exitCode) {
-        console.writeln("  ASTAP finished (exit: " + exitCode + ")");
-    };
-
+    // The temporary window is closed even when the export fails or is aborted.
     try {
-        process.start("cmd.exe", ["/c", scriptPath]);
+        exportWin.mainView.beginProcess(UndoFlag.NoSwapFile);
+        exportWin.mainView.image.assign(view.image);
 
-        while (process.isStarting)
-            CoreApplication.processEvents();
-        while (process.isRunning)
-            CoreApplication.processEvents();
+        // Auto-stretch if linear (median < 0.1) so ASTAP can detect stars
+        let median = exportWin.mainView.image.median();
+        if (median < 0.1) {
+            console.writeln("  Image is linear (median=" + median.toFixed(4) + ") - applying auto-stretch for ASTAP...");
+            let P = new PixelMath;
+            P.expression = "mtf(mtf(0.25,med($T)-min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1)),max(0,($T-min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1))/~min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1)))";
+            P.useSingleExpression = true;
+            P.createNewImage = false;
+            P.executeOn(exportWin.mainView);
+        }
 
-        System.msleep(2000);
-
-    } catch (error) {
-        console.criticalln("✘ Error running ASTAP: " + error);
-        return false;
+        exportWin.mainView.endProcess();
+        exportWin.saveAs(tempJpg, false, false, false, false);
+    } finally {
+        exportWin.forceClose();
     }
 
+    let astapLimitS = blindMode ? ASTAP_TIMEOUT_BLIND_S : ASTAP_TIMEOUT_TARGETED_S;
+    if (blindMode)
+        console.writeln("\nRunning ASTAP blind solve (may take 1-3 minutes, stopped after " + astapLimitS / 60 + " min)...");
+    else
+        console.writeln("\nRunning ASTAP targeted solve (10-30 seconds, stopped after " + astapLimitS / 60 + " min)...");
+
+    // astap.exe is started directly with an argument list: no generated
+    // batch file and no cmd.exe, so paths with spaces or & are passed as-is.
     let wcsFile = tempJpg.replace(".jpg", ".wcs");
     let iniFile = tempJpg.replace(".jpg", ".ini");
 
+    // Deletes this solve's temp files; false if one of them is still there.
+    function removeAstapTempFiles(withImage) {
+        let files = withImage ? [tempJpg, wcsFile, iniFile] : [wcsFile, iniFile];
+        let allGone = true;
+        for (let i = 0; i < files.length; i++) {
+            try { if (File.exists(files[i])) File.remove(files[i]); } catch (e) {}
+            if (File.exists(files[i])) allGone = false;
+        }
+        return allGone;
+    }
+
+    // results left over from an earlier run would look like a successful solve
+    if (!removeAstapTempFiles(false)) {
+        console.criticalln("✘ Old ASTAP results in " + File.systemTempDirectory +
+                           " could not be deleted. Is another ASTAP still running?");
+        return false;
+    }
+
+    let astapDir = File.extractDrive(astapPath) + File.extractDirectory(astapPath);
+    let tempJpgWin = tempJpg.replace(new RegExp("/", "g"), "\\");
+    let astapArgs = ["-f", tempJpgWin];
+    if (blindMode) {
+        astapArgs = astapArgs.concat(["-r", "179"]);
+        console.writeln("ASTAP command: blind solve (-r 179, full sky search)");
+    } else {
+        astapArgs = astapArgs.concat(["-ra", raHours.toFixed(4), "-spd", spd.toFixed(3)]);
+        console.writeln("ASTAP command: targeted solve (RA=" + raHours.toFixed(4) + "h SPD=" + spd.toFixed(3) + ")");
+    }
+    astapArgs = astapArgs.concat(["-fov", "0", "-z", "0", "-wcs"]);
+    // display only: quote paths with spaces, and the console reads '&' as markup
+    let shown = [astapPath].concat(astapArgs).map(function(a) {
+        return a.indexOf(" ") >= 0 ? "\"" + a + "\"" : a;
+    }).join(" ");
+    console.writeln("  " + shown.replace(/&/g, "&amp;"));
+
+    let process = new ExternalProcess;
+    process.workingDirectory = astapDir;
+
+    // A program that cannot be started does not throw: it raises onError and
+    // then reports exit code 0, so the error has to be caught here.
+    let startError = null;
+    process.onError = function(errorCode) {
+        startError = errorCode;
+    };
+
+    // Without a limit a hanging ASTAP (or one whose window was closed while
+    // the process kept running) would freeze PixInsight in this loop. Abort
+    // in the Process Console stops ASTAP and the script. A script has to switch
+    // the Abort button on itself (as PI's ImageSolver does); otherwise it is
+    // only active while a PI process such as PixelMath is running.
+    let t0 = Date.now(), nextReportS = 30;
+    let failure = null, timedOut = false, aborted = false;
+    let prevAbortEnabled = console.abortEnabled;
+    console.abortEnabled = true;
+    try {
+        process.start(astapPath, astapArgs);
+
+        while (process.isStarting || process.isRunning) {
+            CoreApplication.processEvents();
+            if (!process.isStarting && !process.isRunning)
+                break;   // finished during processEvents: not a timeout
+            if (console.abortRequested) {
+                aborted = true;
+                break;
+            }
+            let elapsedS = (Date.now() - t0) / 1000;
+            if (elapsedS > astapLimitS) {
+                timedOut = true;
+                failure = "ASTAP did not finish within " + astapLimitS / 60 + " min and was stopped";
+                break;
+            }
+            if (elapsedS >= nextReportS) {
+                console.writeln("  ... ASTAP still running (" + nextReportS + " s)");
+                nextReportS += 30;
+            }
+            System.msleep(100);
+        }
+    } catch (error) {
+        failure = "Error running ASTAP: " + error;
+    }
+
+    // never leave ASTAP running behind the script
+    if (process.isStarting || process.isRunning) {
+        try { process.kill(); } catch (e) {}
+        let w0 = Date.now();
+        while (process.isRunning && Date.now() - w0 < 3000) {
+            CoreApplication.processEvents();
+            System.msleep(50);
+        }
+    }
+    console.abortEnabled = prevAbortEnabled;
+
+    let astapSeconds = ((Date.now() - t0) / 1000).toFixed(1);
+    if (aborted) {
+        removeAstapTempFiles(true);
+        throw new Error("Script cancelled by user.");
+    }
+    if (!failure && startError !== null)
+        failure = (startError === 0 ? "ASTAP could not be started: " + astapPath
+                                    : "ASTAP stopped unexpectedly (process error " + startError + ")");
+    if (!failure && process.exitCode !== 0)
+        failure = "ASTAP: " + astapExitText(process.exitCode) + " (exit code " + process.exitCode + ")";
+    if (failure) {
+        console.criticalln("✘ " + failure + " after " + astapSeconds + " s.");
+        if (timedOut && blindMode)
+            console.criticalln("  Add RA/Dec to the image (or check ASTAP's star database) and run again.");
+        removeAstapTempFiles(true);
+        return false;
+    }
+    console.writeln("  ASTAP finished (exit: 0) in " + astapSeconds + " s");
+
     if (!File.exists(wcsFile)) {
         console.criticalln("✘ WCS file not created");
+        removeAstapTempFiles(true);
         return false;
     }
 
@@ -2733,6 +2876,7 @@ function runASTAPWorkflow() {
         let iniContent = File.readTextFile(iniFile);
         if (iniContent.indexOf("PLTSOLVD=T") < 0) {
             console.criticalln("✘ Plate solve failed");
+            removeAstapTempFiles(true);
             return false;
         }
     }
@@ -2798,14 +2942,23 @@ function runASTAPWorkflow() {
     win.keywords = finalKeywords;
     console.writeln("  ✔ WCS keywords written");
 
-    try {
-        if (File.exists(tempJpg)) File.remove(tempJpg);
-        if (File.exists(wcsFile)) File.remove(wcsFile);
-        if (File.exists(iniFile)) File.remove(iniFile);
-        if (File.exists(scriptPath)) File.remove(scriptPath);
-    } catch (e) {}
-
+    removeAstapTempFiles(true);
     return true;
+}
+
+// ASTAP command-line exit codes (errorlevel), from the ASTAP manual
+// (https://www.hnsky.org/astap.htm).
+function astapExitText(code)
+{
+    switch (code) {
+        case 1:  return "no solution found";
+        case 2:  return "not enough stars detected";
+        case 16: return "error reading the image file";
+        case 32: return "no star database found";
+        case 33: return "error reading the star database";
+        case 34: return "error updating the input file";
+        default: return "unknown error";
+    }
 }
 
 // Returns an astrometric-solution property (e.g. "CreatorModule", "Catalog")
@@ -2947,7 +3100,9 @@ function openImageSolver() {
 
         console.warningln("\n⚠  ImageSolver completed but no astrometric solution property was found.");
     } catch (error) {
-        console.criticalln("\n⚠  ImageSolver failed: " + error.toString());
+        if (shIsCancel(error))
+            throw error;   // Abort means cancel, not "solve it by hand"
+        console.criticalln("\n⚠  ImageSolver failed: " + shErrorText(error));
     }
 
     // Manual fallback (kept intact): let the user solve by hand and re-run.
@@ -3438,7 +3593,7 @@ function createPreviews(prefix, count)
          id = prefix + scale + "_" + k;
       let pv = win.createPreview( rect, id );
       previews.push( pv );
-      console.writeln( "Created preview: " + id );
+      console.writeln( "Created preview: " + pv.id );
    }
 
    // Zoom each preview to fit
@@ -3533,6 +3688,24 @@ function showPreview(win, preview)
    win.bringToFront();
    CoreApplication.processEvents();
    CoreApplication.processEvents();
+}
+
+// Text of a caught exception. A PI process stopped with Abort throws an object
+// without .message ("Process aborted"), so .message alone can be undefined.
+function shErrorText(e)
+{
+   if (e && e.message !== undefined)
+      return String(e.message);
+   return String(e);
+}
+
+// True if the exception means the user stopped the script: our own cancel,
+// or a PI process aborted from the Process Console.
+function shIsCancel(e)
+{
+   var t = shErrorText(e);
+   return t === "Script cancelled by user." || t.indexOf("Process aborted") >= 0 ||
+          console.abortRequested;
 }
 
 function pauseWithEvents(ms)
@@ -4689,6 +4862,10 @@ function chooseGCResult(win, modelIds)
 function main()
 {
    console.show();
+   // A script has to switch the Process Console's Abort button on itself
+   // (as PI's ImageSolver does); otherwise it is only active while a PI
+   // process runs, and the script's own abort checks never fire.
+   console.abortEnabled = true;
 
    // Start timer
    let startTime = new Date();
@@ -4776,8 +4953,8 @@ function main()
       try {
       runSPFC();
 	} catch (spfcError) {
-      if (spfcError.message === "Script cancelled by user.") throw spfcError;
-      console.warningln("\n\u26A0  SPFC failed: " + spfcError.message);
+      if (shIsCancel(spfcError)) throw spfcError;
+      console.warningln("\n\u26A0  SPFC failed: " + shErrorText(spfcError));
       spfcFailed = true;
       if (WorkflowParameters.enableMGC) {
          console.writeln("Skipping MGC - falling back to GC...\n");
@@ -4808,7 +4985,7 @@ function main()
                try {
                   runMGCOnPreviews();
                } catch (mgcError) {
-                  if (mgcError.message === "Script cancelled by user.") throw mgcError;
+                  if (shIsCancel(mgcError)) throw mgcError;
                   console.warningln("\n\u26A0  MGC failed (likely no MARS reference data available).");
                   console.writeln("Falling back to GradientCorrection...\n");
                   mgcFailed = true;
@@ -4818,7 +4995,7 @@ function main()
             try {
                runMGCOnPreviews();
             } catch (mgcError) {
-               if (mgcError.message === "Script cancelled by user.") throw mgcError;
+               if (shIsCancel(mgcError)) throw mgcError;
                console.warningln("\n\u26A0  MGC failed (likely no MARS reference data available).");
                console.writeln("Falling back to GradientCorrection...\n");
                mgcFailed = true;
@@ -4844,8 +5021,8 @@ function main()
             gcModelIds = runGCOnPreviews();
             gcRan = true;
          } catch (gcError) {
-            if (gcError.message === "Script cancelled by user.") throw gcError;
-            console.warningln("\n\u26A0  GradientCorrection failed: " + gcError.message + "\n");
+            if (shIsCancel(gcError)) throw gcError;
+            console.warningln("\n\u26A0  GradientCorrection failed: " + shErrorText(gcError) + "\n");
          }
 
          // Apply Adaptive Auto STF to GC gradient model images
@@ -4902,11 +5079,11 @@ function main()
       }
 
     } catch (error) {
-      if (error.message === "Script cancelled by user.") {
+      if (shIsCancel(error)) {
          console.writeln("\nScript cancelled by user.\n");
       } else {
-         console.criticalln("\nERROR: " + error.message);
-      throw error;
+         console.criticalln("\nERROR: " + shErrorText(error));
+         throw error;
       }
     }
 }

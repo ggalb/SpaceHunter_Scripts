@@ -2,7 +2,7 @@
 
 #feature-id Space_Hunter > SH KillPreviews
 #feature-icon  SH_KillPreviews.svg
-#feature-info Space Hunter KillPreviews v2.0<br/>\
+#feature-info Space Hunter KillPreviews v2.0.1<br/>\
    <br/>\
    Deletes all previews from the active image window.<br/>\
    <br/>\
@@ -66,10 +66,16 @@ function main()
    let count = previews.length;
    console.writeln("Found " + count + " preview(s) - deleting...");
 
-   while ( win.previews.length > 0 )
-      win.deletePreview( win.previews[0] );
+   // Each preview once, from the list taken above: a preview PI refuses to
+   // delete is reported instead of looping forever.
+   for ( let i = 0; i < previews.length; ++i )
+      win.deletePreview( previews[i] );
 
-   console.writeln("✔ All previews deleted.");
+   let left = win.previews.length;
+   if ( left > 0 )
+      console.warningln("⚠ " + left + " preview(s) could not be deleted.");
+   else
+      console.writeln("✔ All previews deleted.");
 }
 
 main();

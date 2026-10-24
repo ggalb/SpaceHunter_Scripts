@@ -5,6 +5,9 @@
 % their "Requirements and License" section. Do not compile on its own (the
 % "!<" line above makes the compiler skip it if you do).
 % Checked against Part 1 v2.5 / Part 2 v2.3 TEST, 2026-10-11.
+% "Files, Programs and Internet Access" checked against Part 1 v2.5.11 /
+% Part 2 v2.3.8, 2026-10-23 (CPD program rules: document external programs,
+% network connections and file locations).
 % ----------------------------------------------------------------------------
 
 \subsection { \label requirements Requirements } {
@@ -60,6 +63,39 @@
 
    If you combine two DNB filters (Ha/OIII and SII/OIII) into a Hubble-palette
    image, these scripts are not the right tool.
+}
+
+\subsection { \label access Files, Programs and Internet Access } {
+
+   Besides your open images, this is everything the scripts store, write,
+   start or download.
+
+   \list[spaced] {
+      { \s {Settings:} workflow and equipment settings, and the MARS and
+        ASTAP paths, are stored in PixInsight's own settings (\e {Reset
+        Settings} clears them). }
+      { \s {Part 1, ASTAP:} if plate solving needs it, Part 1 starts
+        \c astap.exe from the location you chose. It exports a temporary
+        image (\c astap_solve.jpg) to the system temporary folder; ASTAP
+        writes its \c .wcs and \c .ini results next to it. All three are
+        deleted when the solve ends, successful or not. ASTAP is stopped
+        after 2 minutes (targeted solve) or 10 minutes (blind solve);
+        \e Abort in the Process Console stops it sooner. }
+      { \s {Part 1, ImageSolver:} uses PixInsight's own ImageSolver, which
+        writes temporary star lists (\c {stars*.csv}) to the system temporary
+        folder. }
+      { \s {Part 1, MARS:} the script looks for \c .xmars files in the
+        PixInsight folders and in common \c Astro folders, reading only. }
+      { \s {Part 1, separation profiles:} profiles are \c .txt files in the
+        folder you choose. They are only read for their two factors, never
+        run, and written only when you save one. }
+      { \s {Part 2, Check dust map:} only when you click it, Part 2 sends the
+        image's centre coordinates and field size to the NASA/IPAC IRSA dust
+        service over https and downloads the dust map from that service only
+        to the system temporary folder. The files are deleted afterwards,
+        also when a download fails. No other data is sent,
+        and no other part of the scripts uses the internet. }
+   }
 }
 
 \subsection { \label buttons The Button Bar } {

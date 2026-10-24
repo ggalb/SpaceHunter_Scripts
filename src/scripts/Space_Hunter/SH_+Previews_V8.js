@@ -2,7 +2,7 @@
 
 #feature-id    SHPlusPreviews : Space_Hunter > SH +Previews
 #feature-icon  SH_PlusPreviews.svg
-#feature-info  Space Hunter +Previews v2.2.1<br/>\
+#feature-info  Space Hunter +Previews v2.2.2<br/>\
    <br/>\
    Creates 1-6 full-view previews with preset or custom naming<br/>\
    and zooms each to optimal fit.<br/>\
@@ -135,7 +135,7 @@ var PreviewDialog = class extends Dialog
       this.helpLabel.wordWrapping = true;
       this.helpLabel.useRichText  = true;
       this.helpLabel.text =
-         "<p><b>+Previews v2.2.1</b> &mdash; Space Hunter Toolset<br/>" +
+         "<p><b>+Previews v2.2.2</b> &mdash; Space Hunter Toolset<br/>" +
          "Creates 1&ndash;6 full-image previews zoomed to fit.<br/>" +
          "Copyright &copy; 2026 Georg G Albrecht. MIT License.</p>";
 
@@ -412,10 +412,12 @@ function validateDialog( dlg )
    let count        = dlg.countCombo.currentItem + 1;
    let prefixChoice = PREFIX_OPTIONS[ dlg.prefixCombo.currentItem ];
 
-   // Collect all user-entered text into one string and check for spaces
-   let allText = dlg.prefixCustomEdit.text;
-   for ( let r = 0; r < 6; ++r )
-      allText += dlg.rows[r].s2Edit.text;
+   // Check the fields in use for spaces. Disabled fields are skipped: old text
+   // there would block OK with a field the user can't edit.
+   let allText = ( prefixChoice === "Custom TXT" ) ? dlg.prefixCustomEdit.text : "";
+   for ( let r = 0; r < count; ++r )
+      if ( dlg.rows[r].s2Edit.enabled )
+         allText += dlg.rows[r].s2Edit.text;
 
    if ( allText.indexOf( " " ) >= 0 )
    {
@@ -629,7 +631,7 @@ function createPreviews( names, overwrite )
    {
       let pv = win.createPreview( rect, names[i] );
       previews.push( pv );
-      console.writeln( "Created preview: " + names[i] );
+      console.writeln( "Created preview: " + pv.id );   // PI may adjust a name
    }
 
    for ( let i = 0; i < previews.length; ++i )

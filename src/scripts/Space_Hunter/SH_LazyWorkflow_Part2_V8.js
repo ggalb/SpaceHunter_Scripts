@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.3.2<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.3.8<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -16,7 +16,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.3.2
+// Space Hunter Lazy Workflow Part 2 v2.3.8
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -43,6 +43,23 @@
 //       instead of SH_Workflow_Guide.pdf.
 // v2.3.2: Documentation button passes the menu name "SH Lazy Workflow Part 2"
 //       (PI looks up doc/scripts/SH Lazy Workflow Part 2/SH Lazy Workflow Part 2.html).
+// v2.3.3: Dust map download uses https only (the FITS link from IRSA's reply
+//       is upgraded to https, anything else is refused).
+// v2.3.4: The https check uses string tests: v2.3.3's regex literal held two
+//       slashes, which PI's preprocessor cut off as a comment (syntax error).
+// v2.3.5: Review fixes. The dust map link must point to irsa.ipac.caltech.edu
+//       and is rebuilt as https on the default port. Failed downloads leave
+//       no SH_dust_* files in the temp folder.
+// v2.3.6: Deep-review fixes. Abort button on for the whole run. A PI process
+//       stopped with Abort counts as cancel (no 'ERROR: undefined'). BXT, SXT
+//       and StarNet2 steps are marked done only when they ran (not when the
+//       tool is missing), so no false 'already applied' warning.
+// v2.3.7: AutoColor skips (image unchanged) when a channel has no usable
+//       background/signal, instead of applying meaningless factors; its
+//       image-sized measuring copy is freed. Settings saved once on OK.
+//       Star image log shows the name PI actually gave (stars1, ...).
+// v2.3.8: Narrowband 'Wavelength (nm)' header sized from the font (was cut
+//       to 'Wavelengt' at higher display scaling).
 //
 // Part 0: Process & Equipment selection dialog (SectionBar UI)
 // Part 1: Run BlurXTerminator correct only
@@ -75,7 +92,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 5);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.3.2"
+#define SCRIPT_VERSION "v2.3.8"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -1136,7 +1153,10 @@ var SpaceHunterDialog2 = class extends Dialog
    this.nbHeader_Sizer.addUnscaledSpacing( labelWidth + 6 );
    var nbWaveLabel = new Label( this );
    nbWaveLabel.text = "Wavelength (nm)";
-   nbWaveLabel.setFixedWidth( 120 );
+   // Column width from the font, so "Wavelength (nm)" fits at any display
+   // scaling; the wavelength edits below use the same width to stay aligned.
+   var nbColW = Math.max( 120, this.font.width( "Wavelength (nm)" ) + 12 );
+   nbWaveLabel.setFixedWidth( nbColW );
    var nbBwLabel = new Label( this );
    nbBwLabel.text = "Bandwidth (nm)";
    this.nbHeader_Sizer.add( nbWaveLabel );
@@ -1150,7 +1170,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.nbRedLabel.setFixedWidth( labelWidth );
    this.nbRedWave_Edit = new Edit( this );
    this.nbRedWave_Edit.text = WorkflowParameters.nbRedWavelength.toFixed(2);
-   this.nbRedWave_Edit.setFixedWidth( 120 );
+   this.nbRedWave_Edit.setFixedWidth( nbColW );
    this.nbRedWave_Edit.toolTip = "<p>Common emission line wavelengths (nm):<br/>" +
       "H&alpha; &mdash; 656.3<br/>H&beta; &mdash; 486.1<br/>OIII &mdash; 500.7<br/>SII &mdash; 671.6</p>";
    this.nbRedWave_Edit.onEditCompleted = function()
@@ -1184,7 +1204,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.nbGreenLabel.setFixedWidth( labelWidth );
    this.nbGreenWave_Edit = new Edit( this );
    this.nbGreenWave_Edit.text = WorkflowParameters.nbGreenWavelength.toFixed(2);
-   this.nbGreenWave_Edit.setFixedWidth( 120 );
+   this.nbGreenWave_Edit.setFixedWidth( nbColW );
    this.nbGreenWave_Edit.toolTip = "<p>Common emission line wavelengths (nm):<br/>" +
       "H&alpha; &mdash; 656.3<br/>H&beta; &mdash; 486.1<br/>OIII &mdash; 500.7<br/>SII &mdash; 671.6</p>";
    this.nbGreenWave_Edit.onEditCompleted = function()
@@ -1218,7 +1238,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.nbBlueLabel.setFixedWidth( labelWidth );
    this.nbBlueWave_Edit = new Edit( this );
    this.nbBlueWave_Edit.text = WorkflowParameters.nbBlueWavelength.toFixed(2);
-   this.nbBlueWave_Edit.setFixedWidth( 120 );
+   this.nbBlueWave_Edit.setFixedWidth( nbColW );
    this.nbBlueWave_Edit.toolTip = "<p>Common emission line wavelengths (nm):<br/>" +
       "H&alpha; &mdash; 656.3<br/>H&beta; &mdash; 486.1<br/>OIII &mdash; 500.7<br/>SII &mdash; 671.6</p>";
    this.nbBlueWave_Edit.onEditCompleted = function()
@@ -2156,6 +2176,10 @@ function selectEquipment()
    if ( !dialog.execute() )
       throw new Error("Script cancelled by user.");
 
+   // Save everything once on OK, so buttons like Deselect All are kept too
+   // (the manual: settings are saved when you run the script).
+   WorkflowParameters.saveUserPrefs();
+
    var wr = whiteRefList[WorkflowParameters.selectedWhiteRefIdx];
    var cam = cameraList[WorkflowParameters.selectedCameraIdx];
    var flt = filterList[WorkflowParameters.selectedFilterIdx];
@@ -2217,6 +2241,24 @@ function shHasMark(view, id)
 {
    try { return view.hasProperty(id); } catch(e) { return false; }
 }
+
+// Text of a caught exception. A PI process stopped with Abort throws an object
+// without .message ("Process aborted"), so .message alone can be undefined.
+function shErrorText(e)
+{
+   if (e && e.message !== undefined)
+      return String(e.message);
+   return String(e);
+}
+
+// True if the exception means the user stopped the script: our own cancel,
+// or a PI process aborted from the Process Console.
+function shIsCancel(e)
+{
+   var t = shErrorText(e);
+   return t === "Script cancelled by user." || t.indexOf("Process aborted") >= 0 ||
+          console.abortRequested;
+}
 var SH_STEP_MARKS = ["SpaceHunter:ScriptRan", "SpaceHunter:BXTCorrectDone", "SpaceHunter:SPCCDone",
                      "SpaceHunter:AutoColorDone", "SpaceHunter:BXTFullDone",
                      "SpaceHunter:SXTDone", "SpaceHunter:StarNet2Done"];
@@ -2272,7 +2314,7 @@ function runBXT_CorrectOnly()
 
     if ( typeof BlurXTerminator === "undefined" ) {
       console.warningln("\u26A0 BlurXTerminator is not installed - skipping BXT Correct Only.\n");
-      return;
+      return false;
    }
    var P = new BlurXTerminator;
     P.ml_version = WorkflowParameters.bxtCorrectMlVersion;
@@ -2295,6 +2337,7 @@ function runBXT_CorrectOnly()
         throw new Error("Script cancelled by user.");
 
     console.writeln("\u2714 BlurXTerminator (Correct Only) completed successfully.\n");
+    return true;
 }
 
 // ============================================================
@@ -2310,7 +2353,32 @@ function runBXT_CorrectOnly()
 // (https://irsa.ipac.caltech.edu/applications/DUST/), E(B-V) map of
 // Schlegel, Finkbeiner & Davis 1998, ApJ 500, 525 (~6' resolution).
 
-var IRSA_DUST_URL = "https://irsa.ipac.caltech.edu/cgi-bin/DUST/nph-dust";
+var IRSA_HOST     = "irsa.ipac.caltech.edu";
+var IRSA_DUST_URL = "https://" + IRSA_HOST + "/cgi-bin/DUST/nph-dust";
+
+// The dust map link comes from IRSA's reply. Only IRSA's own server is
+// accepted, and the link is rebuilt as https on the default port, whatever
+// scheme or port the reply names. (String tests, not a regex with two
+// slashes: PI's preprocessor would read those as the start of a comment.)
+function bgIrsaHttpsUrl(link)
+{
+   var lower = link.toLowerCase();
+   var rest;
+   if (lower.indexOf("https:") === 0)
+      rest = link.substring(6);
+   else if (lower.indexOf("http:") === 0)
+      rest = link.substring(5);
+   else
+      throw new Error("IRSA returned a dust map link that is not http(s): " + link);
+   while (rest.charAt(0) == "/")
+      rest = rest.substring(1);
+   var slash = rest.indexOf("/");
+   var hostPort = slash >= 0 ? rest.substring(0, slash) : rest;
+   var path = slash >= 0 ? rest.substring(slash) : "/";
+   if (hostPort.split(":")[0].toLowerCase() !== IRSA_HOST)
+      throw new Error("IRSA returned a dust map link to another server: " + link);
+   return "https://" + IRSA_HOST + path;
+}
 
 // Rough E(B-V) (SFD, mag) levels for IFN visibility in deep amateur data.
 // Rules of thumb, not physical limits.
@@ -2439,13 +2507,19 @@ function bgDownloadToFile(url, path)
    };
    var ok = transfer.download();
    f.close();
+   var error = null;
    if (timedOut)
-      throw new Error("The dust map service (NASA/IPAC IRSA) did not answer within " +
-                      BG_DOWNLOAD_TIMEOUT_S + " s. Try again later.");
-   if (!ok)
-      throw new Error("Download failed: " + transfer.errorInformation);
-   if (transfer.responseCode !== undefined && transfer.responseCode >= 400)
-      throw new Error("HTTP error " + transfer.responseCode);
+      error = "The dust map service (NASA/IPAC IRSA) did not answer within " +
+              BG_DOWNLOAD_TIMEOUT_S + " s. Try again later.";
+   else if (!ok)
+      error = "Download failed: " + transfer.errorInformation;
+   else if (transfer.responseCode !== undefined && transfer.responseCode >= 400)
+      error = "HTTP error " + transfer.responseCode;
+   if (error) {
+      // a failed download leaves no partial file behind
+      try { File.remove(path); } catch (e) {}
+      throw new Error(error);
+   }
 }
 
 // Minimal FITS reader for IRSA's 2-D float cutouts. Parsed by hand so the
@@ -2543,8 +2617,12 @@ function bgDustReport(win)
    // the console treats '&' as markup, so escape it for display only
    console.writeln("Querying IRSA dust service: " + url.replace(/&/g, "&amp;"));
    bgDownloadToFile(url, tmp + ".xml");
-   var xml = File.readTextFile(tmp + ".xml");
-   try { File.remove(tmp + ".xml"); } catch (e) {}
+   var xml;
+   try {
+      xml = File.readTextFile(tmp + ".xml");
+   } finally {
+      try { File.remove(tmp + ".xml"); } catch (e) {}
+   }
 
    var status = /<results\s+status\s*=\s*"([^"]*)"/i.exec(xml);
    if (!status || status[1].toLowerCase() !== "ok") {
@@ -2564,6 +2642,7 @@ function bgDustReport(win)
    }
    if (!fitsUrl)
       throw new Error("IRSA response contained no E(B-V) map.");
+   fitsUrl = bgIrsaHttpsUrl(fitsUrl);
 
    console.writeln("Downloading dust map: " + fitsUrl);
    bgDownloadToFile(fitsUrl, tmp + ".fits");
@@ -3431,6 +3510,18 @@ function runAutoColor()
          strRGB[channel], I[channel], S[channel]) );
    }
 
+   // The sky estimate returns -1 when it fails, and a channel without signal
+   // above the sky gives no usable factor: leave the image unchanged then,
+   // instead of applying meaningless factors.
+   for ( var channel = 0; channel < 3; channel++ )
+      if ( S[channel] < 0 || !(I[channel] > 0) )
+      {
+         subImage.free();
+         console.warningln( "⚠ AutoColor: no usable background/signal in the " +
+                            strRGB[channel] + " channel - AutoColor skipped, image left unchanged.\n" );
+         return false;
+      }
+
    var m = Math.min( I[0], I[1], I[2] );
    var channelR = m / I[0];
    var channelG = m / I[1];
@@ -3442,6 +3533,7 @@ function runAutoColor()
    subImage.selectedChannel = index;
    var sigma  = subImage.stdDev();
    var nSigma = 3 * sigma;
+   subImage.free();   // the measuring copy is as large as the image itself
 
    console.writeln( format("Target channel: %c", strRGB[index]) );
    console.writeln( format("Target value:   %.8f", target) );
@@ -3455,6 +3547,7 @@ function runAutoColor()
    console.writeln( format("  Green: %.6f", channelG) );
    console.writeln( format("  Blue:  %.6f", channelB) );
    console.writeln( "\u2714 AutoColor completed successfully.\n" );
+   return true;
 }
 
 function ac_ImageBackgroundMean( img, mxiter, readnoise )
@@ -3874,7 +3967,7 @@ function runBXT_Full()
 
    if ( typeof BlurXTerminator === "undefined" ) {
       console.warningln("\u26A0 BlurXTerminator is not installed - skipping BXT Full.\n");
-      return;
+      return false;
    }
    var P = new BlurXTerminator;
    P.ml_version = WorkflowParameters.bxtMlVersion;
@@ -3895,6 +3988,7 @@ function runBXT_Full()
    }
 
    console.writeln("\u2714 BlurXTerminator (Full Processing) completed successfully.\n");
+   return true;
 }
 
 // ============================================================
@@ -3927,7 +4021,7 @@ function runSXT()
       // automatic fallback; enable StarNet2 instead.)
       console.warningln("\u26A0 StarXTerminator is not installed - skipping SXT. " +
                         "Enable StarNet2 instead to remove stars.\n");
-      return;
+      return false;
    }
    var P = new StarXTerminator;
    P.ml_version = WorkflowParameters.sxtMlVersion;
@@ -3945,8 +4039,8 @@ function runSXT()
    if (WorkflowParameters.sxtGenerateStars) {
       let starsWindow = ImageWindow.windowById(expectedStarsName);
       if (!starsWindow.isNull) {
-         starsWindow.mainView.id = "stars";
-         console.writeln("\u2714 Stars image renamed to: stars");
+         starsWindow.mainView.id = "stars";   // PI makes it stars1, ... if taken
+         console.writeln("\u2714 Stars image renamed to: " + starsWindow.mainView.id);
       } else {
          console.warningln("\u26A0 Could not find stars image to rename");
       }
@@ -3955,6 +4049,7 @@ function runSXT()
    // Bring original image back to front
    originalWin.bringToFront();
    console.writeln("\u2714 StarXTerminator completed successfully.\n");
+   return true;
 }
 
 // ============================================================
@@ -3985,7 +4080,7 @@ function runStarNet2()
 
   if ( typeof StarNet2 === "undefined" ) {
       console.warningln("\u26A0 StarNet2 is not installed - skipping StarNet2.\n");
-      return;
+      return false;
    }
    var P = new StarNet2;
    P.stride = WorkflowParameters.sn2Stride === 384 ? 0 :
@@ -4004,8 +4099,8 @@ function runStarNet2()
    if (WorkflowParameters.sn2Mask) {
       let maskWindow = ImageWindow.windowById(expectedMaskName);
       if (!maskWindow.isNull) {
-         maskWindow.mainView.id = "stars";
-         console.writeln("\u2714 Star mask image renamed to: stars");
+         maskWindow.mainView.id = "stars";   // PI makes it stars1, ... if taken
+         console.writeln("\u2714 Star mask image renamed to: " + maskWindow.mainView.id);
       } else {
          console.warningln("\u26A0 Could not find star mask image to rename");
       }
@@ -4014,11 +4109,16 @@ function runStarNet2()
    // Bring original image back to front
    originalWin.bringToFront();
    console.writeln("\u2714 StarNet2 completed successfully.\n");
+   return true;
 }
 
 function main()
 {
    console.show();
+   // A script has to switch the Process Console's Abort button on itself
+   // (as PI's ImageSolver does); otherwise it is only active while a PI
+   // process runs, and the script's own abort checks never fire.
+   console.abortEnabled = true;
 
    let startTime = new Date();
 
@@ -4103,10 +4203,13 @@ function main()
             throw new Error("Script cancelled by user.");
       }
 
+      // Steps whose tool is not installed return false: no "done" mark then,
+      // or the next run would warn about a step that never ran.
       if (WorkflowParameters.enableBXTCorrect) {
-         runBXT_CorrectOnly();
-         shMarkDone(view, "SpaceHunter:ScriptRan");
-         shMarkDone(view, "SpaceHunter:BXTCorrectDone");
+         if (runBXT_CorrectOnly()) {
+            shMarkDone(view, "SpaceHunter:ScriptRan");
+            shMarkDone(view, "SpaceHunter:BXTCorrectDone");
+         }
       } else {
          console.writeln("BXT Correct Only is DISABLED - skipping\n");
       }
@@ -4127,9 +4230,10 @@ function main()
       }
 
       if (WorkflowParameters.enableAutoColor) {
-         runAutoColor();
-         shMarkDone(view, "SpaceHunter:ScriptRan");
-         shMarkDone(view, "SpaceHunter:AutoColorDone");
+         if (runAutoColor()) {
+            shMarkDone(view, "SpaceHunter:ScriptRan");
+            shMarkDone(view, "SpaceHunter:AutoColorDone");
+         }
       } else {
          console.writeln("AutoColor is DISABLED - skipping\n");
       }
@@ -4141,25 +4245,28 @@ function main()
       }
 
       if (WorkflowParameters.enableBXTFull) {
-         runBXT_Full();
-         shMarkDone(view, "SpaceHunter:ScriptRan");
-         shMarkDone(view, "SpaceHunter:BXTFullDone");
+         if (runBXT_Full()) {
+            shMarkDone(view, "SpaceHunter:ScriptRan");
+            shMarkDone(view, "SpaceHunter:BXTFullDone");
+         }
       } else {
          console.writeln("BXT Full is DISABLED - skipping\n");
       }
 
       if (WorkflowParameters.enableSXT) {
-         runSXT();
-         shMarkDone(view, "SpaceHunter:ScriptRan");
-         shMarkDone(view, "SpaceHunter:SXTDone");
+         if (runSXT()) {
+            shMarkDone(view, "SpaceHunter:ScriptRan");
+            shMarkDone(view, "SpaceHunter:SXTDone");
+         }
       } else {
          console.writeln("StarXTerminator is DISABLED - skipping\n");
       }
 
       if (WorkflowParameters.enableStarNet2) {
-         runStarNet2();
-         shMarkDone(view, "SpaceHunter:ScriptRan");
-         shMarkDone(view, "SpaceHunter:StarNet2Done");
+         if (runStarNet2()) {
+            shMarkDone(view, "SpaceHunter:ScriptRan");
+            shMarkDone(view, "SpaceHunter:StarNet2Done");
+         }
       } else {
          console.writeln("StarNet2 is DISABLED - skipping\n");
       }
@@ -4219,11 +4326,10 @@ function main()
       console.writeln("\nTotal execution time: " + minutes + "m " + seconds + "s\n");
 
    } catch (error) {
-      if (error.message === "Script cancelled by user." ||
-          error.message === "Process aborted") {
+      if (shIsCancel(error)) {
          console.writeln("\n\u26A0 Script aborted by user.\n");
       } else {
-         console.criticalln("\nERROR: " + error.message);
+         console.criticalln("\nERROR: " + shErrorText(error));
          throw error;
       }
    }
