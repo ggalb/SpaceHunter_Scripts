@@ -2,12 +2,13 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.5.13<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.5.14<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
    Includes: Equipment selection with collapsible sections, ASTAP integration,<br/>\
-   ImageSolver, SPFC, variable previews (1-4), MultiscaleGradientCorrection with<br/>\
+   ImageSolver, optional Ha/OIII separation for dual-band images, SPFC,<br/>\
+   variable previews (1-4), MultiscaleGradientCorrection with<br/>\
    per-preview gradient scale selection and instant background model apply.<br/>\
    Optional GC and cDBE, New Instance support.<br/>\
    <br/>\
@@ -15,7 +16,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.5.13
+// Space Hunter Lazy Workflow Part 1 v2.5.14
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -25,18 +26,22 @@
 // - ASTAP plate solving uses the ASTAP command-line interface (https://www.hnsky.org/astap.htm) by Han Kleijn, licensed under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).
 // - ASTAP integration approach inspired by BlindSolver2000 by Franklin Marek (www.setiastro.com), licensed under CC BY-NC 4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
 // - ImageSolver by (C) 2012-2024 Andrés del Pozo/ (C) 2019-2024 Juan Conejero (PTeam)
-// - Standard PixInsight processes called: SPFC, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction
+// - Standard PixInsight processes called: SPFC, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction,
+//   PixelMath, ScreenTransferFunction
+// - Ha/OIII separation method from PixInsight's "MGC - Dual-Band OSC Images (II)" video tutorial
 // - Developed with assistance from Claude AI (Anthropic)
 //
 // Part 0: Process & Equipment selection dialog (SectionBar UI)
 // Part 1: Smart Plate Solve (ASTAP only if needed)
 // Part 2: ImageSolve
+// Part 2b: Ha/OIII separation (optional, dual-band OSC, narrowband mode only)
 // Part 3: SPFC
 // Part 4: Creates 1-4 Previews in full size (user selectable)
 // Part 5: MGC with per-preview gradient scale selection
 // Part 5b: Choose background model - apply any preview's MGC model instantly
 // Part 6: GradientCorrection (MGC fallback or manual, previews GC_ / GC_1)
 // Part 6b: Choose GC result - apply GC_ or GC_1, or open GC with its settings
+// Part 7: cDBE - DynamicBackgroundExtraction
 //
 // v2.4: SPFC gray filter and RGB filter set chosen in separate dropdowns
 //       (PAN/L entries no longer mixed into the RGB list; filters saved by
@@ -89,14 +94,16 @@
 //       (@script_icons_dir = rsc/icons/script/SHLazyWorkflowPart1/).
 // v2.5.13: File dialogs read .filePath instead of the deprecated .fileName
 //       (no console warning when locating ASTAP or saving a profile).
-// Part 7: cDBE - DynamicBackgroundExtraction
+// v2.5.14: Header text only: Part 7 (cDBE) moved back into the Part list,
+//       Ha/OIII separation listed as a step, PixelMath/STF credited,
+//       requirement PixInsight 1.9.5 (matches ensureMinimumVersion).
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
 // - Windows machine
-// - PixInsight 1.9.4
+// - PixInsight 1.9.5 or later
 // - MARS database installed
 // - ASTAP and D50 star map installed - Path: C:\Program Files\astap
 // - OSC Camera Image
@@ -317,7 +324,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.5.13"
+#define SCRIPT_VERSION "v2.5.14"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.

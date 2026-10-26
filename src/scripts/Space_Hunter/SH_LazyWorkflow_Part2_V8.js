@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.3.11<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.3.12<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -16,7 +16,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.3.11
+// Space Hunter Lazy Workflow Part 2 v2.3.12
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -31,12 +31,25 @@
 //   Original copyright headers and author name preserved in source code as required.
 //   NOT covered by MIT License. Separate permission required for reuse.
 // - Standard PixInsight processes called: SpectrophotometricColorCalibration (SPCC),
-//   BackgroundNeutralization, ColorCalibration
+//   BackgroundNeutralization, ColorCalibration, ScreenTransferFunction, MLDenoise
 // - BlurXTerminator, StarXTerminator and NoiseXTerminator by Russell Croman (https://www.rc-astro.com/)
 // - StarNet2 by Nikita Misiura (https://www.starnetastro.com/), astrophotography use only
 // - IFN/dust map: IRSA Galactic Dust Reddening and Extinction service (NASA/IPAC,
 //   https://irsa.ipac.caltech.edu/applications/DUST/), SFD map by Schlegel, Finkbeiner & Davis (1998)
 // - Developed with assistance from Claude AI (Anthropic)
+//
+// Part 0: Process & Equipment selection dialog (SectionBar UI)
+// Part 1: Run BlurXTerminator correct only
+// Part 2: Find background: deterministic tiled robust finder (v2.3), Exclude* previews honoured,
+//         preceded by a pre-check dialog (previews + optional IRSA dust map to avoid IFN)
+// Part 3: Run SPCC with selected filter and extracted ROI
+// Part 4: Run AutoColor - Background Neutralization + Color Calibration (alternative to Parts 2 & 3)
+// Part 5: Run Adaptive Auto STF (auto linked/unlinked, Background-preview statistics)
+// Part 6: Run BlurXTerminator full (adjustable parameters)
+// Part 7: Run StarXTerminator (configurable options)
+// Part 8: Run StarNet2 as an alternative to SXT (configurable options)
+// Part 9: Open NoiseXTerminator (selected AI version and tile overlap)
+// Part 10: Open MLDenoise with the user's model, as an alternative to NXT
 //
 // v2.3.1: Documentation button opens the PixInsight manual
 //       (Dialog.browseScriptDocumentation, ID-form #feature-id "SHLazyWorkflowPart2")
@@ -66,30 +79,24 @@
 //       1.5x/2x versions); SH_WarningSign.png is no longer shipped.
 // v2.3.11: MLDenoise model browser reads .filePath instead of the deprecated
 //       .fileName (no console warning).
-//
-// Part 0: Process & Equipment selection dialog (SectionBar UI)
-// Part 1: Run BlurXTerminator correct only
-// Part 2: Find background: deterministic tiled robust finder (v2.3), Exclude* previews honoured,
-//         preceded by a pre-check dialog (previews + optional IRSA dust map to avoid IFN)
-// Part 3: Run SPCC with selected filter and extracted ROI
-// Part 4: Run AutoColor - Background Neutralization + Color Calibration (alternative to Parts 2 & 3)
-// Part 5: Run Adaptive Auto STF (auto linked/unlinked, Background-preview statistics)
-// Part 6: Run BlurXTerminator full (adjustable parameters)
-// Part 7: Run StarXTerminator (configurable options)
-// Part 8: Run StarNet2 as an alternative to SXT (configurable options)
-// Part 9: Open NoiseXTerminator in default settings
+// v2.3.12: Header text only: Part 10 (MLDenoise) added to the Part list,
+//       NXT line corrected, STF/MLDenoise credited, requirements updated
+//       (PixInsight 1.9.5, AutoColor built in, MLDenoise, dust-map internet),
+//       Part list moved before the change log (same layout as Part 1).
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
 // - Windows machine
-// - PixInsight 1.9.4
+// - PixInsight 1.9.5 or later
 // - OSC Camera Image
 // - Image pre-cropped, solved and background extraction applied
 // - BlurXTerminator, StarXTerminator and NoiseXTerminator needed for full process
-// - AutoColor script by Hartmut V. Bornemann (optional)
-// - StarNet2 script for PixInsight (optional)
+// - AutoColor is built in (no separate AutoColor script needed)
+// - StarNet2, installed from its PixInsight repository (optional)
+// - MLDenoise and its .xmlm model file, for licensed PixInsight users (optional)
+// - Internet access only for the dust map check in the background pre-check
 
 CoreApplication.ensureMinimumVersion(1, 9, 5);
 
@@ -98,7 +105,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 5);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.3.11"
+#define SCRIPT_VERSION "v2.3.12"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.

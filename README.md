@@ -11,7 +11,7 @@ The update repository delivers the right package for your PixInsight version:
 
 | PixInsight | Package | Scripts |
 |---|---|---|
-| 1.9.5 and later | V8, October 2026 | Part 1 v2.5.2, Part 2 v2.3.2, +Previews v2.2.1, NamePreviews v2.1, KillPreviews v2.0 |
+| 1.9.5 and later | V8, 25 October 2026 | Part 1 v2.5.14, Part 2 v2.3.12, +Previews v2.2.3, NamePreviews v2.1.1, KillPreviews v2.0.2 |
 | 1.9.4 | V8, July 2026 (unchanged) | Part 1 / Part 2 v2.1, Legacy Part 1 v1.4 (with ImageSolver) |
 | 1.8.0 – 1.9.3 | Legacy (unchanged) | v1.4 |
 
@@ -83,7 +83,39 @@ The PDF guide (`SH_Workflow_Guide.pdf`) is no longer included in the 1.9.5 packa
 
 ## Changelog
 
-### October 2026 (V8, PixInsight 1.9.5+)
+### 25 October 2026 (V8, PixInsight 1.9.5+)
+
+**General:**
+
+- Menu icons moved to PixInsight's standard icon folder (`rsc/icons/script/`). The old icon files are removed by the update.
+- Abort works for the whole run. A tool stopped with Abort counts as cancel (no more "ERROR: undefined").
+- Settings are saved once, when you click OK.
+- File dialogs no longer print a "deprecated" warning in the console.
+- Manuals: new section "Files, Programs and Internet Access".
+
+**Part 1 (v2.5.14):**
+
+- **Fix:** targeted ASTAP solve sent RA in degrees instead of hours and a mirrored Dec, so ASTAP searched as if blind. It now starts at the image's real position.
+- RA/Dec header values read by keyword (OBJCTRA = hours, RA = degrees); the sign of decimal Dec is kept.
+- ASTAP is started directly (no batch file), with a time limit (targeted 2 min, blind 10 min), Abort support and reported exit codes. Temp files are removed after failures too.
+- An aborted SPFC or MGC no longer falls back to GradientCorrection.
+- Narrowband "Wavelength (nm)" header no longer cut off at high display scaling.
+
+**Part 2 (v2.3.12):**
+
+- Dust map download: https only, IRSA host only, no temp files left after a failed download.
+- BXT, SXT and StarNet2 steps are marked done only when they actually ran.
+- AutoColor leaves the image unchanged when a channel has no usable background or signal.
+- Warning icons use PixInsight's own icon.
+- Narrowband "Wavelength (nm)" header no longer cut off at high display scaling.
+
+**+Previews (v2.2.3):** the space check ignores disabled fields; the console shows the name PixInsight actually gave.
+
+**KillPreviews (v2.0.2):** reports previews that could not be deleted instead of looping.
+
+**NamePreviews (v2.1.1):** script-id added (needed for code signing); no functional change.
+
+### 13 October 2026 (V8, PixInsight 1.9.5+)
 
 **General:**
 

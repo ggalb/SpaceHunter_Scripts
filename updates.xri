@@ -64,20 +64,19 @@
    <!-- V8 scripts for PixInsight 1.9.5+ : one dated zip per release, fixed script file names -->
    <platform os="all" arch="noarch" version="1.9.5:1.9.9">
       <package
-         fileName="SpaceHunter_Scripts_20261013.zip"
-         sha1="7fe3c1fddd771d914ec633a2e093dad5ee8bde35"
+         fileName="SpaceHunter_Scripts_20261025.zip"
+         sha1="387eba5990e4197e25051aa014de5bdc55bc0aca"
          type="script"
-         releaseDate="20261013"
-         title="Space Hunter Scripts 20261013">
+         releaseDate="20261025"
+         title="Space Hunter Scripts 20261025">
          <description>
-            <p><b>Space Hunter Scripts, October 2026</b> (requires PixInsight 1.9.5)</p>
-            <p>Part 1 v2.5.2, Part 2 v2.3.2, +Previews v2.2.1, NamePreviews v2.1, KillPreviews v2.0.</p>
-            <p>- Script file names no longer carry a version number. Old versioned files, the Legacy Part 1 and the PDF guide are removed automatically. Your saved settings are kept.</p>
-            <p>- Manuals in PixInsight's documentation format, opened from the documentation button in each dialog.</p>
-            <p>- Part 1: automatic plate solving with PixInsight's ImageSolver (ASTAP only as fallback), optional Ha/OIII separation for dual-band OSC images, separate SPFC filter dropdowns, instant background-model apply, GradientCorrection result chooser.</p>
-            <p>- Part 2: new tiled background finder (Exclude previews optional), pre-check with optional IRSA dust map, SPCC background-reference fix, Adaptive Auto STF with automatic linked/unlinked, MLDenoise as alternative to NoiseXTerminator, separate ML Version and Tile Overlap for BXT Correct Only and BXT Full.</p>
-            <p>- Re-run protection in Part 1 and Part 2.</p>
-            <p>- +Previews: New Instance support; repeated names get _1, _2, ...  NamePreviews: re-running no longer produces names like Exclude11.</p>
+            <p><b>Space Hunter Scripts, 25 October 2026</b> (requires PixInsight 1.9.5)</p>
+            <p>Part 1 v2.5.14, Part 2 v2.3.12, +Previews v2.2.3, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
+            <p>- Part 1 fix: targeted ASTAP solve now starts at the image's real position (RA was sent in the wrong units, Dec mirrored). ASTAP runs directly, with a time limit, Abort support and clean-up of its temp files.</p>
+            <p>- Abort works for the whole run in Part 1 and Part 2; an aborted tool counts as cancel.</p>
+            <p>- Part 2: dust map downloaded over https from IRSA only; AutoColor leaves the image unchanged when a channel has no usable background.</p>
+            <p>- Menu icons moved to PixInsight's standard icon folder; the old icon files are removed automatically. Your saved settings are kept.</p>
+            <p>- Smaller fixes in all five scripts and the manuals.</p>
             <p>Full changelog: https://github.com/ggalb/SpaceHunter_Scripts</p>
          </description>
          <remove>
@@ -91,7 +90,13 @@
             src/scripts/Space_Hunter/SH_LazyWorkflow_Part1_Legacy_v1.4.js,
             src/scripts/Space_Hunter/SH_Cog.png,
             src/scripts/Space_Hunter/SH_pdfIcon.png,
-            src/scripts/Space_Hunter/SH_Workflow_Guide.pdf
+            src/scripts/Space_Hunter/SH_Workflow_Guide.pdf,
+            src/scripts/Space_Hunter/SH_WorkFlow1.svg,
+            src/scripts/Space_Hunter/SH_WorkFlow2.svg,
+            src/scripts/Space_Hunter/SH_PlusPreviews.svg,
+            src/scripts/Space_Hunter/SH_KillPreviews.svg,
+            src/scripts/Space_Hunter/SH_NamePreviews.svg,
+            src/scripts/Space_Hunter/SH_WarningSign.png
          </remove>
       </package>
    </platform>
