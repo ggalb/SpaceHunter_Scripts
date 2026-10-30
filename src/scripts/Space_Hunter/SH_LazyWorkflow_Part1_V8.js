@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.6.0<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.6.3<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -16,7 +16,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.6.0
+// Space Hunter Lazy Workflow Part 1 v2.6.3
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -101,6 +101,14 @@
 //       index file set in the Gaia process preferences. The ImageSolve
 //       section shows whether an index is set; 'Blind solve (if needed)'
 //       replaces the ASTAP checkbox. Requires PixInsight 1.9.6.
+// v2.6.1: GC and DBE sections start collapsed again (the start-up toggle
+//       could expand them instead). Opening or closing one is remembered
+//       for the next run; Reset Defaults collapses both.
+// v2.6.2: MARS files are listed once in the console (C:/Astro and C:/ASTRO
+//       are the same folder on Windows; the file list itself was already
+//       de-duplicated). Test: arrow cursor on the model / GC result panels.
+// v2.6.3: Panel cursor test removed again - PixInsight shows its busy
+//       cursor while any script runs, a panel cannot override it.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -232,7 +240,6 @@ function resolveMARSFilesScan()
             if (!search.isDirectory) {
                let fullPath = searchDirs[d] + "/" + search.name;
                foundFiles.push(fullPath);
-               console.writeln("  MARS file found: " + fullPath);
             }
          } while (search.next());
       }
@@ -249,6 +256,8 @@ function resolveMARSFilesScan()
       }
    }
    foundFiles = uniqueFiles;
+   for (var i = 0; i < foundFiles.length; i++)
+      console.writeln("  MARS file found: " + foundFiles[i]);
 
    if (foundFiles.length > 0) {
       // Save for next time
@@ -298,7 +307,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.6.0"
+#define SCRIPT_VERSION "v2.6.3"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -445,6 +454,10 @@ var WorkflowParameters = {
    mgcGreenFilter:    "OIII",
    mgcBlueFilter:     "OIII",
 
+   // Alternative workflows: sections collapsed unless the user opened them
+   gcExpanded:        false,
+   dbeExpanded:       false,
+
    // -----------------------------------------------------------
    // Save parameters to PixInsight Parameters store
    // -----------------------------------------------------------
@@ -538,7 +551,9 @@ var WorkflowParameters = {
          mgcGrayFilter:       this.mgcGrayFilter,
          mgcRedFilter:        this.mgcRedFilter,
          mgcGreenFilter:      this.mgcGreenFilter,
-         mgcBlueFilter:       this.mgcBlueFilter
+         mgcBlueFilter:       this.mgcBlueFilter,
+         gcExpanded:          this.gcExpanded,
+         dbeExpanded:         this.dbeExpanded
       };
       try {
          Settings.write(SETTINGS_KEY_USERPREFS, DataType.String, JSON.stringify(prefs));
@@ -592,6 +607,8 @@ var WorkflowParameters = {
             if (prefs.mgcRedFilter        !== undefined) this.mgcRedFilter        = prefs.mgcRedFilter;
             if (prefs.mgcGreenFilter      !== undefined) this.mgcGreenFilter      = prefs.mgcGreenFilter;
             if (prefs.mgcBlueFilter       !== undefined) this.mgcBlueFilter       = prefs.mgcBlueFilter;
+            if (prefs.gcExpanded          !== undefined) this.gcExpanded          = prefs.gcExpanded;
+            if (prefs.dbeExpanded         !== undefined) this.dbeExpanded         = prefs.dbeExpanded;
          }
       } catch (e) {}
    },
@@ -2170,7 +2187,7 @@ constructor()
    this.mgc_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 5: GradientCorrection (collapsed, disabled by default)
+   // SECTION 5: GradientCorrection (collapsed unless left open, disabled by default)
    // =================================================================
 
    this.gc_Control = new Control( this );
@@ -2207,13 +2224,27 @@ constructor()
       dlg.updateDependencies();
       WorkflowParameters.saveUserPrefs();
    };
-   this.gc_Section.onToggleSection = toggleSectionHandler;
+   this.gc_Section.onToggleSection = function( section, toggleBegin )
+   {
+      toggleSectionHandler( section, toggleBegin );
+      if ( !toggleBegin )
+      {
+         WorkflowParameters.gcExpanded = section.isExpanded();
+         WorkflowParameters.saveUserPrefs();
+      }
+   };
 
-   // Always start collapsed - opens only via the arrow
-   this.gc_Section.toggleSection();
+   // Collapsed unless the user left it open last time. Hidden directly:
+   // toggleSection() reads section.visible, which is not reliable before
+   // the dialog is shown, and could expand it instead.
+   if ( !WorkflowParameters.gcExpanded )
+   {
+      this.gc_Control.hide();
+      this.gc_Section.updateIcon();
+   }
 
    // =================================================================
-   // SECTION 6: DynamicBackgroundExtraction (collapsed, disabled by default)
+   // SECTION 6: DynamicBackgroundExtraction (collapsed unless left open, disabled by default)
    // =================================================================
 
    this.dbe_Control = new Control( this );
@@ -2247,10 +2278,22 @@ constructor()
       dlg.updateDependencies();
       WorkflowParameters.saveUserPrefs();
    };
-   this.dbe_Section.onToggleSection = toggleSectionHandler;
+   this.dbe_Section.onToggleSection = function( section, toggleBegin )
+   {
+      toggleSectionHandler( section, toggleBegin );
+      if ( !toggleBegin )
+      {
+         WorkflowParameters.dbeExpanded = section.isExpanded();
+         WorkflowParameters.saveUserPrefs();
+      }
+   };
 
-   // Always start collapsed - opens only via the arrow
-   this.dbe_Section.toggleSection();
+   // Collapsed unless the user left it open last time (see GC above)
+   if ( !WorkflowParameters.dbeExpanded )
+   {
+      this.dbe_Control.hide();
+      this.dbe_Section.updateIcon();
+   }
 
    // =================================================================
    // Info Label
@@ -2331,7 +2374,7 @@ constructor()
    this.resetDefaultsButton.icon = this.scaledResource( ":/icons/reload.png" );
    this.resetDefaultsButton.setScaledFixedSize( 24, 24 );
    this.resetDefaultsButton.toolTip = "<p>Reset all workflow steps to default values.<br/>" +
-      "Default: ImageSolve (with blind solve), SPFC, Previews (4), MGC enabled. GC and DBE disabled.<br/>" +
+      "Default: ImageSolve (with blind solve), SPFC, Previews (4), MGC enabled. GC and DBE disabled and collapsed.<br/>" +
       "Equipment settings (camera, filter, white reference, gradient scales) are not changed.</p>";
    this.resetDefaultsButton.onClick = function()
    {
@@ -2367,6 +2410,11 @@ constructor()
          dlg.gradientScaleCombo[i].currentItem = WorkflowParameters.gradientScaleToComboIndex(
             WorkflowParameters.getGradientScale(i));
       dlg.updateGradientScaleStates();
+      // Alternative workflows back to collapsed (the toggle saves the state)
+      if ( dlg.gc_Section.isExpanded() )
+         dlg.gc_Section.toggleSection();
+      if ( dlg.dbe_Section.isExpanded() )
+         dlg.dbe_Section.toggleSection();
    }; 
    // Reset Settings button (red - clears persistent user preferences)
    this.resetSettingsButton = new ToolButton( this );
