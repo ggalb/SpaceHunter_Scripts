@@ -2,12 +2,12 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.5.14<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.6.0<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
-   Includes: Equipment selection with collapsible sections, ASTAP integration,<br/>\
-   ImageSolver, optional Ha/OIII separation for dual-band images, SPFC,<br/>\
+   Includes: Equipment selection with collapsible sections,<br/>\
+   ImageSolver with blind solve, optional Ha/OIII separation for dual-band images, SPFC,<br/>\
    variable previews (1-4), MultiscaleGradientCorrection with<br/>\
    per-preview gradient scale selection and instant background model apply.<br/>\
    Optional GC and cDBE, New Instance support.<br/>\
@@ -16,23 +16,21 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.5.14
+// Space Hunter Lazy Workflow Part 1 v2.6.0
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
 //
 // Acknowledgments:
 // - PixInsight platform by Pleiades Astrophoto (https://pixinsight.com/)
-// - ASTAP plate solving uses the ASTAP command-line interface (https://www.hnsky.org/astap.htm) by Han Kleijn, licensed under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).
-// - ASTAP integration approach inspired by BlindSolver2000 by Franklin Marek (www.setiastro.com), licensed under CC BY-NC 4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
-// - ImageSolver by (C) 2012-2024 Andrés del Pozo/ (C) 2019-2024 Juan Conejero (PTeam)
+// - ImageSolver (incl. its blind solver) by (C) 2013-2026 Andrés del Pozo / (C) 2019-2026 Juan Conejero (PTeam)
 // - Standard PixInsight processes called: SPFC, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction,
 //   PixelMath, ScreenTransferFunction
 // - Ha/OIII separation method from PixInsight's "MGC - Dual-Band OSC Images (II)" video tutorial
 // - Developed with assistance from Claude AI (Anthropic)
 //
 // Part 0: Process & Equipment selection dialog (SectionBar UI)
-// Part 1: Smart Plate Solve (ASTAP only if needed)
+// Part 1: Smart Plate Solve (blind solve only if needed)
 // Part 2: ImageSolve
 // Part 2b: Ha/OIII separation (optional, dual-band OSC, narrowband mode only)
 // Part 3: SPFC
@@ -97,27 +95,35 @@
 // v2.5.14: Header text only: Part 7 (cDBE) moved back into the Part list,
 //       Ha/OIII separation listed as a step, PixelMath/STF credited,
 //       requirement PixInsight 1.9.5 (matches ensureMinimumVersion).
+// v2.6.0: ASTAP removed (CPD rule 5.8: no external programs). Images without
+//       RA/Dec or image scale are solved by ImageSolver's own blind solver
+//       (ImageSolver 6.6.0, PixInsight 1.9.6), which needs the astrometric
+//       index file set in the Gaia process preferences. The ImageSolve
+//       section shows whether an index is set; 'Blind solve (if needed)'
+//       replaces the ASTAP checkbox. Requires PixInsight 1.9.6.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
 // - Windows machine
-// - PixInsight 1.9.5 or later
+// - PixInsight 1.9.6 or later
 // - MARS database installed
-// - ASTAP and D50 star map installed - Path: C:\Program Files\astap
+// - Gaia DR3 database; for images without RA/Dec or image scale also the
+//   astrometric index file (gdr3-idx), set in the Gaia process preferences
 // - OSC Camera Image
 // - Image pre-cropped
 
 // The auto-solve path drives PixInsight's modern ImageSolver engine, which
-// exists only in 1.9.5+ and writes the standard "AstrometricSolution:*"
-// property namespace that older cores do not recognize. Require 1.9.5.
-CoreApplication.ensureMinimumVersion( 1, 9, 5 );
+// writes the standard "AstrometricSolution:*" property namespace (1.9.5+);
+// its blind solver (BlindSolverMode) arrived with ImageSolver 6.6.0 in
+// PixInsight 1.9.6. Require 1.9.6.
+CoreApplication.ensureMinimumVersion( 1, 9, 6 );
 
 // ============================================================
 // ImageSolver engine (V8-native, portable) for auto plate-solve
 // ------------------------------------------------------------
-// We drive PixInsight's CURRENT ImageSolver engine (v6.5.0) as a library,
+// We drive PixInsight's CURRENT ImageSolver engine (v6.6.0) as a library,
 // using the SAME method the official WeightedBatchPreprocessing (WBPP) /
 // FastBatchPreprocessing scripts use in BatchPreprocessing/BPP-Solver.js.
 //
@@ -144,66 +150,34 @@ CoreApplication.ensureMinimumVersion( 1, 9, 5 );
 /* beautify ignore:end */
 
 // ============================================================
-// ASTAP PATH - Auto-detect with persistent storage + browse fallback
+// ASTROMETRIC INDEX - needed by ImageSolver's blind solver
 // ============================================================
 
-var SETTINGS_KEY_ASTAP = "SpaceHunter/ASTAPPath";
-
-// Seconds before ASTAP is stopped: a targeted solve normally takes 10-30 s,
-// a blind solve 1-3 min (slower PCs need more; Abort stops it sooner).
-var ASTAP_TIMEOUT_TARGETED_S = 120;
-var ASTAP_TIMEOUT_BLIND_S    = 600;
-
-function resolveASTAPPath()
+// Path of the astrometric index file set in the Gaia process preferences,
+// or "" if none is set or the file is missing (same lookup as ImageSolver's
+// own astrometricIndexFilePath()).
+function shAstrometricIndexPath()
 {
-   // 1. Check saved path from previous run
-   let savedPath = null;
    try {
-      savedPath = Settings.read(SETTINGS_KEY_ASTAP, DataType.String);
+      let G = new Gaia;
+      G.command = "get-info";
+      G.dataRelease = Gaia.DataRelease_BestAvailable;
+      G.verbosity = 0;
+      G.executeGlobal();
+      let path = G.astrometricIndexFilePath.trim();
+      if (path.length > 0 && File.exists(path))
+         return path;
    } catch (e) {}
-   if (savedPath && File.exists(savedPath)) {
-      console.writeln("ASTAP found (saved): " + savedPath);
-      return savedPath;
-   }
+   return "";
+}
 
-   // 2. Check common installation locations
-   let commonPaths = [
-      "C:/Program Files/astap/astap.exe",
-      "C:/Program Files (x86)/astap/astap.exe",
-      "D:/Program Files/astap/astap.exe",
-      "D:/astap/astap.exe",
-      "E:/Program Files/astap/astap.exe"
-   ];
-
-   for (let i = 0; i < commonPaths.length; i++) {
-      if (File.exists(commonPaths[i])) {
-         console.writeln("ASTAP found: " + commonPaths[i]);
-         Settings.write(SETTINGS_KEY_ASTAP, DataType.String, commonPaths[i]);
-         return commonPaths[i];
-      }
-   }
-
-   // 3. Not found — ask user to locate it
-   console.warningln("ASTAP not found in common locations. Asking user...");
-
-   let ofd = new OpenFileDialog;
-   ofd.caption = "Locate ASTAP - Select astap.exe";
-   ofd.filters = [
-      ["ASTAP executable", "astap.exe"],
-      ["All files", "*.*"]
-   ];
-
-   if (ofd.execute()) {
-      let selectedPath = ofd.filePath;
-      if (File.exists(selectedPath)) {
-         console.writeln("ASTAP selected by user: " + selectedPath);
-         Settings.write(SETTINGS_KEY_ASTAP, DataType.String, selectedPath);
-         return selectedPath;
-      }
-   }
-
-   // User cancelled or invalid selection
-   return null;
+function shPrintIndexHelp()
+{
+   console.writeln("  Blind solving needs an astrometric index file:");
+   console.writeln("    1. Download the Gaia astrometric index (gdr3-idx-1.0.0-g17.xpsd, about 1.8 GB)");
+   console.writeln("       from the PixInsight Software Distribution.");
+   console.writeln("    2. Process > Astrometry > Gaia, Preferences (wrench icon): 'Astrometric Index File'.");
+   console.writeln("  Or add RA/Dec (OBJCTRA/OBJCTDEC) and image scale (XPIXSZ + FOCALLEN) to the image.");
 }
 
 // ============================================================
@@ -324,7 +298,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.5.14"
+#define SCRIPT_VERSION "v2.6.0"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -422,7 +396,7 @@ var WorkflowParameters = {
    enableDBE:        false,
 
    // ImageSolve section
-   enableASTAP: true,
+   enableBlindSolve: true,   // ImageSolver blind solver when RA/Dec or scale missing
 
    // SPFC section
    selectedWhiteRefIdx: 0,
@@ -483,7 +457,7 @@ var WorkflowParameters = {
       Parameters.set("enableGC",         this.enableGC);
       Parameters.set("enableDBE",        this.enableDBE);
 
-      Parameters.set("enableASTAP", this.enableASTAP);
+      Parameters.set("enableBlindSolve", this.enableBlindSolve);
 
       Parameters.set("selectedWhiteRefIdx", this.selectedWhiteRefIdx);
       Parameters.set("selectedCameraIdx",   this.selectedCameraIdx);
@@ -530,7 +504,7 @@ var WorkflowParameters = {
       this.syncFilterNames();
       var prefs = {
          enableImageSolve:    this.enableImageSolve,
-         enableASTAP:         this.enableASTAP,
+         enableBlindSolve:    this.enableBlindSolve,
          enableSPFC:          this.enableSPFC,
          enablePreviews:      this.enablePreviews,
          enableMGC:           this.enableMGC,
@@ -581,7 +555,7 @@ var WorkflowParameters = {
          if (saved) {
             var prefs = JSON.parse(saved);
             if (prefs.enableImageSolve    !== undefined) this.enableImageSolve    = prefs.enableImageSolve;
-            if (prefs.enableASTAP         !== undefined) this.enableASTAP         = prefs.enableASTAP;
+            if (prefs.enableBlindSolve    !== undefined) this.enableBlindSolve    = prefs.enableBlindSolve;
             if (prefs.enableSPFC          !== undefined) this.enableSPFC          = prefs.enableSPFC;
             if (prefs.enablePreviews      !== undefined) this.enablePreviews      = prefs.enablePreviews;
             if (prefs.enableMGC           !== undefined) this.enableMGC           = prefs.enableMGC;
@@ -682,8 +656,8 @@ var WorkflowParameters = {
       if (Parameters.has("enableDBE"))
          this.enableDBE = Parameters.getBoolean("enableDBE");
 
-      if (Parameters.has("enableASTAP"))
-         this.enableASTAP = Parameters.getBoolean("enableASTAP");
+      if (Parameters.has("enableBlindSolve"))
+         this.enableBlindSolve = Parameters.getBoolean("enableBlindSolve");
 
       if (Parameters.has("selectedWhiteRefIdx"))
          this.selectedWhiteRefIdx = Parameters.getInteger("selectedWhiteRefIdx");
@@ -1105,7 +1079,7 @@ function buildDropdownLists()
 
 // ============================================================
 // Collapsible SectionBar dialog with:
-//   1. ImageSolve section (ASTAP checkbox inside)
+//   1. ImageSolve section (blind solve checkbox + index status inside)
 //   2. SPFC section (White Ref, Camera, Filter dropdowns inside)
 //   3. Previews section (number of previews dropdown inside)
 //   4. MGC section (4 gradient scale dropdowns inside, greyed by count)
@@ -1200,20 +1174,20 @@ constructor()
             dlg.imageSolve_Section.checkBox.checked = true;
             dlg.imageSolve_Control.enabled = true;
          }
-         WorkflowParameters.enableASTAP = true;
-         dlg.astap_CheckBox.checked = true;
-         dlg.astap_CheckBox.enabled = true;
+         WorkflowParameters.enableBlindSolve = true;
+         dlg.blindSolve_CheckBox.checked = true;
+         dlg.blindSolve_CheckBox.enabled = true;
       }
 
-      // ASTAP requires ImageSolve
-      dlg.astap_CheckBox.enabled = WorkflowParameters.enableImageSolve;
+      // Blind solve requires ImageSolve
+      dlg.blindSolve_CheckBox.enabled = WorkflowParameters.enableImageSolve;
       if ( !WorkflowParameters.enableImageSolve )
       {
-         WorkflowParameters.enableASTAP = false;
-         dlg.astap_CheckBox.checked = false;
+         WorkflowParameters.enableBlindSolve = false;
+         dlg.blindSolve_CheckBox.checked = false;
       }
 
-      // GC manually enabled -> ImageSolve + ASTAP on, SPFC off, MGC off,
+      // GC manually enabled -> ImageSolve + blind solve on, SPFC off, MGC off,
       // Previews off. GC always makes its own 2 previews (GC_, GC_1); the
       // MGC preview count is left alone and comes back with MGC.
       if ( WorkflowParameters.enableGC )
@@ -1223,9 +1197,9 @@ constructor()
          WorkflowParameters.enableImageSolve = true;
          dlg.imageSolve_Section.checkBox.checked = true;
          dlg.imageSolve_Control.enabled = true;
-         WorkflowParameters.enableASTAP = true;
-         dlg.astap_CheckBox.checked = true;
-         dlg.astap_CheckBox.enabled = true;
+         WorkflowParameters.enableBlindSolve = true;
+         dlg.blindSolve_CheckBox.checked = true;
+         dlg.blindSolve_CheckBox.enabled = true;
          }
          WorkflowParameters.enableSPFC = false;
          dlg.spfc_Section.checkBox.checked = false;
@@ -1250,9 +1224,9 @@ constructor()
          WorkflowParameters.enableImageSolve = true;
          dlg.imageSolve_Section.checkBox.checked = true;
          dlg.imageSolve_Control.enabled = true;
-         WorkflowParameters.enableASTAP = true;
-         dlg.astap_CheckBox.checked = true;
-         dlg.astap_CheckBox.enabled = true;
+         WorkflowParameters.enableBlindSolve = true;
+         dlg.blindSolve_CheckBox.checked = true;
+         dlg.blindSolve_CheckBox.enabled = true;
          }
          WorkflowParameters.enableSPFC = false;
          dlg.spfc_Section.checkBox.checked = false;
@@ -1267,12 +1241,12 @@ constructor()
          dlg.previews_Section.checkBox.checked = false;
          dlg.previews_Control.enabled = false;
       }
-      // ASTAP requires ImageSolve
-      dlg.astap_CheckBox.enabled = WorkflowParameters.enableImageSolve;
+      // Blind solve requires ImageSolve
+      dlg.blindSolve_CheckBox.enabled = WorkflowParameters.enableImageSolve;
       if ( !WorkflowParameters.enableImageSolve )
       {
-         WorkflowParameters.enableASTAP = false;
-         dlg.astap_CheckBox.checked = false;
+         WorkflowParameters.enableBlindSolve = false;
+         dlg.blindSolve_CheckBox.checked = false;
       }
 
       // Update MGC gradient scale dropdown enabled states
@@ -1297,15 +1271,17 @@ constructor()
    // SECTION 1: ImageSolve
    // =================================================================
 
-   // ASTAP checkbox
-   this.astap_CheckBox = new CheckBox( this );
-   this.astap_CheckBox.text = "ASTAP Blind Solve (if needed)";
-   this.astap_CheckBox.checked = WorkflowParameters.enableASTAP;
-   this.astap_CheckBox.toolTip = "<p>Run ASTAP blind plate solve when FITS keywords are missing.<br/>" +
+   // Blind solve checkbox
+   this.blindSolve_CheckBox = new CheckBox( this );
+   this.blindSolve_CheckBox.text = "Blind solve (if needed)";
+   this.blindSolve_CheckBox.checked = WorkflowParameters.enableBlindSolve;
+   this.blindSolve_CheckBox.toolTip = "<p>Let ImageSolver find the position and scale from the stars alone " +
+      "when the image has no RA/Dec or image scale, or when solving with them fails.<br/>" +
+      "Needs the astrometric index file set in the Gaia process preferences.<br/>" +
       "Requires ImageSolver to be enabled.</p>";
-   this.astap_CheckBox.onCheck = function( checked )
+   this.blindSolve_CheckBox.onCheck = function( checked )
    {
-      WorkflowParameters.enableASTAP = checked;
+      WorkflowParameters.enableBlindSolve = checked;
       WorkflowParameters.saveUserPrefs();
    };
 
@@ -1314,11 +1290,28 @@ constructor()
    this.imageSolve_Control.sizer = new VerticalSizer;
    this.imageSolve_Control.sizer.margin = 6;
    this.imageSolve_Control.sizer.spacing = 4;
-   this.astap_Sizer = new HorizontalSizer;
-   this.astap_Sizer.addSpacing( 44 );
-   this.astap_Sizer.add( this.astap_CheckBox );
-   this.astap_Sizer.addStretch();
-   this.imageSolve_Control.sizer.add( this.astap_Sizer );
+   this.blindSolve_Sizer = new HorizontalSizer;
+   this.blindSolve_Sizer.addSpacing( 44 );
+   this.blindSolve_Sizer.add( this.blindSolve_CheckBox );
+   this.blindSolve_Sizer.addStretch();
+   this.imageSolve_Control.sizer.add( this.blindSolve_Sizer );
+
+   // Astrometric index status (read once when the dialog opens)
+   var indexPath = shAstrometricIndexPath();
+   this.indexStatus_Label = new Label( this );
+   this.indexStatus_Label.useRichText = true;
+   this.indexStatus_Label.text = indexPath.length > 0 ?
+      "Astrometric index: " + File.extractNameAndExtension( indexPath ) :
+      "<b>No astrometric index set</b> - blind solve not available";
+   this.indexStatus_Label.toolTip = "<p>Blind solving needs the Gaia astrometric index file " +
+      "(gdr3-idx-1.0.0-g17.xpsd, from the PixInsight Software Distribution), " +
+      "set as Astrometric Index File in Process &gt; Astrometry &gt; Gaia, Preferences (wrench icon).<br/>" +
+      "Images with RA/Dec and image scale (XPIXSZ + FOCALLEN) solve without it.</p>";
+   this.indexStatus_Sizer = new HorizontalSizer;
+   this.indexStatus_Sizer.addSpacing( 64 );
+   this.indexStatus_Sizer.add( this.indexStatus_Label );
+   this.indexStatus_Sizer.addStretch();
+   this.imageSolve_Control.sizer.add( this.indexStatus_Sizer );
 
    // ImageSolve SectionBar with enable checkbox
    this.imageSolve_Section = new SectionBar( this, "ImageSolve" );
@@ -2309,15 +2302,15 @@ constructor()
    this.disableAllButton.onClick = function()
    {
       WorkflowParameters.enableImageSolve = false;
-      WorkflowParameters.enableASTAP = false;
+      WorkflowParameters.enableBlindSolve = false;
       WorkflowParameters.enableSPFC = false;
       WorkflowParameters.enablePreviews = false;
       WorkflowParameters.enableMGC = false;
 
       dlg.imageSolve_Section.checkBox.checked = false;
       dlg.imageSolve_Control.enabled = false;
-      dlg.astap_CheckBox.checked = false;
-      dlg.astap_CheckBox.enabled = false;
+      dlg.blindSolve_CheckBox.checked = false;
+      dlg.blindSolve_CheckBox.enabled = false;
       dlg.spfc_Section.checkBox.checked = false;
       dlg.spfc_Control.enabled = false;
       dlg.previews_Section.checkBox.checked = false;
@@ -2338,12 +2331,12 @@ constructor()
    this.resetDefaultsButton.icon = this.scaledResource( ":/icons/reload.png" );
    this.resetDefaultsButton.setScaledFixedSize( 24, 24 );
    this.resetDefaultsButton.toolTip = "<p>Reset all workflow steps to default values.<br/>" +
-      "Default: ImageSolve (with ASTAP), SPFC, Previews (4), MGC enabled. GC and DBE disabled.<br/>" +
+      "Default: ImageSolve (with blind solve), SPFC, Previews (4), MGC enabled. GC and DBE disabled.<br/>" +
       "Equipment settings (camera, filter, white reference, gradient scales) are not changed.</p>";
    this.resetDefaultsButton.onClick = function()
    {
       WorkflowParameters.enableImageSolve = true;
-      WorkflowParameters.enableASTAP = true;
+      WorkflowParameters.enableBlindSolve = true;
       WorkflowParameters.enableSPFC = true;
       WorkflowParameters.enablePreviews = true;
       WorkflowParameters.enableMGC = true;
@@ -2355,8 +2348,8 @@ constructor()
 
       dlg.imageSolve_Section.checkBox.checked = true;
       dlg.imageSolve_Control.enabled = true;
-      dlg.astap_CheckBox.checked = true;
-      dlg.astap_CheckBox.enabled = true;
+      dlg.blindSolve_CheckBox.checked = true;
+      dlg.blindSolve_CheckBox.enabled = true;
       dlg.spfc_Section.checkBox.checked = true;
       dlg.spfc_Control.enabled = true;
       dlg.previews_Section.checkBox.checked = true;
@@ -2561,7 +2554,7 @@ function selectEquipment()
 
    console.writeln("\nWorkflow sections enabled:");
    console.writeln("  ImageSolve: " + (WorkflowParameters.enableImageSolve ? "Yes" : "No"));
-   console.writeln("    ASTAP:    " + (WorkflowParameters.enableASTAP ? "Yes" : "No"));
+   console.writeln("    Blind:    " + (WorkflowParameters.enableBlindSolve ? "Yes" : "No"));
    console.writeln("  SPFC:       " + (WorkflowParameters.enableSPFC ? "Yes" : "No"));
    console.writeln("  Previews:   " + (WorkflowParameters.enablePreviews ? "Yes" : "No") +
       " (" + WorkflowParameters.numPreviews + " preview(s))");
@@ -2645,333 +2638,6 @@ function checkRequiredKeywords() {
     return found;
 }
 
-function runASTAPWorkflow() {
-    let win = ImageWindow.activeWindow;
-    let view = win.mainView;   // always the whole image, whatever tab is selected
-    let keywords = win.keywords;
-
-    let astapPath = resolveASTAPPath();
-    if (!astapPath) {
-        console.criticalln("ASTAP not found and no path selected. Cannot proceed.");
-        return false;
-    }
-
-    function stripQuotes(str) {
-        str = str.trim();
-        while (str.length > 0 && (str[0] == "'" || str[0] == '"'))
-            str = str.substring(1);
-        while (str.length > 0 && (str[str.length-1] == "'" || str[str.length-1] == '"'))
-            str = str.substring(0, str.length-1);
-        return str.trim();
-    }
-
-    let kw = {};
-    for (let i = 0; i < keywords.length; i++) {
-        let name = keywords[i].name;
-        if (name == "OBJCTRA" || name == "RA" || name == "OBJCTDEC" || name == "DEC")
-            kw[name] = stripQuotes(keywords[i].value);
-    }
-
-    // Reads "21 01 04.3", "21:01:04", "-05d23m28s", "+44 04 31.9" or a plain
-    // decimal number. Returns { value, sexagesimal } with the sign applied to
-    // the whole angle, or null if the text holds no number.
-    function parseAngle(str) {
-        if (!str) return null;
-        let s = str.trim();
-        let sign = 1;
-        if (s.charAt(0) == "-") { sign = -1; s = s.substring(1); }
-        else if (s.charAt(0) == "+") s = s.substring(1);
-        // arcmin/arcsec quote marks via split/join: a regex holding a lone
-        // quote can confuse PI's preprocessor
-        s = s.split("'").join(" ").split("\"").join(" ");
-        let parts = s.replace(/[hdms:°]/gi, " ").trim().split(/\s+/);
-        let a = parseFloat(parts[0]);
-        if (isNaN(a)) return null;
-        let b = parts.length > 1 ? parseFloat(parts[1]) : 0;
-        let c = parts.length > 2 ? parseFloat(parts[2]) : 0;
-        return { value: sign * (Math.abs(a) + (b || 0)/60.0 + (c || 0)/3600.0),
-                 sexagesimal: parts.length > 1 };
-    }
-
-    // OBJCTRA is in hours; the RA keyword is in degrees when it is a plain
-    // number, in hours when written as "hh mm ss". Dec is degrees either way.
-    let raDeg = NaN, decDeg = NaN;
-    let ra = parseAngle(kw["OBJCTRA"]);
-    if (ra)
-        raDeg = ra.value * 15.0;
-    else if ((ra = parseAngle(kw["RA"])) != null)
-        raDeg = ra.sexagesimal ? ra.value * 15.0 : ra.value;
-    let dec = parseAngle(kw["OBJCTDEC"]) || parseAngle(kw["DEC"]);
-    if (dec)
-        decDeg = dec.value;
-
-    // Only RA/Dec decide the mode: the field size is left to ASTAP (-fov 0)
-    var blindMode = false;
-    if (isNaN(raDeg) || isNaN(decDeg)) {
-        console.writeln("  No RA/Dec coordinates found - switching to blind solve mode (-r 179)");
-        blindMode = true;
-    } else if (raDeg < 0 || raDeg >= 360 || decDeg < -90 || decDeg > 90) {
-        console.warningln("  RA/Dec out of range (RA " + raDeg.toFixed(3) + ", Dec " + decDeg.toFixed(3) +
-                          ") - switching to blind solve mode (-r 179)");
-        blindMode = true;
-    }
-
-    // ASTAP's -ra is in HOURS and -spd is the south pole distance (Dec + 90)
-    var raHours = 0, spd = 0;
-    if (!blindMode) {
-        raHours = raDeg / 15.0;
-        spd = decDeg + 90.0;
-        console.writeln("  RA:  " + raDeg.toFixed(3) + " deg");
-        console.writeln("  Dec: " + decDeg.toFixed(3) + " deg");
-    }
-
-    let tempJpg = File.systemTempDirectory + "/astap_solve.jpg";
-
-    let exportWin = new ImageWindow(
-        view.image.width, view.image.height,
-        view.image.numberOfChannels, 16, false,
-        view.image.isColor, "temp_astap"
-    );
-
-    // The temporary window is closed even when the export fails or is aborted.
-    try {
-        exportWin.mainView.beginProcess(UndoFlag.NoSwapFile);
-        exportWin.mainView.image.assign(view.image);
-
-        // Auto-stretch if linear (median < 0.1) so ASTAP can detect stars
-        let median = exportWin.mainView.image.median();
-        if (median < 0.1) {
-            console.writeln("  Image is linear (median=" + median.toFixed(4) + ") - applying auto-stretch for ASTAP...");
-            let P = new PixelMath;
-            P.expression = "mtf(mtf(0.25,med($T)-min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1)),max(0,($T-min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1))/~min(max(0,med($T)+(-2.8)*1.4826*mdev($T)),1)))";
-            P.useSingleExpression = true;
-            P.createNewImage = false;
-            P.executeOn(exportWin.mainView);
-        }
-
-        exportWin.mainView.endProcess();
-        exportWin.saveAs(tempJpg, false, false, false, false);
-    } finally {
-        exportWin.forceClose();
-    }
-
-    let astapLimitS = blindMode ? ASTAP_TIMEOUT_BLIND_S : ASTAP_TIMEOUT_TARGETED_S;
-    if (blindMode)
-        console.writeln("\nRunning ASTAP blind solve (may take 1-3 minutes, stopped after " + astapLimitS / 60 + " min)...");
-    else
-        console.writeln("\nRunning ASTAP targeted solve (10-30 seconds, stopped after " + astapLimitS / 60 + " min)...");
-
-    // astap.exe is started directly with an argument list: no generated
-    // batch file and no cmd.exe, so paths with spaces or & are passed as-is.
-    let wcsFile = tempJpg.replace(".jpg", ".wcs");
-    let iniFile = tempJpg.replace(".jpg", ".ini");
-
-    // Deletes this solve's temp files; false if one of them is still there.
-    function removeAstapTempFiles(withImage) {
-        let files = withImage ? [tempJpg, wcsFile, iniFile] : [wcsFile, iniFile];
-        let allGone = true;
-        for (let i = 0; i < files.length; i++) {
-            try { if (File.exists(files[i])) File.remove(files[i]); } catch (e) {}
-            if (File.exists(files[i])) allGone = false;
-        }
-        return allGone;
-    }
-
-    // results left over from an earlier run would look like a successful solve
-    if (!removeAstapTempFiles(false)) {
-        console.criticalln("✘ Old ASTAP results in " + File.systemTempDirectory +
-                           " could not be deleted. Is another ASTAP still running?");
-        return false;
-    }
-
-    let astapDir = File.extractDrive(astapPath) + File.extractDirectory(astapPath);
-    let tempJpgWin = tempJpg.replace(new RegExp("/", "g"), "\\");
-    let astapArgs = ["-f", tempJpgWin];
-    if (blindMode) {
-        astapArgs = astapArgs.concat(["-r", "179"]);
-        console.writeln("ASTAP command: blind solve (-r 179, full sky search)");
-    } else {
-        astapArgs = astapArgs.concat(["-ra", raHours.toFixed(4), "-spd", spd.toFixed(3)]);
-        console.writeln("ASTAP command: targeted solve (RA=" + raHours.toFixed(4) + "h SPD=" + spd.toFixed(3) + ")");
-    }
-    astapArgs = astapArgs.concat(["-fov", "0", "-z", "0", "-wcs"]);
-    // display only: quote paths with spaces, and the console reads '&' as markup
-    let shown = [astapPath].concat(astapArgs).map(function(a) {
-        return a.indexOf(" ") >= 0 ? "\"" + a + "\"" : a;
-    }).join(" ");
-    console.writeln("  " + shown.replace(/&/g, "&amp;"));
-
-    let process = new ExternalProcess;
-    process.workingDirectory = astapDir;
-
-    // A program that cannot be started does not throw: it raises onError and
-    // then reports exit code 0, so the error has to be caught here.
-    let startError = null;
-    process.onError = function(errorCode) {
-        startError = errorCode;
-    };
-
-    // Without a limit a hanging ASTAP (or one whose window was closed while
-    // the process kept running) would freeze PixInsight in this loop. Abort
-    // in the Process Console stops ASTAP and the script. A script has to switch
-    // the Abort button on itself (as PI's ImageSolver does); otherwise it is
-    // only active while a PI process such as PixelMath is running.
-    let t0 = Date.now(), nextReportS = 30;
-    let failure = null, timedOut = false, aborted = false;
-    let prevAbortEnabled = console.abortEnabled;
-    console.abortEnabled = true;
-    try {
-        process.start(astapPath, astapArgs);
-
-        while (process.isStarting || process.isRunning) {
-            CoreApplication.processEvents();
-            if (!process.isStarting && !process.isRunning)
-                break;   // finished during processEvents: not a timeout
-            if (console.abortRequested) {
-                aborted = true;
-                break;
-            }
-            let elapsedS = (Date.now() - t0) / 1000;
-            if (elapsedS > astapLimitS) {
-                timedOut = true;
-                failure = "ASTAP did not finish within " + astapLimitS / 60 + " min and was stopped";
-                break;
-            }
-            if (elapsedS >= nextReportS) {
-                console.writeln("  ... ASTAP still running (" + nextReportS + " s)");
-                nextReportS += 30;
-            }
-            System.msleep(100);
-        }
-    } catch (error) {
-        failure = "Error running ASTAP: " + error;
-    }
-
-    // never leave ASTAP running behind the script
-    if (process.isStarting || process.isRunning) {
-        try { process.kill(); } catch (e) {}
-        let w0 = Date.now();
-        while (process.isRunning && Date.now() - w0 < 3000) {
-            CoreApplication.processEvents();
-            System.msleep(50);
-        }
-    }
-    console.abortEnabled = prevAbortEnabled;
-
-    let astapSeconds = ((Date.now() - t0) / 1000).toFixed(1);
-    if (aborted) {
-        removeAstapTempFiles(true);
-        throw new Error("Script cancelled by user.");
-    }
-    if (!failure && startError !== null)
-        failure = (startError === 0 ? "ASTAP could not be started: " + astapPath
-                                    : "ASTAP stopped unexpectedly (process error " + startError + ")");
-    if (!failure && process.exitCode !== 0)
-        failure = "ASTAP: " + astapExitText(process.exitCode) + " (exit code " + process.exitCode + ")";
-    if (failure) {
-        console.criticalln("✘ " + failure + " after " + astapSeconds + " s.");
-        if (timedOut && blindMode)
-            console.criticalln("  Add RA/Dec to the image (or check ASTAP's star database) and run again.");
-        removeAstapTempFiles(true);
-        return false;
-    }
-    console.writeln("  ASTAP finished (exit: 0) in " + astapSeconds + " s");
-
-    if (!File.exists(wcsFile)) {
-        console.criticalln("✘ WCS file not created");
-        removeAstapTempFiles(true);
-        return false;
-    }
-
-    if (File.exists(iniFile)) {
-        let iniContent = File.readTextFile(iniFile);
-        if (iniContent.indexOf("PLTSOLVD=T") < 0) {
-            console.criticalln("✘ Plate solve failed");
-            removeAstapTempFiles(true);
-            return false;
-        }
-    }
-
-    console.writeln("  ✔ ASTAP plate solve successful");
-
-    let wcsContent = File.readTextFile(wcsFile);
-    const cardLength = 80;
-    let wcsHeader = {};
-
-    for (let i = 0; i < wcsContent.length; i += cardLength) {
-        let card = wcsContent.substring(i, i + cardLength).trim();
-        if (card === "" || card.startsWith("END")) break;
-        if (card.indexOf("=") === -1) continue;
-
-        let key = card.substring(0, 8).trim().toUpperCase();
-        let valueStr = card.substring(10, 80).trim();
-        let parts = valueStr.split("/");
-        let valuePart = parts[0].trim();
-
-        if (valuePart.startsWith("'") && valuePart.endsWith("'")) {
-            valuePart = valuePart.substring(1, valuePart.length - 1);
-        }
-
-        wcsHeader[key] = valuePart;
-    }
-
-    console.writeln("  ✔ WCS parsed");
-
-    let newKeywords = [
-        new FITSKeyword("CTYPE1", "RA---TAN", "Coordinate type"),
-        new FITSKeyword("CTYPE2", "DEC--TAN", "Coordinate type"),
-        new FITSKeyword("CRVAL1", wcsHeader["CRVAL1"], "RA reference (deg)"),
-        new FITSKeyword("CRVAL2", wcsHeader["CRVAL2"], "Dec reference (deg)"),
-        new FITSKeyword("CRPIX1", wcsHeader["CRPIX1"], "Reference pixel X"),
-        new FITSKeyword("CRPIX2", wcsHeader["CRPIX2"], "Reference pixel Y"),
-        new FITSKeyword("CD1_1", wcsHeader["CD1_1"], "CD matrix"),
-        new FITSKeyword("CD1_2", wcsHeader["CD1_2"], "CD matrix"),
-        new FITSKeyword("CD2_1", wcsHeader["CD2_1"], "CD matrix"),
-        new FITSKeyword("CD2_2", wcsHeader["CD2_2"], "CD matrix"),
-        new FITSKeyword("RADECSYS", "ICRS", "Reference system")
-    ];
-
-    let existingKeywords = win.keywords;
-    let finalKeywords = [];
-
-    for (let i = 0; i < existingKeywords.length; i++) {
-        let name = existingKeywords[i].name;
-        if (name != "CTYPE1" && name != "CTYPE2" &&
-            name != "CRVAL1" && name != "CRVAL2" &&
-            name != "CRPIX1" && name != "CRPIX2" &&
-            name != "CD1_1" && name != "CD1_2" &&
-            name != "CD2_1" && name != "CD2_2" &&
-            name != "RADECSYS") {
-            finalKeywords.push(existingKeywords[i]);
-        }
-    }
-
-    for (let i = 0; i < newKeywords.length; i++) {
-        finalKeywords.push(newKeywords[i]);
-    }
-
-    win.keywords = finalKeywords;
-    console.writeln("  ✔ WCS keywords written");
-
-    removeAstapTempFiles(true);
-    return true;
-}
-
-// ASTAP command-line exit codes (errorlevel), from the ASTAP manual
-// (https://www.hnsky.org/astap.htm).
-function astapExitText(code)
-{
-    switch (code) {
-        case 1:  return "no solution found";
-        case 2:  return "not enough stars detected";
-        case 16: return "error reading the image file";
-        case 32: return "no star database found";
-        case 33: return "error reading the star database";
-        case 34: return "error updating the input file";
-        default: return "unknown error";
-    }
-}
-
 // Returns an astrometric-solution property (e.g. "CreatorModule", "Catalog")
 // for a view, or null. The modern ImageSolver engine writes the STANDARD
 // "AstrometricSolution:*" property namespace; older/legacy solutions used
@@ -3037,6 +2703,12 @@ function configureSolverForAutoSolve(solver) {
     cfg.tryApparentCoordinates = true;                  // retry if metadata holds apparent coords
     cfg.autoPSF                = false;                 // "much slower, improvement marginal"
 
+    // Blind solver (ImageSolver 6.6.0): Automatic = used when the image has no
+    // usable RA/Dec or scale, or when the first alignment with them fails.
+    // Needs the astrometric index set in the Gaia process preferences.
+    cfg.blindSolver = WorkflowParameters.enableBlindSolve ? BlindSolverMode.Automatic
+                                                          : BlindSolverMode.Disabled;
+
     // Suppress all optional diagnostic outputs (each would open a new window
     // or write a CSV during an automated run):
     cfg.showStars              = false;
@@ -3071,10 +2743,10 @@ function openImageSolver() {
         let solver = new ImageSolver();
         solver.initialize(win, false /*prioritizeSettings*/);
 
-        // Observation-time fallback: Gaia/XPSD catalogs require a valid
-        // observation time or ImageSolver refuses to run. initialize() reads it
-        // from the image; if the master lacks DATE-OBS, try to recover it from
-        // the image's WCS keywords (same approach as WBPP's BPP-Solver).
+        // Observation time: initialize() reads it from the image; if the master
+        // lacks DATE-OBS, try to recover it from the image's WCS keywords (same
+        // approach as WBPP's BPP-Solver). Without one, ImageSolver 6.6.0 uses
+        // J2000.0 star places and says so on the console.
         if (!solver.metadata.observationTime) {
             try {
                 let wcs = new WCSKeywords();
@@ -3082,9 +2754,6 @@ function openImageSolver() {
                 if (wcs.observationTime)
                     solver.metadata.observationTime = wcs.observationTime;
             } catch (e) {}
-            if (!solver.metadata.observationTime)
-                console.warningln("  Note: image has no observation time (DATE-OBS); " +
-                                  "Gaia catalogs require one - the solve may fail.");
         }
 
         // Pin a minimal, known-good solver configuration (overrides whatever the
@@ -3114,6 +2783,8 @@ function openImageSolver() {
         if (shIsCancel(error))
             throw error;   // Abort means cancel, not "solve it by hand"
         console.criticalln("\n⚠  ImageSolver failed: " + shErrorText(error));
+        if (WorkflowParameters.enableBlindSolve && shAstrometricIndexPath() == "")
+            shPrintIndexHelp();
     }
 
     // Manual fallback (kept intact): let the user solve by hand and re-run.
@@ -3181,7 +2852,6 @@ function smartPlateSolve() {
         console.writeln("DECISION: ImageSolver can work directly");
         console.writeln("-".repeat(80));
         console.writeln("\n✔ Image has sufficient FITS data");
-        console.writeln("✔ Skipping ASTAP (not needed)\n");
 
         let solveSuccess = openImageSolver();
 
@@ -3195,34 +2865,26 @@ function smartPlateSolve() {
         }
 
     } else {
-        // Check if ASTAP is enabled
-        if (!WorkflowParameters.enableASTAP) {
-            console.writeln("DECISION: ASTAP needed but is DISABLED");
-            console.writeln("-".repeat(80));
-            console.writeln("\nMissing data:");
-            if (!hasCoordinates) console.writeln("  ✘ RA/Dec coordinates");
-            if (!hasImageScale) console.writeln("  ✘ Image scale");
-            console.writeln("\n⚠  ASTAP is disabled. Cannot proceed with plate solving.");
-            console.writeln("Either enable ASTAP or manually add WCS keywords.\n");
-            console.writeln("=".repeat(80) + "\n");
-            return false;
-        }
-
-        console.writeln("DECISION: ASTAP needed");
+        console.writeln("DECISION: blind solve needed");
         console.writeln("-".repeat(80));
         console.writeln("\nMissing data:");
         if (!hasCoordinates) console.writeln("  ✘ RA/Dec coordinates");
         if (!hasImageScale) console.writeln("  ✘ Image scale");
         console.writeln();
 
-        if (!runASTAPWorkflow()) {
-            console.criticalln("✘ ASTAP workflow failed");
+        if (!WorkflowParameters.enableBlindSolve) {
+            console.writeln("⚠  Blind solve is disabled. Cannot proceed with plate solving.");
+            console.writeln("Either enable blind solve or add the missing FITS keywords.\n");
+            console.writeln("=".repeat(80) + "\n");
             return false;
         }
 
-        console.writeln("\n" + "=".repeat(80));
-        console.writeln("✔ ASTAP COMPLETE");
-        console.writeln("=".repeat(80));
+        if (shAstrometricIndexPath() == "") {
+            console.warningln("⚠  No astrometric index file is set - blind solve not available.");
+            shPrintIndexHelp();
+            console.writeln("\n" + "=".repeat(80) + "\n");
+            return false;
+        }
 
         let solveSuccess = openImageSolver();
 
@@ -3233,9 +2895,9 @@ function smartPlateSolve() {
             console.writeln("After ImageSolver completes, run this script again.\n");
             console.writeln("=".repeat(80) + "\n");
             return false;
-            }
         }
     }
+}
 
 // ============================================================
 // PART 2: WORKFLOW FUNCTIONS (SPFC + Previews + MGC)

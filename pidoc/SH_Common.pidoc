@@ -7,7 +7,8 @@
 % Checked against Part 1 v2.5 / Part 2 v2.3 TEST, 2026-10-11.
 % "Files, Programs and Internet Access" checked against Part 1 v2.5.11 /
 % Part 2 v2.3.8, 2026-10-23 (CPD program rules: document external programs,
-% network connections and file locations).
+% network connections and file locations). ASTAP removed for Part 1 v2.6.0,
+% 2026-10-30 (CPD rule 5.8): blind solving by ImageSolver 6.6.0.
 % ----------------------------------------------------------------------------
 
 \subsection { \label requirements Requirements } {
@@ -16,7 +17,7 @@
 
    \list[spaced] {
       { Windows operating system. }
-      { PixInsight 1.9.5 or later. }
+      { PixInsight 1.9.6 or later. }
       { An image from a \s {one-shot colour (OSC)} camera, captured with a
         broadband, light-pollution or single dual-narrowband (DNB) filter.
         The RGB channels are \e not split into separate greyscale images. }
@@ -29,8 +30,12 @@
 
    \list[spaced] {
       { The MARS database (any drive). }
-      { \xref {https://www.hnsky.org/astap.htm} {ASTAP} with the D50 star
-        database, preferably in \c {C:\\Program Files\\astap}. }
+      { For images without coordinates or image scale in their FITS
+        keywords: the Gaia astrometric index file
+        (\c {gdr3-idx-1.0.0-g17.xpsd}, about 1.8 GB, from the PixInsight
+        Software Distribution), set as \e {Astrometric Index File} in
+        \m {Process > Astrometry > Gaia} preferences. ImageSolver's blind
+        solver needs it. }
    }
 
    \s {Part 2}
@@ -54,7 +59,7 @@
    }
 
    \note {
-      If the scripts can't find the MARS database or ASTAP the first time
+      If the scripts can't find the MARS database the first time
       they run, they ask you to locate it. The path is saved for later runs.
       If BlurXTerminator or NoiseXTerminator isn't installed, that step is
       skipped. If StarXTerminator isn't installed, Part 2 uses StarNet2
@@ -71,19 +76,13 @@
    start or download.
 
    \list[spaced] {
-      { \s {Settings:} workflow and equipment settings, and the MARS and
-        ASTAP paths, are stored in PixInsight's own settings (\e {Reset
+      { \s {Settings:} workflow and equipment settings, and the MARS
+        path, are stored in PixInsight's own settings (\e {Reset
         Settings} clears them). }
-      { \s {Part 1, ASTAP:} if plate solving needs it, Part 1 starts
-        \c astap.exe from the location you chose. It exports a temporary
-        image (\c astap_solve.jpg) to the system temporary folder; ASTAP
-        writes its \c .wcs and \c .ini results next to it. All three are
-        deleted when the solve ends, successful or not. ASTAP is stopped
-        after 2 minutes (targeted solve) or 10 minutes (blind solve);
-        \e Abort in the Process Console stops it sooner. }
       { \s {Part 1, ImageSolver:} uses PixInsight's own ImageSolver, which
         writes temporary star lists (\c {stars*.csv}) to the system temporary
-        folder. }
+        folder. Its blind solver reads the astrometric index file set in
+        the Gaia preferences. The scripts start no external programs. }
       { \s {Part 1, MARS:} the script looks for \c .xmars files in the
         PixInsight folders and in common \c Astro folders, reading only. }
       { \s {Part 1, separation profiles:} profiles are \c .txt files in the

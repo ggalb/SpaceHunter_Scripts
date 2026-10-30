@@ -15,7 +15,7 @@
 \script {SH Lazy Workflow Part 1}
 
 \keywords {
-   Space Hunter, OSC, ASTAP, ImageSolver, SPFC, flux calibration, RGB, dual-narrowband,
+   Space Hunter, OSC, ImageSolver, blind solve, SPFC, flux calibration, RGB, dual-narrowband,
    Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection,
    DynamicBackgroundExtraction
 }
@@ -79,10 +79,10 @@
       \table[caption, header, numbered: part1_defaults] {
          { \tbltag Workflow steps, defaults and dependencies }
          { {Step} {Default} {Dependencies} }
-         { { \lref step_solve {1 Plate Solve} (with ASTAP) } {On}
-           { Can run alone. ASTAP can only be on while Plate Solve is on. } }
+         { { \lref step_solve {1 Plate Solve} (with blind solve) } {On}
+           { Can run alone. Blind solve can only be on while Plate Solve is on. } }
          { { \lref step_spfc {2 SPFC} } {On}
-           { Turning it on also turns on Plate Solve and ASTAP. } }
+           { Turning it on also turns on Plate Solve and blind solve. } }
          { { \lref separation {Ha/OIII separation} } {Off}
            { Only in narrowband filters mode. Runs just before SPFC. } }
          { { \lref step_previews {3 Previews (MGC only)} } {On, 4 previews}
@@ -106,10 +106,18 @@
       \list[spaced] {
          { If coordinates and image scale are present, the script solves the
            image with PixInsight's ImageSolver engine. No dialog opens. }
-         { If they are missing and \s {ASTAP Blind Solve} is checked (the
-           default), ASTAP runs first and writes the WCS keywords. A blind
-           solve can take 10--30 seconds. }
+         { If they are missing and \s {Blind solve (if needed)} is checked
+           (the default), ImageSolver finds the position and scale from the
+           stars alone. It also does this when solving with the keywords
+           fails. }
       }
+
+      Blind solving needs the Gaia astrometric index file, set in
+      \m {Process > Astrometry > Gaia} preferences (see
+      \lref requirements Requirements). The Plate Solve section of the
+      dialog shows the index file in use, or \e {No astrometric index set}.
+      Without it, images that lack coordinates or image scale are not
+      solved, and the console explains what to set up.
 
       If solving fails, the console says so. Solve the image manually with
       \m {Script > Image Analysis > ImageSolver} and run Part 1 again.
@@ -360,10 +368,9 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
 }
 
 \acknowledgments {
-   Thanks to the PixInsight team (Pleiades Astrophoto) for PixInsight; to
-   Franklin Marek (SetiAstro) for Blind Solver 2000, whose approach inspired
-   the ASTAP solver step; and to Han Kleijn for ASTAP. Thanks also to the
-   beta testers Jeff, Mike and Stefan.
+   Thanks to the PixInsight team (Pleiades Astrophoto) for PixInsight and
+   ImageSolver with its blind solver. Thanks also to the beta testers Jeff,
+   Mike and Stefan.
 }
 
 \relatedscripts {
