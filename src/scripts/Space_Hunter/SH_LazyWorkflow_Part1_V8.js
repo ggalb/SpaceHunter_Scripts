@@ -2,21 +2,22 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.6.3<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.0<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
    Includes: Equipment selection with collapsible sections,<br/>\
    ImageSolver with blind solve, optional Ha/OIII separation for dual-band images, SPFC,<br/>\
    variable previews (1-4), MultiscaleGradientCorrection with<br/>\
-   per-preview gradient scale selection and instant background model apply.<br/>\
+   per-preview gradient scale selection, optional automatic scale factors<br/>\
+   and instant background model apply.<br/>\
    Optional GC and cDBE, New Instance support.<br/>\
    <br/>\
    Copyright &copy; 2026 Georg G Albrecht. MIT License.<br/>\
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.6.3
+// Space Hunter Lazy Workflow Part 1 v2.7.0
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -109,6 +110,14 @@
 //       de-duplicated). Test: arrow cursor on the model / GC result panels.
 // v2.6.3: Panel cursor test removed again - PixInsight shows its busy
 //       cursor while any script runs, a panel cannot override it.
+// v2.7.0: MGC scale factors Standard (1.0) / Automatic / Both (MGC
+//       1.9.6 autoScaleFactors). Both = paired previews BM_<scale> and
+//       BM_<scale>_autoSF, auto run first per scale (MARS work is cached
+//       across scales, test 2026-11-01). Factors + correlation shown in the
+//       console, the model panel (low correlation flagged) and HISTORY.
+//       The factors don't depend on the gradient scale (MGC derives them at
+//       its own 256/1024 analysis scales), so the panel shows them once in
+//       its header when all automatic models agree.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -307,7 +316,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.6.3"
+#define SCRIPT_VERSION "v2.7.0"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -391,6 +400,21 @@ var GRADIENT_SCALE_VALUES = [128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 40
 // Default gradient scales for each preview position
 var DEFAULT_GRADIENT_SCALES = [768, 1024, 2048, 3072];
 
+// MGC scale factor modes (dialog order) and the correlation below which an
+// automatic factor is flagged in the console and the model panel.
+// 0.75 from tests 2026-11-01: UVIR at 0.82-0.88 still gave the flatter
+// background with auto; ALPT G/B at 0.63-0.67 stays flagged.
+var MGC_SCALE_MODES = ["standard", "auto", "both"];
+var MGC_SCALE_MODE_LABELS = ["Standard (1.0)", "Automatic", "Both (compare)"];
+var MGC_LOW_CORRELATION = 0.75;
+var MGC_AUTO_SUFFIX = "_autoSF";
+
+function mgcScaleModeIndex(mode)
+{
+   var idx = MGC_SCALE_MODES.indexOf(mode);
+   return idx >= 0 ? idx : 0;
+}
+
 // ============================================================
 // WORKFLOW PARAMETERS (save/load for New Instance)
 // ============================================================
@@ -454,6 +478,9 @@ var WorkflowParameters = {
    mgcGreenFilter:    "OIII",
    mgcBlueFilter:     "OIII",
 
+   // MGC scale factors: "standard" (1.0), "auto" (autoScaleFactors), "both"
+   mgcScaleMode:      "standard",
+
    // Alternative workflows: sections collapsed unless the user opened them
    gcExpanded:        false,
    dbeExpanded:       false,
@@ -508,6 +535,7 @@ var WorkflowParameters = {
       Parameters.set("mgcRedFilter",     this.mgcRedFilter);
       Parameters.set("mgcGreenFilter",   this.mgcGreenFilter);
       Parameters.set("mgcBlueFilter",    this.mgcBlueFilter);
+      Parameters.set("mgcScaleMode",     this.mgcScaleMode);
    },
    // -----------------------------------------------------------
    // Save user preferences to persistent Settings store
@@ -552,6 +580,7 @@ var WorkflowParameters = {
          mgcRedFilter:        this.mgcRedFilter,
          mgcGreenFilter:      this.mgcGreenFilter,
          mgcBlueFilter:       this.mgcBlueFilter,
+         mgcScaleMode:        this.mgcScaleMode,
          gcExpanded:          this.gcExpanded,
          dbeExpanded:         this.dbeExpanded
       };
@@ -607,6 +636,7 @@ var WorkflowParameters = {
             if (prefs.mgcRedFilter        !== undefined) this.mgcRedFilter        = prefs.mgcRedFilter;
             if (prefs.mgcGreenFilter      !== undefined) this.mgcGreenFilter      = prefs.mgcGreenFilter;
             if (prefs.mgcBlueFilter       !== undefined) this.mgcBlueFilter       = prefs.mgcBlueFilter;
+            if (prefs.mgcScaleMode        !== undefined) this.mgcScaleMode        = prefs.mgcScaleMode;
             if (prefs.gcExpanded          !== undefined) this.gcExpanded          = prefs.gcExpanded;
             if (prefs.dbeExpanded         !== undefined) this.dbeExpanded         = prefs.dbeExpanded;
          }
@@ -651,6 +681,7 @@ var WorkflowParameters = {
       this.mgcRedFilter        = "Ha";
       this.mgcGreenFilter      = "OIII";
       this.mgcBlueFilter       = "OIII";
+      this.mgcScaleMode        = "standard";
       try {
          Settings.remove(SETTINGS_KEY_USERPREFS);
       } catch (e) {}
@@ -740,6 +771,8 @@ var WorkflowParameters = {
          this.mgcGreenFilter = Parameters.getString("mgcGreenFilter");
       if (Parameters.has("mgcBlueFilter"))
          this.mgcBlueFilter = Parameters.getString("mgcBlueFilter");
+      if (Parameters.has("mgcScaleMode"))
+         this.mgcScaleMode = Parameters.getString("mgcScaleMode");
    },
 
    // -----------------------------------------------------------
@@ -2033,6 +2066,49 @@ constructor()
       mgcSizers.push( sz );
    }
 
+   // MGC scale factors: Standard (1.0) / Automatic / Both
+   this.mgcScaleMode_Label = new Label( this );
+   this.mgcScaleMode_Label.text = "Scale factors:";
+   this.mgcScaleMode_Label.textAlignment = TextAlignment.Right | TextAlignment.VertCenter;
+   this.mgcScaleMode_Label.setFixedWidth( labelWidth );
+
+   this.mgcScaleMode_ComboBox = new ComboBox( this );
+   this.mgcScaleMode_ComboBox.editEnabled = false;
+   for ( var m = 0; m < MGC_SCALE_MODES.length; m++ )
+      this.mgcScaleMode_ComboBox.addItem( MGC_SCALE_MODE_LABELS[m] );
+   this.mgcScaleMode_ComboBox.currentItem = mgcScaleModeIndex( WorkflowParameters.mgcScaleMode );
+   this.mgcScaleMode_ComboBox.toolTip = "<p><b>Standard (1.0):</b> MGC scale factors fixed at 1.0 " +
+      "(previous behaviour).</p>" +
+      "<p><b>Automatic:</b> MGC computes one factor per channel so that no image structure " +
+      "survives in the model. Often removes less nebula signal; image-dependent, not always better. " +
+      "About the same time as Standard.</p>" +
+      "<p><b>Both:</b> two previews per scale (BM_&lt;scale&gt; and BM_&lt;scale&gt;_autoSF) " +
+      "to compare in the model panel. MGC runs twice per scale.</p>" +
+      "<p>The model panel shows the factors and their correlation; channels with " +
+      "correlation below " + MGC_LOW_CORRELATION.toFixed(2) + " are flagged.</p>";
+
+   this.mgcScaleMode_Warning = new ToolButton( this );
+   this.mgcScaleMode_Warning.icon = this.scaledResource( ":/messages/warning.png" );
+   this.mgcScaleMode_Warning.setScaledFixedSize( 20, 20 );
+   this.mgcScaleMode_Warning.toolTip = "<p><b>Both doubles the MGC runs.</b> The MARS part is done " +
+      "once, but every scale is modelled twice: about 60-70 % more MGC time than " +
+      "Standard (measured with 4 scales).</p>";
+   this.mgcScaleMode_Warning.visible = (WorkflowParameters.mgcScaleMode == "both");
+
+   this.mgcScaleMode_ComboBox.onItemSelected = function( idx )
+   {
+      WorkflowParameters.mgcScaleMode = MGC_SCALE_MODES[idx];
+      dlg.mgcScaleMode_Warning.visible = (WorkflowParameters.mgcScaleMode == "both");
+      WorkflowParameters.saveUserPrefs();
+   };
+
+   this.mgcScaleMode_Sizer = new HorizontalSizer;
+   this.mgcScaleMode_Sizer.spacing = 6;
+   this.mgcScaleMode_Sizer.add( this.mgcScaleMode_Label );
+   this.mgcScaleMode_Sizer.add( this.mgcScaleMode_ComboBox );
+   this.mgcScaleMode_Sizer.add( this.mgcScaleMode_Warning );
+   this.mgcScaleMode_Sizer.addStretch();
+
    // MGC Filter selection
    var MGC_FILTERS = ["L", "R", "G", "B", "Ha", "OIII", "SII", "IR"];
 
@@ -2162,6 +2238,7 @@ constructor()
    this.mgc_Control.sizer.spacing = 4;
    for ( var p = 0; p < 4; p++ )
       this.mgc_Control.sizer.add( mgcSizers[p] );
+   this.mgc_Control.sizer.add( this.mgcScaleMode_Sizer );
    this.mgc_Control.sizer.add( this.mgcFilters_CheckBox_Sizer );
    this.mgc_Control.sizer.add( this.mgcFilterRows_Control );
 
@@ -2461,6 +2538,8 @@ constructor()
          dlg.gradientScaleCombo[i].currentItem = WorkflowParameters.gradientScaleToComboIndex(
             WorkflowParameters.getGradientScale(i));
       dlg.updateGradientScaleStates();
+      dlg.mgcScaleMode_ComboBox.currentItem = mgcScaleModeIndex( "standard" );
+      dlg.mgcScaleMode_Warning.visible = false;
       dlg.mgcFilters_CheckBox.checked = false;
       dlg.mgcFilterRows_Control.visible = false;
       dlg.mgcGray_ComboBox.currentItem = mgcFilterIndex( "L" );
@@ -2614,6 +2693,8 @@ function selectEquipment()
       console.writeln("  Gradient scales:");
       for (var i = 0; i < WorkflowParameters.numPreviews; i++)
          console.writeln("    Preview" + i + ": " + WorkflowParameters.getGradientScale(i));
+      console.writeln("  Scale factors: " +
+         MGC_SCALE_MODE_LABELS[mgcScaleModeIndex(WorkflowParameters.mgcScaleMode)]);
    }
 
    console.writeln("=".repeat(80) + "\n");
@@ -3273,6 +3354,10 @@ function runSPFC()
 // ============================================================
 
 // count: number of previews; defaults to the Previews section setting.
+// MGC runs planned by createPreviews: [{id, scale, auto, group}], null when
+// MGC runs on previews the script did not create.
+var shMgcPlan = null;
+
 function createPreviews(prefix, count)
 {
    if (prefix === undefined) prefix = "BM_";
@@ -3301,20 +3386,35 @@ function createPreviews(prefix, count)
    let rect = new Rect( 0, 0, img.width, img.height );
 
    let previews = [];
+   // MGC previews: one entry per MGC run, read by runMGCOnPreviews.
+   let mgcRuns = (prefix !== "GC_");
+   if ( mgcRuns )
+      shMgcPlan = [];
 
    for ( let i = 0; i < numPreviews; ++i )
    {
       let scale = WorkflowParameters.getGradientScale(i);
-      let id = (prefix === "BM_") ? (prefix + scale) :
-               (prefix === "GC_") ? (i === 0 ? prefix : prefix + i) :
-               (i === 0 ? prefix : prefix + i);
-      // Same scale twice: BM_1024_1 instead of PixInsight's automatic BM_10241,
-      // which reads like a scale of 10241. Same numbering as +Previews.
-      for ( let k = 1; previews.some( function( p ) { return p.id == id; } ); ++k )
-         id = prefix + scale + "_" + k;
-      let pv = win.createPreview( rect, id );
-      previews.push( pv );
-      console.writeln( "Created preview: " + pv.id );
+      let base = (prefix === "BM_") ? (prefix + scale) :
+                 (prefix === "GC_") ? (i === 0 ? prefix : prefix + i) :
+                 (i === 0 ? prefix : prefix + i);
+      let variants = !mgcRuns ? [false] :
+                     (WorkflowParameters.mgcScaleMode == "both") ? [false, true] :
+                     [WorkflowParameters.mgcScaleMode == "auto"];
+      for ( let v = 0; v < variants.length; ++v )
+      {
+         let auto = variants[v];
+         let stem = base + (auto ? MGC_AUTO_SUFFIX : "");
+         let id = stem;
+         // Same scale twice: BM_1024_1 instead of PixInsight's automatic BM_10241,
+         // which reads like a scale of 10241. Same numbering as +Previews.
+         for ( let k = 1; previews.some( function( p ) { return p.id == id; } ); ++k )
+            id = stem + "_" + k;
+         let pv = win.createPreview( rect, id );
+         previews.push( pv );
+         if ( mgcRuns )
+            shMgcPlan.push( { id: pv.id, scale: scale, auto: auto, group: i } );
+         console.writeln( "Created preview: " + pv.id );
+      }
    }
 
    // Zoom each preview to fit
@@ -3352,7 +3452,9 @@ function createPreviews(prefix, count)
 
 // Builds the MGC instance used both for the preview runs and for the tool
 // opened at the end, so the opened tool always carries the run's settings.
-function buildMGCInstance(gradientScale, showGradientModel)
+// autoScale: MGC computes the scale factors itself (autoScaleFactors);
+// otherwise they stay at 1.0.
+function buildMGCInstance(gradientScale, showGradientModel, autoScale)
 {
    var P = new MultiscaleGradientCorrection;
    P.useMARSDatabase = true;
@@ -3377,25 +3479,157 @@ function buildMGCInstance(gradientScale, showGradientModel)
    P.scaleFactorRK = 1.0000;
    P.scaleFactorG = 1.0000;
    P.scaleFactorB = 1.0000;
+   P.autoScaleFactors = (autoScale === true);
    P.showGradientModel = showGradientModel;
    P.command = "";
    return P;
 }
 
-function runMGC(view, gradientScale, previewName)
+// Scale factors MGC used, per preview id: {auto, sf: [R,G,B], corr: [R,G,B]}.
+// Automatic factors are not written back to scaleFactor*; they are only in
+// the read-only channelData table of the instance that ran (columns:
+// filterId, referenceFluxScaleFactor, targetFluxScaleFactor, referenceFWHM,
+// coefficient, scaleFactor, correlation, automatic).
+var shMgcFactors = {};
+
+function mgcReadFactors(P)
+{
+   var cd = P.channelData;
+   if (!P.autoScaleFactors || !cd || cd.length < 3)
+      return { auto: false, sf: [P.scaleFactorRK, P.scaleFactorG, P.scaleFactorB], corr: null };
+   var rows = cd.slice(cd.length - 3);
+   return {
+      auto: true,
+      sf:   rows.map(function(r) { return Number(r[5]); }),
+      corr: rows.map(function(r) { return Number(r[6]); })
+   };
+}
+
+// Factors of a preview's model: from this run, else from the MGC step in
+// the preview's history (factors unknown for an automatic run then).
+function mgcFactorsOf(preview, P)
+{
+   var f = shMgcFactors[preview.id];
+   if (f)
+      return f;
+   if (P && P.autoScaleFactors)
+      return { auto: true, sf: null, corr: null };
+   return { auto: false, sf: P ? [P.scaleFactorRK, P.scaleFactorG, P.scaleFactorB] : [1, 1, 1], corr: null };
+}
+
+// "auto SF 1.182 / 0.848! / 0.968!" ("!" = low correlation) or "SF 1.0".
+function mgcFactorsText(f, flag)
+{
+   if (!f.auto)
+   {
+      var std = f.sf.every(function(v) { return v == 1; });
+      return std ? "SF 1.0" : "SF " + f.sf.map(function(v) { return v.toFixed(3); }).join(" / ");
+   }
+   if (!f.sf)
+      return "auto SF";
+   if (flag === undefined) flag = "!";
+   return "auto SF " + f.sf.map(function(v, c) {
+      return v.toFixed(3) + (f.corr[c] < MGC_LOW_CORRELATION ? flag : "");
+   }).join(" / ");
+}
+
+function mgcCorrelationText(f)
+{
+   if (!f.auto || !f.corr)
+      return "";
+   return "correlation R/G/B " + f.corr.map(function(v) { return v.toFixed(3); }).join(" / ");
+}
+
+function mgcSameFactors(a, b)
+{
+   for (var c = 0; c < 3; ++c)
+      if (Math.abs(a.sf[c] - b.sf[c]) > 5e-4)
+         return false;
+   return true;
+}
+
+// The automatic factors when every automatic model with known factors has the
+// same ones (normal case: they don't depend on the gradient scale), else null.
+function mgcSharedFactors(previews)
+{
+   var shared = null;
+   for (var i = 0; i < previews.length; ++i)
+   {
+      var f = mgcFactorsOf(previews[i], bgmMgcInstanceOf(previews[i]));
+      if (!f.auto || !f.sf || !f.corr)
+         continue;
+      if (shared == null)
+         shared = f;
+      else if (!mgcSameFactors(f, shared))
+         return null;
+   }
+   return shared;
+}
+
+// Model panel header lines for the automatic factors (shared: from
+// mgcSharedFactors; anyAuto: the panel holds automatic models at all).
+function mgcFactorsHeader(shared, anyAuto)
+{
+   if (!anyAuto)
+      return "";
+   var flagged = false;
+   var text = "";
+   if (shared)
+   {
+      var corr = shared.corr.map(function(v) {
+         if (v < MGC_LOW_CORRELATION) { flagged = true; return v.toFixed(3) + " ⚠"; }
+         return v.toFixed(3);
+      });
+      text = "<br/>Automatic scale factors R/G/B (all scales): <b>" +
+         shared.sf.map(function(v) { return v.toFixed(3); }).join(" / ") + "</b>" +
+         "<br/>Correlation R/G/B: " + corr.join(" / ");
+   }
+   else
+      flagged = true;   // per-row factors may carry a flag
+   if (flagged)
+      text += "<br/>⚠ = correlation below " + MGC_LOW_CORRELATION.toFixed(2) +
+         ": that channel's automatic factor is uncertain - compare with the 1.0 model.";
+   return text;
+}
+
+function mgcLogFactors(f)
+{
+   if (!f.auto)
+   {
+      console.writeln("Scale factors: " + mgcFactorsText(f));
+      return;
+   }
+   console.writeln("Automatic scale factors R/G/B: " +
+      f.sf.map(function(v) { return v.toFixed(4); }).join(" / ") +
+      "   (" + mgcCorrelationText(f) + ")");
+   var low = [];
+   for (var c = 0; c < 3; ++c)
+      if (f.corr[c] < MGC_LOW_CORRELATION)
+         low.push("RGB"[c]);
+   if (low.length > 0)
+      console.warningln("⚠  Low correlation (< " + MGC_LOW_CORRELATION.toFixed(2) + ") in " +
+         low.join("/") + ": the automatic factor there is uncertain - compare with the 1.0 model.");
+}
+
+function runMGC(view, gradientScale, previewName, autoScale)
 {
    console.writeln("\n" + "-".repeat(80));
    console.writeln("Processing: " + previewName);
-   console.writeln("Gradient Scale: " + gradientScale);
+   console.writeln("Gradient Scale: " + gradientScale +
+      "   Scale factors: " + (autoScale ? "automatic" : "1.0"));
    console.writeln("-".repeat(80));
 
    // Preview runs keep the gradient model windows for comparing scales.
-   var P = buildMGCInstance(gradientScale, true);
+   var P = buildMGCInstance(gradientScale, true, autoScale);
 
+   var t0 = Date.now();
    if (!P.executeOn(view))
       throw new Error("MultiscaleGradientCorrection failed on " + previewName);
 
-   console.writeln(previewName + " completed successfully.");
+   var f = mgcReadFactors(P);
+   shMgcFactors[view.id] = f;
+   mgcLogFactors(f);
+   console.writeln(previewName + " completed in " + ((Date.now() - t0) / 1000).toFixed(1) + " s.");
 }
 
 // Pause after each preview's MGC run so the user can see the result before the
@@ -3459,20 +3693,20 @@ function runMGCOnPreviews()
 
    console.writeln("Found " + previews.length + " preview(s) in image: " + win.mainView.id + "\n");
 
-   if (previews.length < numPreviews)
+   var runs = mgcRunOrder(previews);
+   if (runs.length == 0)
       throw new Error("This script requires " + numPreviews + " previews. Found only " + previews.length);
 
-   for (var i = 0; i < numPreviews; i++)
+   for (var i = 0; i < runs.length; i++)
    {
-      var preview = previews[i];
-      var scale = WorkflowParameters.getGradientScale(i);
+      var preview = runs[i].preview;
 
-      console.writeln("Processing preview " + (i + 1) + " of " + numPreviews + ": " + preview.id);
+      console.writeln("Processing preview " + (i + 1) + " of " + runs.length + ": " + preview.id);
 
       // Make the preview being processed the active tab, so the user follows along.
       showPreview(win, preview);
 
-      runMGC(preview, scale, preview.id);
+      runMGC(preview, runs[i].scale, preview.id, runs[i].auto);
 
       // The preview now holds this scale's gradient model (showGradientModel);
       // bring it back to the front and hold it before moving on to the next scale.
@@ -3488,9 +3722,48 @@ function runMGCOnPreviews()
    var mgcSec = (mgcElapsed % 60).toFixed(2);
    console.writeln(mgcMin > 0 ? (mgcMin + "m " + mgcSec + "s") : (mgcSec + "s"));
    console.writeln("\nGradient scales applied:");
-   for (var i = 0; i < numPreviews; i++)
-      console.writeln("  " + previews[i].id + ": " + WorkflowParameters.getGradientScale(i));
+   for (var i = 0; i < runs.length; i++)
+      console.writeln("  " + runs[i].preview.id + ": " + runs[i].scale + ", " +
+         mgcFactorsText(shMgcFactors[runs[i].preview.id]));
    console.writeln("\n");
+}
+
+// MGC runs as [{preview, scale, auto}]. From createPreviews' plan when it
+// made the previews (per scale the automatic run first: the run after it at
+// the same scale reuses more of MGC's cache, test 2026-11-01), else the
+// window's first numPreviews previews with the dialog's scales; in Both mode
+// a preview named *_autoSF* there gets the automatic factors.
+function mgcRunOrder(previews)
+{
+   var byId = {};
+   for (var i = 0; i < previews.length; ++i)
+      byId[previews[i].id] = previews[i];
+
+   var runs = [];
+   if (shMgcPlan != null && shMgcPlan.length > 0 &&
+       shMgcPlan.every(function(e) { return byId[e.id] !== undefined; }))
+   {
+      var plan = shMgcPlan.slice();
+      plan.sort(function(a, b) {
+         if (a.group != b.group) return a.group - b.group;
+         return (b.auto ? 1 : 0) - (a.auto ? 1 : 0);
+      });
+      for (var i = 0; i < plan.length; ++i)
+         runs.push({ preview: byId[plan[i].id], scale: plan[i].scale, auto: plan[i].auto });
+      return runs;
+   }
+
+   var numPreviews = WorkflowParameters.numPreviews;
+   if (previews.length < numPreviews)
+      return runs;
+   var mode = WorkflowParameters.mgcScaleMode;
+   for (var i = 0; i < numPreviews; ++i)
+      runs.push({
+         preview: previews[i],
+         scale: WorkflowParameters.getGradientScale(i),
+         auto: mode == "auto" || (mode == "both" && previews[i].id.indexOf(MGC_AUTO_SUFFIX) >= 0)
+      });
+   return runs;
 }
 
 // ============================================================
@@ -3875,7 +4148,9 @@ function applyAdaptiveAutoSTF(targetWindow)
 // ------------------------------------------------------------
 // MGC keeps only its LAST run cached: re-applying the last scale takes ~2 s,
 // any other scale is a full recompute (measured 2026-10-05 on a 12438x8264
-// image: ~32 s at 1024, ~210 s at 3072).
+// image: ~32 s at 1024, ~210 s at 3072). The MARS / photometry part (~200 s
+// on the first run) is cached across scale and scale-factor changes
+// (test 2026-11-01 on two ~12k x 8k images).
 //
 // The preview runs use showGradientModel = true, which makes MGC write the
 // GRADIENT MODEL into each full-frame preview. MGC's correction is, per
@@ -3906,7 +4181,8 @@ function bgmDescribe(P)
           ", structureSeparation " + P.structureSeparation +
           ", modelSmoothness " + P.modelSmoothness.toFixed(2) +
           ", MARS filters " + P.grayMARSFilter + "/" + P.redMARSFilter + "/" +
-          P.greenMARSFilter + "/" + P.blueMARSFilter;
+          P.greenMARSFilter + "/" + P.blueMARSFilter +
+          ", scale factors " + (P.autoScaleFactors ? "automatic" : "1.0");
 }
 
 // Full-frame previews of the window that carry an MGC step (any name).
@@ -3980,6 +4256,10 @@ function bgmApply(win, preview, previews, removePreviews)
    console.writeln("\n" + "=".repeat(80));
    console.writeln("STEP: Apply background model " + preview.id + " to " + win.mainView.id);
    console.writeln("MGC settings: " + bgmDescribe(mgc));
+   var factors = mgcFactorsOf(preview, mgc);
+   var factorsText = mgcFactorsText(factors, "");
+   console.writeln("Scale factors: " + factorsText +
+      (factors.corr ? "   (" + mgcCorrelationText(factors) + ")" : ""));
    console.writeln("=".repeat(80));
 
    if (mgc.showGradientModel)
@@ -4004,6 +4284,8 @@ function bgmApply(win, preview, previews, removePreviews)
    kw.push(new FITSKeyword("HISTORY", "",
       "SH: MGC gradient model applied from preview " + preview.id +
       " (scale " + mgc.gradientScale + ")"));
+   // Separate line: a FITS HISTORY value holds ~70 characters.
+   kw.push(new FITSKeyword("HISTORY", "", "SH: MGC " + factorsText.split(" / ").join("/")));
    win.keywords = kw;
 
    if (removePreviews)
@@ -4035,9 +4317,12 @@ constructor(win, previews)
    this.info_Label = new Label(this);
    this.info_Label.wordWrapping = true;
    this.info_Label.useRichText = true;
+   this.sharedFactors = mgcSharedFactors(previews);
    this.info_Label.text = "<b>" + win.mainView.id + "</b><br/>" +
       "Click a model below to show its preview. Apply is instant for " +
-      "every scale. Need another scale? Add it below.";
+      "every scale. Need another scale? Add it below." +
+      mgcFactorsHeader(this.sharedFactors,
+         previews.some(function(p) { return bgmMgcInstanceOf(p).autoScaleFactors; }));
 
    this.radios = [];
    this.radioSizer = new VerticalSizer;
@@ -4063,7 +4348,8 @@ constructor(win, previews)
    this.addScale_Button = new PushButton(this);
    this.addScale_Button.text = "Run MGC";
    this.addScale_Button.toolTip = "<p>Run MGC at the chosen scale on a new full-frame preview, " +
-      "with the same settings as the other models. Takes as long as one MGC preview run.</p>";
+      "with the same settings as the other models. Takes as long as one MGC preview run " +
+      "(two with Both: an automatic and a 1.0 model).</p>";
    this.addScale_Button.onClick = function()
    {
       var idx = dlg.addScale_ComboBox.currentItem;
@@ -4134,8 +4420,15 @@ BackgroundModelDialog.prototype.addRadio = function(idx)
    var dlg = this;
    var rb = new RadioButton(this);
    var mgc = bgmMgcInstanceOf(this.previews[idx]);
-   rb.text = this.previews[idx].id + "   (scale " + mgc.gradientScale + ")";
-   rb.toolTip = bgmDescribe(mgc);
+   var f = mgcFactorsOf(this.previews[idx], mgc);
+   // Factors shown in the header: the row only says "auto SF".
+   var shared = f.auto && f.sf && this.sharedFactors && mgcSameFactors(f, this.sharedFactors);
+   rb.text = this.previews[idx].id + "   (scale " + mgc.gradientScale + ", " +
+      (shared ? "auto SF" : mgcFactorsText(f, " ⚠")) + ")";
+   rb.toolTip = "<p>" + bgmDescribe(mgc) + "</p>" +
+      (f.corr ? "<p>Automatic factors, " + mgcCorrelationText(f) + ".<br/>" +
+         "⚠ = correlation below " + MGC_LOW_CORRELATION.toFixed(2) +
+         ": that channel's factor is uncertain - compare with the 1.0 model.</p>" : "");
    rb.onCheck = function(checked)
    {
       if (checked)
@@ -4190,47 +4483,74 @@ BackgroundModelDialog.prototype.setBusy = function(busy)
 // Run MGC for one more scale on a new full-frame preview, using the first
 // model's MGC settings with only the scale changed. Called from the wait
 // loop (not from the button handler) so the long run is outside a GUI event.
+// The panel holds automatic and 1.0 models (Both): one preview of each,
+// automatic first.
 BackgroundModelDialog.prototype.runAddedScale = function(scale)
 {
    var win = this.win;
-   var id = "BM_" + scale;
    var img = win.mainView.image;
+   var hasAuto = false, hasStd = false;
+   for (var i = 0; i < this.previews.length; ++i)
+      if (bgmMgcInstanceOf(this.previews[i]).autoScaleFactors)
+         hasAuto = true;
+      else
+         hasStd = true;
+   var variants = [];
+   if (hasAuto) variants.push(true);
+   if (hasStd) variants.push(false);
+
    var pv = null;
    this.setBusy(true);
    CoreApplication.processEvents();
    try
    {
-      var P = new MultiscaleGradientCorrection;
-      P.assign(bgmMgcInstanceOf(this.previews[0]));
-      P.gradientScale = scale;
-      P.showGradientModel = true;
+      for (var v = 0; v < variants.length; ++v)
+      {
+         var auto = variants[v];
+         var P = new MultiscaleGradientCorrection;
+         P.assign(bgmMgcInstanceOf(this.previews[0]));
+         P.gradientScale = scale;
+         P.autoScaleFactors = auto;
+         P.scaleFactorRK = 1.0;
+         P.scaleFactorG = 1.0;
+         P.scaleFactorB = 1.0;
+         P.showGradientModel = true;
 
-      pv = win.createPreview(new Rect(0, 0, img.width, img.height), id);
-      showPreview(win, pv);
-      win.zoomToOptimalFit();
-      CoreApplication.processEvents();
+         pv = win.createPreview(new Rect(0, 0, img.width, img.height),
+                                "BM_" + scale + (auto ? MGC_AUTO_SUFFIX : ""));
+         showPreview(win, pv);
+         win.zoomToOptimalFit();
+         CoreApplication.processEvents();
 
-      console.writeln("\n" + "-".repeat(80));
-      console.writeln("Added scale - Processing: " + pv.id);
-      console.writeln("Gradient Scale: " + scale);
-      console.writeln("-".repeat(80));
-      var t0 = Date.now();
-      if (!P.executeOn(pv))
-         throw new Error("MultiscaleGradientCorrection failed on " + pv.id);
-      console.writeln(pv.id + " completed in " + ((Date.now() - t0) / 1000).toFixed(1) + " s.");
+         console.writeln("\n" + "-".repeat(80));
+         console.writeln("Added scale - Processing: " + pv.id);
+         console.writeln("Gradient Scale: " + scale +
+            "   Scale factors: " + (auto ? "automatic" : "1.0"));
+         console.writeln("-".repeat(80));
+         var t0 = Date.now();
+         if (!P.executeOn(pv))
+            throw new Error("MultiscaleGradientCorrection failed on " + pv.id);
+         var f = mgcReadFactors(P);
+         shMgcFactors[pv.id] = f;
+         mgcLogFactors(f);
+         console.writeln(pv.id + " completed in " + ((Date.now() - t0) / 1000).toFixed(1) + " s.");
 
-      this.previews.push(pv);
-      this.addRadio(this.previews.length - 1);
+         this.previews.push(pv);
+         this.addRadio(this.previews.length - 1);
+         pv = null;
+      }
       this.refreshAddScale();
       this.adjustToContents();
-      showPreview(win, pv);
+      showPreview(win, this.previews[this.previews.length - 1]);
       this.select(this.previews.length - 1, false);
    }
    catch (e)
    {
-      console.warningln("⚠  Adding scale " + scale + " failed: " + e.message);
+      console.warningln("⚠  Adding scale " + scale + " failed: " + shErrorText(e));
       if (pv != null && !pv.isNull)
          win.deletePreview(pv);
+      this.refreshAddScale();
+      this.adjustToContents();
    }
    this.setBusy(false);
 };
@@ -4273,7 +4593,8 @@ function chooseBackgroundModel(win)
    if (previews.length == 0)
    {
       console.warningln("⚠  No MGC background model previews found - opening MGC tool instead.");
-      buildMGCInstance(WorkflowParameters.getGradientScale(WorkflowParameters.numPreviews - 1), false).launch();
+      buildMGCInstance(WorkflowParameters.getGradientScale(WorkflowParameters.numPreviews - 1), false,
+         WorkflowParameters.mgcScaleMode != "standard").launch();
       return;
    }
 
