@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.2<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.3<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.2
+// Space Hunter Lazy Workflow Part 1 v2.7.3
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -125,6 +125,8 @@
 //       window (not its properties), SPFC from its position in the active
 //       history, marks store their history position. MGC failure shows the
 //       real error instead of "likely no MARS reference data".
+// v2.7.3: Add scale lists and tabs the new models in the main run's order
+//       (1.0, then _autoSF); the automatic one still runs first.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -323,7 +325,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.2"
+#define SCRIPT_VERSION "v2.7.3"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -4592,8 +4594,9 @@ BackgroundModelDialog.prototype.setBusy = function(busy)
 // Run MGC for one more scale on a new full-frame preview, using the first
 // model's MGC settings with only the scale changed. Called from the wait
 // loop (not from the button handler) so the long run is outside a GUI event.
-// The panel holds automatic and 1.0 models (Both): one preview of each,
-// automatic first.
+// The panel holds automatic and 1.0 models (Both): one preview of each, in
+// the main run's order (1.0, then _autoSF) for tabs and list; the automatic
+// one runs first, as in the main run.
 BackgroundModelDialog.prototype.runAddedScale = function(scale)
 {
    var win = this.win;
@@ -4604,29 +4607,34 @@ BackgroundModelDialog.prototype.runAddedScale = function(scale)
          hasAuto = true;
       else
          hasStd = true;
-   var variants = [];
-   if (hasAuto) variants.push(true);
-   if (hasStd) variants.push(false);
 
-   var pv = null;
+   // Display order.
+   var jobs = [];
+   if (hasStd) jobs.push({ auto: false, pv: null, done: false });
+   if (hasAuto) jobs.push({ auto: true, pv: null, done: false });
+
    this.setBusy(true);
    CoreApplication.processEvents();
    try
    {
-      for (var v = 0; v < variants.length; ++v)
+      for (var j = 0; j < jobs.length; ++j)
+         jobs[j].pv = win.createPreview(new Rect(0, 0, img.width, img.height),
+                                        "BM_" + scale + (jobs[j].auto ? MGC_AUTO_SUFFIX : ""));
+
+      var runOrder = jobs.slice().reverse();   // automatic first
+      for (var r = 0; r < runOrder.length; ++r)
       {
-         var auto = variants[v];
+         var job = runOrder[r];
+         var pv = job.pv;
          var P = new MultiscaleGradientCorrection;
          P.assign(bgmMgcInstanceOf(this.previews[0]));
          P.gradientScale = scale;
-         P.autoScaleFactors = auto;
+         P.autoScaleFactors = job.auto;
          P.scaleFactorRK = 1.0;
          P.scaleFactorG = 1.0;
          P.scaleFactorB = 1.0;
          P.showGradientModel = true;
 
-         pv = win.createPreview(new Rect(0, 0, img.width, img.height),
-                                "BM_" + scale + (auto ? MGC_AUTO_SUFFIX : ""));
          showPreview(win, pv);
          win.zoomToOptimalFit();
          CoreApplication.processEvents();
@@ -4634,7 +4642,7 @@ BackgroundModelDialog.prototype.runAddedScale = function(scale)
          console.writeln("\n" + "-".repeat(80));
          console.writeln("Added scale - Processing: " + pv.id);
          console.writeln("Gradient Scale: " + scale +
-            "   Scale factors: " + (auto ? "automatic" : "1.0"));
+            "   Scale factors: " + (job.auto ? "automatic" : "1.0"));
          console.writeln("-".repeat(80));
          var t0 = Date.now();
          if (!P.executeOn(pv))
@@ -4643,28 +4651,41 @@ BackgroundModelDialog.prototype.runAddedScale = function(scale)
          shMgcFactors[pv.id] = f;
          mgcLogFactors(f);
          console.writeln(pv.id + " completed in " + ((Date.now() - t0) / 1000).toFixed(1) + " s.");
-
-         this.previews.push(pv);
-         this.origStf[pv.id] = pv.stf;
-         this.addRadio(this.previews.length - 1);
-         pv = null;
+         job.done = true;
       }
-      // The shared stretch has to cover the new model(s) too.
-      if (this.modelStretch_CheckBox.checked)
-         this.setModelStretch(true);
-      this.refreshAddScale();
-      this.adjustToContents();
-      showPreview(win, this.previews[this.previews.length - 1]);
-      this.select(this.previews.length - 1, false);
    }
    catch (e)
    {
       console.warningln("⚠  Adding scale " + scale + " failed: " + shErrorText(e));
-      if (pv != null && !pv.isNull)
-         win.deletePreview(pv);
-      this.refreshAddScale();
-      this.adjustToContents();
    }
+
+   // List the finished models in display order; drop unfinished previews.
+   var added = 0;
+   for (var j = 0; j < jobs.length; ++j)
+   {
+      var pv = jobs[j].pv;
+      if (pv == null || pv.isNull)
+         continue;
+      if (!jobs[j].done)
+      {
+         win.deletePreview(pv);
+         continue;
+      }
+      this.previews.push(pv);
+      this.origStf[pv.id] = pv.stf;
+      this.addRadio(this.previews.length - 1);
+      ++added;
+   }
+   if (added > 0)
+   {
+      // The shared stretch has to cover the new model(s) too.
+      if (this.modelStretch_CheckBox.checked)
+         this.setModelStretch(true);
+      showPreview(win, this.previews[this.previews.length - 1]);
+      this.select(this.previews.length - 1, false);
+   }
+   this.refreshAddScale();
+   this.adjustToContents();
    this.setBusy(false);
 };
 
