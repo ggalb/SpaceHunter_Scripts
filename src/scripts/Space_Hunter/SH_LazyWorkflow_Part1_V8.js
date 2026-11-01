@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.3<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.4<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.3
+// Space Hunter Lazy Workflow Part 1 v2.7.4
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -127,6 +127,9 @@
 //       real error instead of "likely no MARS reference data".
 // v2.7.3: Add scale lists and tabs the new models in the main run's order
 //       (1.0, then _autoSF); the automatic one still runs first.
+// v2.7.4: GC result panel: "Show gradient models (same stretch for all)" -
+//       clicking a result shows its GC_gradient_model window, all models
+//       with one shared stretch (display only, Apply unchanged).
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -325,7 +328,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.3"
+#define SCRIPT_VERSION "v2.7.4"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -4886,7 +4889,16 @@ constructor(win, previews)
       "window with the same number (GC_ &rarr; GC_gradient_model, GC_1 &rarr; " +
       "GC_gradient_model1). Differences usually show more clearly in the " +
       "models than in the corrected previews. Click a result below to show " +
-      "its preview.";
+      "its preview, or tick Show gradient models to compare the models.";
+
+   // Model window of each preview (null if it is gone).
+   this.modelWins = [];
+   for (var i = 0; i < previews.length; ++i)
+   {
+      var mw = ImageWindow.windowById(gcExpectedModelId(previews[i].id));
+      this.modelWins.push(mw.isNull ? null : mw);
+   }
+   this.modelStf = {};
 
    this.radios = [];
    var radioSizer = new VerticalSizer;
@@ -4909,6 +4921,22 @@ constructor(win, previews)
    this.result_GroupBox = new GroupBox(this);
    this.result_GroupBox.title = "GradientCorrection result";
    this.result_GroupBox.sizer = radioSizer;
+
+   // Display only: show the selected result's model window instead of its
+   // preview, all models with one shared stretch.
+   this.showModels_CheckBox = new CheckBox(this);
+   this.showModels_CheckBox.text = "Show gradient models (same stretch for all)";
+   this.showModels_CheckBox.checked = false;
+   this.showModels_CheckBox.enabled = this.modelWins.some(function(w) { return w != null; });
+   this.showModels_CheckBox.toolTip = "<p>Display only - Apply always uses the corrected preview.</p>" +
+      "<p><b>On:</b> clicking a result shows its gradient model window; every model " +
+      "gets the same stretch, computed from all models together, so they compare " +
+      "like with like.<br/><b>Off:</b> clicking a result shows its corrected " +
+      "preview; the model windows get their own stretch back.</p>";
+   this.showModels_CheckBox.onCheck = function(checked)
+   {
+      dlg.setShowModels(checked);
+   };
 
    this.cleanUp_CheckBox = new CheckBox(this);
    this.cleanUp_CheckBox.text = "Remove GC previews and model windows after applying";
@@ -4941,6 +4969,7 @@ constructor(win, previews)
    this.sizer.spacing = 8;
    this.sizer.add(this.info_Label);
    this.sizer.add(this.result_GroupBox);
+   this.sizer.add(this.showModels_CheckBox);
    this.sizer.add(this.cleanUp_CheckBox);
    this.sizer.add(buttons);
 
@@ -4956,28 +4985,92 @@ constructor(win, previews)
 }
 }; // end class GCResultDialog
 
-// fromRadio: the user clicked a radio button -> show that preview too.
+// fromRadio: the user clicked a radio button -> show that preview (or, with
+// Show gradient models, its model window) too.
 GCResultDialog.prototype.select = function(idx, fromRadio)
 {
    this.selected = idx;
    if (!this.radios[idx].checked)
       this.radios[idx].checked = true;
-   if (fromRadio && this.win.currentView.id != this.previews[idx].id)
-      this.win.currentView = this.previews[idx];
-   this.lastSeenViewId = this.win.currentView.id;
+   if (fromRadio)
+      this.showSelected();
+   this.lastSeenViewId = this.currentShownId();
 };
 
-// Called from the wait loop: follow the preview tab the user switches to.
+GCResultDialog.prototype.showingModels = function()
+{
+   return this.showModels_CheckBox.checked;
+};
+
+GCResultDialog.prototype.showSelected = function()
+{
+   var mw = this.modelWins[this.selected];
+   if (this.showingModels() && mw != null && !mw.isNull)
+   {
+      mw.bringToFront();
+   }
+   else
+   {
+      if (this.win.currentView.id != this.previews[this.selected].id)
+         this.win.currentView = this.previews[this.selected];
+      this.win.bringToFront();
+   }
+   CoreApplication.processEvents();
+};
+
+// Id of what the user looks at: the active model window, or the image
+// window's current view.
+GCResultDialog.prototype.currentShownId = function()
+{
+   var aw = ImageWindow.activeWindow;
+   if (!aw.isNull)
+      for (var i = 0; i < this.modelWins.length; ++i)
+         if (this.modelWins[i] != null && !this.modelWins[i].isNull &&
+             aw.mainView.id == this.modelWins[i].mainView.id)
+            return "model:" + i;
+   return this.win.isNull ? "" : this.win.currentView.id;
+};
+
+// on: shared stretch on all model windows, show the selected model;
+// off: model windows get their own stretch back, show the selected preview.
+GCResultDialog.prototype.setShowModels = function(on)
+{
+   var views = [];
+   for (var i = 0; i < this.modelWins.length; ++i)
+      if (this.modelWins[i] != null && !this.modelWins[i].isNull)
+         views.push(this.modelWins[i].mainView);
+   if (on && views.length > 0)
+   {
+      var stf = bgmSharedModelStf(views);
+      for (var i = 0; i < views.length; ++i)
+      {
+         if (this.modelStf[views[i].id] === undefined)
+            this.modelStf[views[i].id] = views[i].stf;
+         views[i].stf = stf;
+      }
+   }
+   else
+   {
+      for (var i = 0; i < views.length; ++i)
+         if (this.modelStf[views[i].id] !== undefined)
+            views[i].stf = this.modelStf[views[i].id];
+   }
+   this.showSelected();
+   this.lastSeenViewId = this.currentShownId();
+};
+
+// Called from the wait loop: follow the preview tab or model window the
+// user switches to.
 GCResultDialog.prototype.syncWithWindow = function()
 {
    if (this.win.isNull)
       return;
-   var id = this.win.currentView.id;
+   var id = this.currentShownId();
    if (id == this.lastSeenViewId)
       return;
    this.lastSeenViewId = id;
    for (var i = 0; i < this.previews.length; ++i)
-      if (this.previews[i].id == id)
+      if (this.previews[i].id == id || id == "model:" + i)
       {
          this.selected = i;
          this.radios[i].checked = true;
@@ -5016,6 +5109,10 @@ function chooseGCResult(win, modelIds)
       CoreApplication.processEvents();
       System.msleep(50);
    }
+
+   // Model windows that stay get their own stretch back.
+   if (dlg.showModels_CheckBox.checked)
+      dlg.setShowModels(false);
 
    var preview = previews[dlg.selected];
    if (dlg.choice == "apply")
