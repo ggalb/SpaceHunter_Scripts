@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.0<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.1<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.0
+// Space Hunter Lazy Workflow Part 1 v2.7.1
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -118,6 +118,9 @@
 //       The factors don't depend on the gradient scale (MGC derives them at
 //       its own 256/1024 analysis scales), so the panel shows them once in
 //       its header when all automatic models agree.
+// v2.7.1: Model panel checkbox "Stronger model stretch (same for all
+//       models)": one shared AutoSTF-style stretch over all models, set on
+//       every preview (display only); off restores the image's STF.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -316,7 +319,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.0"
+#define SCRIPT_VERSION "v2.7.1"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -4367,6 +4370,25 @@ constructor(win, previews)
    this.addScaleValues = [];
    this.refreshAddScale();
 
+   // Display only: switch all previews between the image's STF and one
+   // shared, stronger model stretch.
+   this.origStf = {};
+   for (var i = 0; i < previews.length; ++i)
+      this.origStf[previews[i].id] = previews[i].stf;
+   this.modelStretch_CheckBox = new CheckBox(this);
+   this.modelStretch_CheckBox.text = "Stronger model stretch (same for all models)";
+   this.modelStretch_CheckBox.checked = false;
+   this.modelStretch_CheckBox.toolTip = "<p>Display only - nothing is applied.</p>" +
+      "<p><b>Off:</b> the models are shown with the image's own stretch.<br/>" +
+      "<b>On:</b> one stronger stretch, computed from all models together and set " +
+      "identically on every preview, so switching models compares like with like. " +
+      "PixInsight's AutoSTF on a single model is not comparable: it stretches each " +
+      "model differently.</p>";
+   this.modelStretch_CheckBox.onCheck = function(checked)
+   {
+      dlg.setModelStretch(checked);
+   };
+
    this.cleanUp_CheckBox = new CheckBox(this);
    this.cleanUp_CheckBox.text = "Remove background model previews after applying";
    this.cleanUp_CheckBox.checked = true;
@@ -4398,6 +4420,7 @@ constructor(win, previews)
    this.sizer.spacing = 8;
    this.sizer.add(this.info_Label);
    this.sizer.add(this.scale_GroupBox);
+   this.sizer.add(this.modelStretch_CheckBox);
    this.sizer.add(addScaleSizer);
    this.sizer.add(this.cleanUp_CheckBox);
    this.sizer.add(buttons);
@@ -4468,12 +4491,63 @@ BackgroundModelDialog.prototype.refreshAddScale = function()
    this.addScale_Button.enabled = this.addScaleValues.length > 0;
 };
 
+// One AutoSTF-style stretch per channel for all models together: shadows
+// clip below the lowest model's median - 2.8 * MADN, midtones bring the mean
+// median to 0.25. Same constants as PixInsight's AutoSTF.
+function bgmSharedModelStf(previews)
+{
+   var stf = [];
+   for (var c = 0; c < 3; ++c)
+   {
+      var c0 = 1, sumMed = 0;
+      for (var i = 0; i < previews.length; ++i)
+      {
+         var img = previews[i].image;
+         var ch = Math.min(c, img.numberOfChannels - 1);
+         img.selectedChannel = ch;
+         var med = img.median();
+         var madn = 1.4826 * img.MAD(med);
+         img.resetSelections();
+         c0 = Math.min(c0, med - 2.8 * madn);
+         sumMed += med;
+      }
+      c0 = Math.max(0, c0);
+      var m = Math.mtf(0.25, sumMed / previews.length - c0);
+      stf.push([m, c0, 1, 0, 1]);
+   }
+   stf.push([0.5, 0, 1, 0, 1]);
+   return stf;
+}
+
+// on: shared stronger model stretch on every preview; off: each preview's
+// stretch from when the panel opened (the image's STF).
+BackgroundModelDialog.prototype.setModelStretch = function(on)
+{
+   var stf = on ? bgmSharedModelStf(this.previews) : null;
+   for (var i = 0; i < this.previews.length; ++i)
+   {
+      var pv = this.previews[i];
+      if (pv.isNull)
+         continue;
+      if (on)
+         pv.stf = stf;
+      else if (this.origStf[pv.id] !== undefined)
+         pv.stf = this.origStf[pv.id];
+   }
+   if (on)
+      console.writeln("Model stretch (shared) R/G/B shadows " +
+         stf.slice(0, 3).map(function(s) { return s[1].toExponential(3); }).join(" / ") +
+         ", midtones " + stf.slice(0, 3).map(function(s) { return s[0].toExponential(2); }).join(" / "));
+   CoreApplication.processEvents();
+};
+
 BackgroundModelDialog.prototype.setBusy = function(busy)
 {
    this.scale_GroupBox.enabled = !busy;
    this.addScale_ComboBox.enabled = !busy && this.addScaleValues.length > 0;
    this.addScale_Button.enabled = !busy && this.addScaleValues.length > 0;
    this.cleanUp_CheckBox.enabled = !busy;
+   this.modelStretch_CheckBox.enabled = !busy;
    this.apply_Button.enabled = !busy;
    this.tool_Button.enabled = !busy;
    this.close_Button.enabled = !busy;
@@ -4536,9 +4610,13 @@ BackgroundModelDialog.prototype.runAddedScale = function(scale)
          console.writeln(pv.id + " completed in " + ((Date.now() - t0) / 1000).toFixed(1) + " s.");
 
          this.previews.push(pv);
+         this.origStf[pv.id] = pv.stf;
          this.addRadio(this.previews.length - 1);
          pv = null;
       }
+      // The shared stretch has to cover the new model(s) too.
+      if (this.modelStretch_CheckBox.checked)
+         this.setModelStretch(true);
       this.refreshAddScale();
       this.adjustToContents();
       showPreview(win, this.previews[this.previews.length - 1]);
@@ -4625,6 +4703,11 @@ function chooseBackgroundModel(win)
       CoreApplication.processEvents();
       System.msleep(50);
    }
+
+   // Previews that stay (Close, or Apply without clean-up) get their normal
+   // stretch back.
+   if (dlg.modelStretch_CheckBox.checked)
+      dlg.setModelStretch(false);
 
    var preview = previews[dlg.selected];
    if (dlg.choice == "apply")
