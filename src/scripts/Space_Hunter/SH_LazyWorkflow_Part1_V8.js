@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.1<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.2<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.1
+// Space Hunter Lazy Workflow Part 1 v2.7.2
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -121,6 +121,10 @@
 // v2.7.1: Model panel checkbox "Stronger model stretch (same for all
 //       models)": one shared AutoSTF-style stretch over all models, set on
 //       every preview (display only); off restores the image's STF.
+// v2.7.2: Re-run checks survive History Explorer jumps: solution from the
+//       window (not its properties), SPFC from its position in the active
+//       history, marks store their history position. MGC failure shows the
+//       real error instead of "likely no MARS reference data".
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -319,7 +323,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.1"
+#define SCRIPT_VERSION "v2.7.2"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -2785,33 +2789,69 @@ function shSolutionProperty(view, id) {
     return null;
 }
 
-// True if the view carries an astrometric solution (either namespace).
+// True if the image window has a valid astrometric solution. Asks the window,
+// not the AstrometricSolution:* properties: those stay on the view when the
+// solve is undone in History Explorer (Georg's test 2026-11-01), while the
+// window's solution - the one MGC and SPFC use - is gone.
 function shHasSolution(view) {
+    try { return view.window.hasAstrometricSolution; } catch (e) {}
     return shSolutionProperty(view, "CreatorModule") != null;
 }
 
-// Re-run marks, written right after a step runs. PixInsight keeps view
-// properties per history state, so undoing that step in History Explorer
-// removes its mark again. Storable: saved with the file.
-// (view.processing alone is NOT usable for this: it still lists undone steps.)
+// Re-run marks, written right after a step runs. The value is the history
+// position (view.historyIndex = number of active steps) right after that
+// step. Properties are NOT reliably rolled back by History Explorer (an
+// SPFC mark survived a jump back to before SPFC, 2026-11-01), so a mark only
+// counts while its step is still active. view.processing still lists undone
+// steps; a reopened file starts with an empty list (verified 2026-11-01),
+// and then the stored mark is the only evidence. Storable: saved with the file.
 function shMarkDone(view, id) {
-    try { view.setPropertyValue(id, true, PropertyType.Boolean,
+    try { view.setPropertyValue(id, view.historyIndex, PropertyType.Int32,
                                 PropertyAttribute.Storable | PropertyAttribute.Permanent); } catch (e) {}
 }
-function shHasMark(view, id) {
+function shHasProperty(view, id) {
     try { return view.hasProperty(id); } catch (e) { return false; }
 }
+function shHasMark(view, id) {
+    if (!shHasProperty(view, id))
+        return false;
+    try {
+        var pos = view.propertyValue(id);
+        if (typeof pos != "number")
+            return true;                    // boolean mark from v2.7.1 and older
+        if (pos > view.processing.length)
+            return true;                    // from an earlier session (reopened file)
+        return pos <= view.historyIndex;    // false = its step was undone
+    } catch (e) {}
+    return true;
+}
 
-// True if a process with this id is in the view's processing history
-// (including steps undone in History Explorer).
-function shInHistory(view, processId) {
+// "active": a process with this id is among the view's active history steps;
+// "undone": only among steps undone in History Explorer; "none": not in this
+// session's history at all (e.g. reopened file).
+function shStepState(view, processId) {
+    var state = "none";
     try {
         var pc = view.processing;
+        var active = view.historyIndex;
         for (var i = 0; i < pc.length; i++)
-            if (pc[i].processId() == processId)
-                return true;
+            if (pc[i].processId() == processId) {
+                if (i < active)
+                    return "active";
+                state = "undone";
+            }
     } catch (e) {}
-    return false;
+    return state;
+}
+
+// SPFC applied to the image's current state. In this session's history the
+// step's position decides; without history (reopened file) our mark or
+// SPFC's own properties do.
+function shSpfcApplied(view) {
+    var state = shStepState(view, "SpectrophotometricFluxCalibration");
+    if (state != "none")
+        return state == "active";
+    return shHasMark(view, "SpaceHunter:SPFCDone") || shHasProperty(view, "PCL:SPFC:Version");
 }
 
 // Pin a known-good ImageSolver configuration for headless auto-solve, so the
@@ -3164,8 +3204,7 @@ function runSeparation()
    }
    // SPFC measured the image before separation: its calibration would not
    // match the separated channels. Same check runSPFC() uses.
-   if (shHasMark(view, "SpaceHunter:SPFCDone") ||
-       (shHasMark(view, "PCL:SPFC:Version") && !shInHistory(view, "SpectrophotometricFluxCalibration"))) {
+   if (shSpfcApplied(view)) {
       console.warningln("⚠  SPFC is already applied to this image - separation skipped.");
       console.warningln("   To separate, undo SPFC in History Explorer and run again.\n");
       return;
@@ -3211,11 +3250,7 @@ function runSPFC()
    // Check if SPFC was already applied
    console.writeln("Checking processing history for SPFC...");
 
-   // Our own mark follows History Explorer rollbacks. A file saved after SPFC
-   // by an older version has only SPFC's own properties: count those too, but
-   // not when SPFC is in this session's history without our mark (= undone).
-   var spfcAlreadyApplied = shHasMark(view, "SpaceHunter:SPFCDone") ||
-      (shHasMark(view, "PCL:SPFC:Version") && !shInHistory(view, "SpectrophotometricFluxCalibration"));
+   var spfcAlreadyApplied = shSpfcApplied(view);
 
    if (spfcAlreadyApplied) {
       console.writeln("\u2714 SPFC already applied to this image");
@@ -5111,7 +5146,7 @@ function main()
                   runMGCOnPreviews();
                } catch (mgcError) {
                   if (shIsCancel(mgcError)) throw mgcError;
-                  console.warningln("\n\u26A0  MGC failed (likely no MARS reference data available).");
+                  console.warningln("\n\u26A0  MGC failed: " + shErrorText(mgcError));
                   console.writeln("Falling back to GradientCorrection...\n");
                   mgcFailed = true;
                }
@@ -5121,7 +5156,7 @@ function main()
                runMGCOnPreviews();
             } catch (mgcError) {
                if (shIsCancel(mgcError)) throw mgcError;
-               console.warningln("\n\u26A0  MGC failed (likely no MARS reference data available).");
+               console.warningln("\n\u26A0  MGC failed: " + shErrorText(mgcError));
                console.writeln("Falling back to GradientCorrection...\n");
                mgcFailed = true;
             }
