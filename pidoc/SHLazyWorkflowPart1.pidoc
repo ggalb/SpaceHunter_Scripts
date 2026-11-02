@@ -10,6 +10,8 @@
 % and the dialog's documentation button calls
 %    Dialog.browseScriptDocumentation( "SH Lazy Workflow Part 1" )
 % Written against script v2.5 (ScriptsTesting/Final Tests), 2026-10-11.
+% MGC scale factors, model panels and re-run notes updated for v2.7.4,
+% 2026-11-01.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 1}
@@ -198,7 +200,9 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
             }
 
             Example: IMX571 sensor with an Antlia ALP-T filter,
-            kG = 0.115, kB = 0.05.
+            kG = 0.09, kB = 0.03. Checked on four different targets with this
+            camera and filter, the factors agreed within &plusmn;0.01. Find
+            them again only when you change camera or filter.
 
             \figure[numbered: pixelmath] {
                \figtag \s { The separation expressions in PixelMath }
@@ -254,6 +258,14 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
                                       background model per gradient scale.
                                       The same scale twice gives
                                       \c BM_1024_1 (as in +Previews). } }
+         { {MGC with \lref scale_factors {Scale factors} \e Automatic}
+                                    { \c BM_768_autoSF, \c BM_1024_autoSF, ... }
+         }
+         { {MGC with \lref scale_factors {Scale factors} \e Both}
+                                    { Two per scale: \c BM_768 and
+                                      \c BM_768_autoSF, \c BM_1024 and
+                                      \c BM_1024_autoSF, ... (8 previews for
+                                      4 scales). } }
          { {Previews run alone}     { \c Preview, \c Preview1, ... } }
          { {GC selected}            { GC creates its own \c GC_ and \c GC_1. } }
          { {DBE selected}           { No previews are created. } }
@@ -275,6 +287,77 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
       \lref step_spfc {narrowband filters mode} in SPFC and, ideally, the
       \lref separation {Ha/OIII separation} (\figref part1_dialog).
 
+      \subsection { \label gradient_scale Choosing Gradient Scales } {
+
+         The gradient scale is measured in image pixels. The same piece of sky
+         therefore needs a larger scale on a finely sampled image than on a
+         coarse one, and a 2&times; drizzled master needs about twice the
+         scale of the same master without drizzle.
+
+         Good starting points by image scale (arcseconds per pixel; with
+         drizzle use the drizzled value, e.g. 3.1"/px at 2&times; drizzle =
+         1.55"/px):
+
+         \table[caption, header, numbered: gradient_scales] {
+            { \tbltag Suggested starting gradient scale }
+            { {Image scale} {Start with} {Example (native, no drizzle)} }
+            { {about 1.0"/px} {3072} {IMX571 (3.76 &mu;m) at 800 mm} }
+            { {about 1.5"/px} {2048} {IMX571 at 500 mm, or RedCat 51 at 2&times; drizzle} }
+            { {about 2.0"/px} {1536} {IMX585 (2.9 &mu;m) at 300 mm} }
+            { {about 3.0"/px} {1024} {IMX571 at 250 mm (RedCat 51)} }
+            { {about 4.0"/px} {768}  {IMX294 (4.63 &mu;m) at 250 mm} }
+         }
+
+         Image scale = 206.265 &times; pixel size (&mu;m) / focal length (mm).
+         Large, faint nebulae need larger scales than star fields. Set the
+         four previews around the starting value and compare.
+
+         \note {
+            Measured on the same RedCat 51 / IMX571 dual-band master: best
+            scale 2048 with 2&times; drizzle, 768&ndash;1024 without drizzle.
+            Much larger scales (4096 on that drizzled master) became too
+            coarse and left part of the gradient in the image.
+         }
+      }
+
+      \subsection { \label scale_factors Scale Factors } {
+
+         \center {
+            \image[width:520px] images/Part1_ScaleFactors.png
+         }
+
+         MGC fits the MARS reference to your image with one scale factor per
+         channel. Part 1 offers three settings:
+
+         \definition {
+            { Standard (1.0) } { All factors 1.0 (the behaviour before
+                              v2.7). }
+            { Automatic }   { MGC computes one factor per channel itself,
+                              aiming for a model that contains no image
+                              structure. About the same run time as
+                              Standard. Preview names end in \c _autoSF. }
+            { Both (compare) } { Two previews per scale, \c BM_&lt;scale&gt; and
+                              \c BM_&lt;scale&gt;_autoSF, to compare in the model
+                              window. The warning icon is a reminder that
+                              this costs about 60&ndash;70\% more MGC time:
+                              the MARS work is done once, but each scale is
+                              modelled twice. }
+         }
+
+         Automatic is not always better. In tests it gave a flatter
+         background on 2&times; drizzled masters, but not on the same master
+         without drizzle; the factors themselves also differ between
+         drizzled and undrizzled versions of one image. Use \s {Both} when you
+         are unsure, and decide in the model window.
+
+         The automatic factors don't depend on the gradient scale, so they
+         are the same for every \c _autoSF preview. The console and the
+         model window show them together with their \e correlation: how
+         clearly MGC could determine each factor. A factor with a correlation
+         below 0.75 is marked &#9888; and is uncertain; compare it with the
+         1.0 model.
+      }
+
       \subsection { \label choose_model Choose Background Model } {
 
          \center {
@@ -283,17 +366,29 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
 
          When all previews are done, the \s {Choose background model} window
          opens. While it is open, PixInsight is busy: you can't zoom or pan
-         the image. Click a model in the list to show its preview.
+         the image. Click a model in the list to show its preview. With
+         automatic scale factors, the top of the window shows the factors
+         and their correlation.
 
          \definition {
             { Apply }       { Applies the selected model to the main image at
                               once: image &minus; model + median(model). The
-                              model used is noted in the FITS history. }
+                              model used and its scale factors are noted in
+                              the FITS history. }
+            { Stronger model stretch (same for all models) } { Display only.
+                              Shows every model with one stronger stretch,
+                              computed from all models together, so you
+                              compare like with like. Off: the models use
+                              the image's own stretch. Don't judge models
+                              with PixInsight's AutoSTF on each preview
+                              separately: it stretches every model
+                              differently. }
             { Add scale / Run MGC } { If none of the models is good enough,
                               run MGC at another scale. It gets its own new
                               \c BM_ preview with the same settings and
                               appears in the list, ready to compare and
-                              apply. }
+                              apply. With \s {Both}, it adds the 1.0 and the
+                              \c _autoSF model. }
             { Remove background model previews after applying } { On by
                               default. }
             { Open MGC tool instead } { Opens the MGC tool with the selected
@@ -334,6 +429,12 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
       windows after applying} is on by default, and \s {Open GC tool
       instead} opens GC with that preview's settings.
 
+      \s {Show gradient models (same stretch for all)} is for display only:
+      clicking a result then brings its model window to the front instead of
+      its preview, and both models get one shared stretch so they can be
+      compared. Unchecked, the previews show again and the model windows get
+      their own stretch back. \s {Apply} always uses the corrected preview.
+
       \note {
          Close old \c GC_gradient_model windows before running GC. Otherwise
          GC numbers the new models differently and they no longer match the
@@ -360,7 +461,9 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
       }
 
       The separation and SPFC are skipped automatically when they were
-      already applied to the image.
+      already applied to the image. These checks follow History Explorer:
+      if you go back to a state before plate solving or SPFC, the script
+      solves and calibrates again.
 
       If you undo the image history back to the start, the astrometric
       solution is lost and the next run solves the image again.

@@ -3,7 +3,7 @@
 <head>
    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
    <title>PixInsight Reference Documentation | SH Lazy Workflow Part 1</title>
-   <meta name="keywords" content="Space Hunter, OSC, ASTAP, ImageSolver, SPFC, flux calibration, RGB, dual-narrowband, Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction" />
+   <meta name="keywords" content="Space Hunter, OSC, ImageSolver, blind solve, SPFC, flux calibration, RGB, dual-narrowband, Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction" />
    <meta name="author" content="Georg G. Albrecht" />
    <meta name="description" content="Automates the linear OSC workflow from plate solving to background extraction: smart plate solve, SPFC, previews and MGC, with GC and DBE as alternatives." />
    <meta name="robots" content="INDEX,FOLLOW" />
@@ -32,7 +32,7 @@
 <p>Automates the linear OSC workflow from plate solving to background extraction: smart plate solve, SPFC, previews and MGC, with GC and DBE as alternatives. <a href="#__contents__">[more]</a></p></div>
 
 <div id="keywords">
-<p><strong>Keywords:</strong> Space Hunter, OSC, ASTAP, ImageSolver, SPFC, flux calibration, RGB, dual-narrowband, Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction</p>
+<p><strong>Keywords:</strong> Space Hunter, OSC, ImageSolver, blind solve, SPFC, flux calibration, RGB, dual-narrowband, Ha/OIII separation, MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction</p>
 </div>
 
 <h3 class="pidoc_sectionTitle" id="__toc__">Contents</h3>
@@ -57,7 +57,9 @@
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_3_mdash_Create_Previews_MGC_only__">2.4&emsp;Step 3 &mdash; Create Previews (MGC only)</a></li>
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection__">2.5&emsp;Step 4 &mdash; MGC (MultiscaleGradientCorrection)</a>
 <ul>
-<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Choose_Background_Model__">2.5.1&emsp;Choose Background Model</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Choosing_Gradient_Scales__">2.5.1&emsp;Choosing Gradient Scales</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Scale_Factors__">2.5.2&emsp;Scale Factors</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Choose_Background_Model__">2.5.3&emsp;Choose Background Model</a></li>
 </ul>
 </li>
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_5_mdash_GC_GradientCorrection__">2.6&emsp;Step 5 &mdash; GC (GradientCorrection)</a></li>
@@ -111,11 +113,11 @@
 <a id="__figure_1__"></a>
 <p><span class="pidoc_figure_title">Figure 1 &mdash;</span>  <strong>Part 1 dialog</strong></p>
 <div class="pidoc_mouseover">
-<img class="pidoc_image_right" src="images/Part1_0.png" style="width:400px;" id="h4H1VOR2bcjxNi4C" alt="" />
+<img class="pidoc_image_right" src="images/Part1_0.png" style="width:400px;" id="qpW4aeGz4FqVbzHd" alt="" />
 <ul>
-<li><span class="pidoc_indicator_default" id="h4H1VOR2bcjxNi4C_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('h4H1VOR2bcjxNi4C', 'images/Part1_0.png'); pidoc_hideGroup('h4H1VOR2bcjxNi4C', 3); pidoc_setOpacity('h4H1VOR2bcjxNi4C_1', 1.0);">Overview</a></li>
-<li><span class="pidoc_indicator" id="h4H1VOR2bcjxNi4C_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('h4H1VOR2bcjxNi4C', 'images/Part1_1.png'); pidoc_hideGroup('h4H1VOR2bcjxNi4C', 3); pidoc_setOpacity('h4H1VOR2bcjxNi4C_2', 1.0);">Default settings</a></li>
-<li><span class="pidoc_indicator" id="h4H1VOR2bcjxNi4C_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('h4H1VOR2bcjxNi4C', 'images/Part1_2.png'); pidoc_hideGroup('h4H1VOR2bcjxNi4C', 3); pidoc_setOpacity('h4H1VOR2bcjxNi4C_3', 1.0);">Dual-band filter: narrowband mode, Ha/OIII separation and MGC filter selection</a></li>
+<li><span class="pidoc_indicator_default" id="qpW4aeGz4FqVbzHd_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('qpW4aeGz4FqVbzHd', 'images/Part1_0.png'); pidoc_hideGroup('qpW4aeGz4FqVbzHd', 3); pidoc_setOpacity('qpW4aeGz4FqVbzHd_1', 1.0);">Overview</a></li>
+<li><span class="pidoc_indicator" id="qpW4aeGz4FqVbzHd_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('qpW4aeGz4FqVbzHd', 'images/Part1_1.png'); pidoc_hideGroup('qpW4aeGz4FqVbzHd', 3); pidoc_setOpacity('qpW4aeGz4FqVbzHd_2', 1.0);">Default settings</a></li>
+<li><span class="pidoc_indicator" id="qpW4aeGz4FqVbzHd_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('qpW4aeGz4FqVbzHd', 'images/Part1_2.png'); pidoc_hideGroup('qpW4aeGz4FqVbzHd', 3); pidoc_setOpacity('qpW4aeGz4FqVbzHd_3', 1.0);">Dual-band filter: narrowband mode, Ha/OIII separation and MGC filter selection</a></li>
 </ul>
 </div>
 </div>
@@ -133,11 +135,11 @@
 </th>
 </tr>
 <tr>
-<td><p><a href="#step_solve">1 Plate Solve</a> (with ASTAP)</p>
+<td><p><a href="#step_solve">1 Plate Solve</a> (with blind solve)</p>
 </td>
 <td><p>On</p>
 </td>
-<td><p>Can run alone. ASTAP can only be on while Plate Solve is on.</p>
+<td><p>Can run alone. Blind solve can only be on while Plate Solve is on.</p>
 </td>
 </tr>
 <tr>
@@ -145,7 +147,7 @@
 </td>
 <td><p>On</p>
 </td>
-<td><p>Turning it on also turns on Plate Solve and ASTAP.</p>
+<td><p>Turning it on also turns on Plate Solve and blind solve.</p>
 </td>
 </tr>
 <tr>
@@ -198,9 +200,10 @@
 
 <ul class="pidoc_list">
 <li>If coordinates and image scale are present, the script solves the image with PixInsight's ImageSolver engine. No dialog opens.</li>
-<li class="pidoc_spaced_list_item">If they are missing and <strong>ASTAP Blind Solve</strong> is checked (the default), ASTAP runs first and writes the WCS keywords. A blind solve can take 10&ndash;30 seconds.</li>
+<li class="pidoc_spaced_list_item">If they are missing and <strong>Blind solve (if needed)</strong> is checked (the default), ImageSolver finds the position and scale from the stars alone. It also does this when solving with the keywords fails.</li>
 </ul>
 
+<p>Blind solving needs the Gaia astrometric index file, set in <span class="pidoc_menu">Process &gt; Astrometry &gt; Gaia</span> preferences (see <a href="#requirements">Requirements).</a> The Plate Solve section of the dialog shows the index file in use, or <em>No astrometric index set</em>. Without it, images that lack coordinates or image scale are not solved, and the console explains what to set up.</p>
 <p>If solving fails, the console says so. Solve the image manually with <span class="pidoc_menu">Script &gt; Image Analysis &gt; ImageSolver</span> and run Part 1 again.</p>
 <p>SPFC and MGC need this astrometric solution, and so does SPCC in Part 2.</p>
 </div>
@@ -269,17 +272,17 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 <li class="pidoc_spaced_list_item">Run Part 1 again, enter kG and kB, and click <strong>Save profile...</strong>.</li>
 </ol>
 
-<p>Example: IMX571 sensor with an Antlia ALP-T filter, kG = 0.115, kB = 0.05.</p>
+<p>Example: IMX571 sensor with an Antlia ALP-T filter, kG = 0.09, kB = 0.03. Checked on four different targets with this camera and filter, the factors agreed within &plusmn;0.01. Find them again only when you change camera or filter.</p>
 
 <div class="pidoc_figure">
 <a id="__figure_2__"></a>
 <p><span class="pidoc_figure_title">Figure 2 &mdash;</span>  <strong>The separation expressions in PixelMath</strong></p>
 <div class="pidoc_mouseover">
-<img class="pidoc_image_right" src="images/Part1_PixelMath_1.png" style="width:520px;" id="8EUDZUn36QgFcMsd" alt="" />
+<img class="pidoc_image_right" src="images/Part1_PixelMath_1.png" style="width:520px;" id="3D75t6OcxrwzcXWL" alt="" />
 <ul>
-<li><span class="pidoc_indicator_default" id="8EUDZUn36QgFcMsd_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('8EUDZUn36QgFcMsd', 'images/Part1_PixelMath_1.png'); pidoc_hideGroup('8EUDZUn36QgFcMsd', 3); pidoc_setOpacity('8EUDZUn36QgFcMsd_1', 1.0);">R/K: unchanged</a></li>
-<li><span class="pidoc_indicator" id="8EUDZUn36QgFcMsd_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('8EUDZUn36QgFcMsd', 'images/Part1_PixelMath_2.png'); pidoc_hideGroup('8EUDZUn36QgFcMsd', 3); pidoc_setOpacity('8EUDZUn36QgFcMsd_2', 1.0);">G: kG</a></li>
-<li><span class="pidoc_indicator" id="8EUDZUn36QgFcMsd_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('8EUDZUn36QgFcMsd', 'images/Part1_PixelMath_3.png'); pidoc_hideGroup('8EUDZUn36QgFcMsd', 3); pidoc_setOpacity('8EUDZUn36QgFcMsd_3', 1.0);">B: kB</a></li>
+<li><span class="pidoc_indicator_default" id="3D75t6OcxrwzcXWL_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('3D75t6OcxrwzcXWL', 'images/Part1_PixelMath_1.png'); pidoc_hideGroup('3D75t6OcxrwzcXWL', 3); pidoc_setOpacity('3D75t6OcxrwzcXWL_1', 1.0);">R/K: unchanged</a></li>
+<li><span class="pidoc_indicator" id="3D75t6OcxrwzcXWL_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('3D75t6OcxrwzcXWL', 'images/Part1_PixelMath_2.png'); pidoc_hideGroup('3D75t6OcxrwzcXWL', 3); pidoc_setOpacity('3D75t6OcxrwzcXWL_2', 1.0);">G: kG</a></li>
+<li><span class="pidoc_indicator" id="3D75t6OcxrwzcXWL_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('3D75t6OcxrwzcXWL', 'images/Part1_PixelMath_3.png'); pidoc_hideGroup('3D75t6OcxrwzcXWL', 3); pidoc_setOpacity('3D75t6OcxrwzcXWL_3', 1.0);">B: kB</a></li>
 </ul>
 </div>
 </div>
@@ -302,10 +305,10 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 <a id="__figure_3__"></a>
 <p><span class="pidoc_figure_title">Figure 3 &mdash;</span>  <strong>PixelMath instance source code as a profile</strong></p>
 <div class="pidoc_mouseover">
-<img class="pidoc_image_right" src="images/Part1_PixelMath_4.png" style="width:520px;" id="xaxVdYuRLqLIJ8NI" alt="" />
+<img class="pidoc_image_right" src="images/Part1_PixelMath_4.png" style="width:520px;" id="zAcTp2EKKkktVGey" alt="" />
 <ul>
-<li><span class="pidoc_indicator_default" id="xaxVdYuRLqLIJ8NI_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('xaxVdYuRLqLIJ8NI', 'images/Part1_PixelMath_4.png'); pidoc_hideGroup('xaxVdYuRLqLIJ8NI', 2); pidoc_setOpacity('xaxVdYuRLqLIJ8NI_1', 1.0);">Instance Source Code button</a></li>
-<li><span class="pidoc_indicator" id="xaxVdYuRLqLIJ8NI_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('xaxVdYuRLqLIJ8NI', 'images/Part1_PixelMath_5.png'); pidoc_hideGroup('xaxVdYuRLqLIJ8NI', 2); pidoc_setOpacity('xaxVdYuRLqLIJ8NI_2', 1.0);">The source code to save</a></li>
+<li><span class="pidoc_indicator_default" id="zAcTp2EKKkktVGey_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('zAcTp2EKKkktVGey', 'images/Part1_PixelMath_4.png'); pidoc_hideGroup('zAcTp2EKKkktVGey', 2); pidoc_setOpacity('zAcTp2EKKkktVGey_1', 1.0);">Instance Source Code button</a></li>
+<li><span class="pidoc_indicator" id="zAcTp2EKKkktVGey_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('zAcTp2EKKkktVGey', 'images/Part1_PixelMath_5.png'); pidoc_hideGroup('zAcTp2EKKkktVGey', 2); pidoc_setOpacity('zAcTp2EKKkktVGey_2', 1.0);">The source code to save</a></li>
 </ul>
 </div>
 </div>
@@ -330,6 +333,18 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 <td><p>Default run (with MGC)</p>
 </td>
 <td><p><span class="pidoc_code">BM_768,</span> <span class="pidoc_code">BM_1024,</span> ...: one background model per gradient scale. The same scale twice gives <span class="pidoc_code">BM_1024_1</span> (as in +Previews).</p>
+</td>
+</tr>
+<tr>
+<td><p>MGC with <a href="#scale_factors">Scale factors</a> <em>Automatic</em></p>
+</td>
+<td><p><span class="pidoc_code">BM_768_autoSF,</span> <span class="pidoc_code">BM_1024_autoSF,</span> ...</p>
+</td>
+</tr>
+<tr>
+<td><p>MGC with <a href="#scale_factors">Scale factors</a> <em>Both</em></p>
+</td>
+<td><p>Two per scale: <span class="pidoc_code">BM_768</span> and <span class="pidoc_code">BM_768_autoSF,</span> <span class="pidoc_code">BM_1024</span> and <span class="pidoc_code">BM_1024_autoSF,</span> ... (8 previews for 4 scales).</p>
 </td>
 </tr>
 <tr>
@@ -359,26 +374,130 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
    <h4 class="pidoc_subsectionTitle">2.5&emsp;<a id="step_mgc"></a>Step 4 &mdash; MGC (MultiscaleGradientCorrection)</h4>
 <p>Runs MGC on each preview with its own gradient scale (default 768, 1024, 2048 and 3072), using the MARS database as reference. Each preview then shows its gradient model; the script pauses 3 seconds on each so you can follow along.</p>
 <p>By default MGC uses L/R/G/B. For a dual-band filter, check <strong>Filter selection</strong> and choose L, Ha, OIII, OIII, together with <a href="#step_spfc">narrowband filters mode</a> in SPFC and, ideally, the <a href="#separation">Ha/OIII separation</a> (<a href="#__figure_1__" class="pidoc_referenceTooltip" onmouseover="pidoc_showReferenceToolTip( this );" onmouseout="pidoc_hideReferenceToolTip();" data-tooltip="[Figure 1]">[1]</a>).</p>
+<div class="pidoc_subsection" id="__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Choosing_Gradient_Scales__">
+   <h5 class="pidoc_subsectionTitle">2.5.1&emsp;<a id="gradient_scale"></a>Choosing Gradient Scales</h5>
+<p>The gradient scale is measured in image pixels. The same piece of sky therefore needs a larger scale on a finely sampled image than on a coarse one, and a 2&times; drizzled master needs about twice the scale of the same master without drizzle.</p>
+<p>Good starting points by image scale (arcseconds per pixel; with drizzle use the drizzled value, e.g. 3.1&quot;/px at 2&times; drizzle = 1.55&quot;/px):</p>
+
+<table class="pidoc_table">
+<caption><a id="__table_2__"></a>
+<span class="pidoc_table_title">Table 2 &mdash;  Suggested starting gradient scale</span></caption>
+<tr>
+<th><p>Image scale</p>
+</th>
+<th><p>Start with</p>
+</th>
+<th><p>Example (native, no drizzle)</p>
+</th>
+</tr>
+<tr>
+<td><p>about 1.0&quot;/px</p>
+</td>
+<td><p>3072</p>
+</td>
+<td><p>IMX571 (3.76 &mu;m) at 800 mm</p>
+</td>
+</tr>
+<tr>
+<td><p>about 1.5&quot;/px</p>
+</td>
+<td><p>2048</p>
+</td>
+<td><p>IMX571 at 500 mm, or RedCat 51 at 2&times; drizzle</p>
+</td>
+</tr>
+<tr>
+<td><p>about 2.0&quot;/px</p>
+</td>
+<td><p>1536</p>
+</td>
+<td><p>IMX585 (2.9 &mu;m) at 300 mm</p>
+</td>
+</tr>
+<tr>
+<td><p>about 3.0&quot;/px</p>
+</td>
+<td><p>1024</p>
+</td>
+<td><p>IMX571 at 250 mm (RedCat 51)</p>
+</td>
+</tr>
+<tr>
+<td><p>about 4.0&quot;/px</p>
+</td>
+<td><p>768</p>
+</td>
+<td><p>IMX294 (4.63 &mu;m) at 250 mm</p>
+</td>
+</tr>
+</table>
+
+<p>Image scale = 206.265 &times; pixel size (&mu;m) / focal length (mm). Large, faint nebulae need larger scales than star fields. Set the four previews around the starting value and compare.</p>
+
+<div class="pidoc_note">
+<p>Measured on the same RedCat 51 / IMX571 dual-band master: best scale 2048 with 2&times; drizzle, 768&ndash;1024 without drizzle. Much larger scales (4096 on that drizzled master) became too coarse and left part of the gradient in the image.</p>
+</div>
+</div>
+
+<div class="pidoc_subsection" id="__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Scale_Factors__">
+   <h5 class="pidoc_subsectionTitle">2.5.2&emsp;<a id="scale_factors"></a>Scale Factors</h5>
+
+<div style="text-align:center;">
+<img style="width:520px;" src="images/Part1_ScaleFactors.png" alt=""/>
+</div>
+<p>MGC fits the MARS reference to your image with one scale factor per channel. Part 1 offers three settings:</p>
+
+<dl class="pidoc_list">
+<dt>
+<p>Standard (1.0)</p>
+</dt>
+<dd>
+<p>All factors 1.0 (the behaviour before v2.7).</p>
+</dd>
+<dt>
+<p>Automatic</p>
+</dt>
+<dd>
+<p>MGC computes one factor per channel itself, aiming for a model that contains no image structure. About the same run time as Standard. Preview names end in <span class="pidoc_code">_autoSF.</span></p>
+</dd>
+<dt>
+<p>Both (compare)</p>
+</dt>
+<dd>
+<p>Two previews per scale, <span class="pidoc_code">BM_&lt;scale&gt;</span> and <span class="pidoc_code">BM_&lt;scale&gt;_autoSF,</span> to compare in the model window. The warning icon is a reminder that this costs about 60&ndash;70% more MGC time: the MARS work is done once, but each scale is modelled twice.</p>
+</dd>
+</dl>
+
+<p>Automatic is not always better. In tests it gave a flatter background on 2&times; drizzled masters, but not on the same master without drizzle; the factors themselves also differ between drizzled and undrizzled versions of one image. Use <strong>Both</strong> when you are unsure, and decide in the model window.</p>
+<p>The automatic factors don't depend on the gradient scale, so they are the same for every <span class="pidoc_code">_autoSF</span> preview. The console and the model window show them together with their <em>correlation:</em> how clearly MGC could determine each factor. A factor with a correlation below 0.75 is marked &#9888; and is uncertain; compare it with the 1.0 model.</p>
+</div>
+
 <div class="pidoc_subsection" id="__Usage_:_Step_4_mdash_MGC_MultiscaleGradientCorrection_:_Choose_Background_Model__">
-   <h5 class="pidoc_subsectionTitle">2.5.1&emsp;<a id="choose_model"></a>Choose Background Model</h5>
+   <h5 class="pidoc_subsectionTitle">2.5.3&emsp;<a id="choose_model"></a>Choose Background Model</h5>
 
 <div style="text-align:center;">
 <img style="width:420px;" src="images/Part1_MGC.png" alt=""/>
 </div>
-<p>When all previews are done, the <strong>Choose background model</strong> window opens. While it is open, PixInsight is busy: you can't zoom or pan the image. Click a model in the list to show its preview.</p>
+<p>When all previews are done, the <strong>Choose background model</strong> window opens. While it is open, PixInsight is busy: you can't zoom or pan the image. Click a model in the list to show its preview. With automatic scale factors, the top of the window shows the factors and their correlation.</p>
 
 <dl class="pidoc_list">
 <dt>
 <p>Apply</p>
 </dt>
 <dd>
-<p>Applies the selected model to the main image at once: image &minus; model + median(model). The model used is noted in the FITS history.</p>
+<p>Applies the selected model to the main image at once: image &minus; model + median(model). The model used and its scale factors are noted in the FITS history.</p>
+</dd>
+<dt>
+<p>Stronger model stretch (same for all models)</p>
+</dt>
+<dd>
+<p>Display only. Shows every model with one stronger stretch, computed from all models together, so you compare like with like. Off: the models use the image's own stretch. Don't judge models with PixInsight's AutoSTF on each preview separately: it stretches every model differently.</p>
 </dd>
 <dt>
 <p>Add scale / Run MGC</p>
 </dt>
 <dd>
-<p>If none of the models is good enough, run MGC at another scale. It gets its own new <span class="pidoc_code">BM_</span> preview with the same settings and appears in the list, ready to compare and apply.</p>
+<p>If none of the models is good enough, run MGC at another scale. It gets its own new <span class="pidoc_code">BM_</span> preview with the same settings and appears in the list, ready to compare and apply. With <strong>Both</strong>, it adds the 1.0 and the <span class="pidoc_code">_autoSF</span> model.</p>
 </dd>
 <dt>
 <p>Remove background model previews after applying</p>
@@ -442,6 +561,7 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 <img style="width:520px;" src="images/Part1_GC.png" alt=""/>
 </div>
 <p>It works like <a href="#choose_model">Choose background model</a>: <strong>Apply</strong> copies the selected preview to the main image, <strong>Remove GC previews and model windows after applying</strong> is on by default, and <strong>Open GC tool instead</strong> opens GC with that preview's settings.</p>
+<p><strong>Show gradient models (same stretch for all)</strong> is for display only: clicking a result then brings its model window to the front instead of its preview, and both models get one shared stretch so they can be compared. Unchecked, the previews show again and the model windows get their own stretch back. <strong>Apply</strong> always uses the corrected preview.</p>
 
 <div class="pidoc_note">
 <p>Close old <span class="pidoc_code">GC_gradient_model</span> windows before running GC. Otherwise GC numbers the new models differently and they no longer match the preview names.</p>
@@ -459,7 +579,7 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 <div class="pidoc_warning">
 <p>If a gradient correction from this script (MGC or GC) is already applied, the script warns before it runs: correcting twice can damage the image. To try another model, go back one step in History Explorer first. The warning follows History Explorer: after undoing the correction, it no longer appears.</p>
 </div>
-<p>The separation and SPFC are skipped automatically when they were already applied to the image.</p>
+<p>The separation and SPFC are skipped automatically when they were already applied to the image. These checks follow History Explorer: if you go back to a state before plate solving or SPFC, the script solves and calibrates again.</p>
 <p>If you undo the image history back to the start, the astrometric solution is lost and the next run solves the image again.</p>
 </div>
 
@@ -476,7 +596,7 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 
 <ul class="pidoc_list">
 <li>Windows operating system.</li>
-<li class="pidoc_spaced_list_item">PixInsight 1.9.5 or later.</li>
+<li class="pidoc_spaced_list_item">PixInsight 1.9.6 or later.</li>
 <li class="pidoc_spaced_list_item">An image from a <strong>one-shot colour (OSC)</strong> camera, captured with a broadband, light-pollution or single dual-narrowband (DNB) filter. The RGB channels are <em>not</em> split into separate greyscale images.</li>
 <li class="pidoc_spaced_list_item">An image that is already cropped. If you stack in WBPP with <em>Auto Crop</em> and <em>Astrometric Solution</em> enabled, you can start without cropping and the plate solve step is skipped.</li>
 </ul>
@@ -485,7 +605,7 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 
 <ul class="pidoc_list">
 <li>The MARS database (any drive).</li>
-<li class="pidoc_spaced_list_item"><a href="https://www.hnsky.org/astap.htm" title="https://www.hnsky.org/astap.htm">ASTAP</a> with the D50 star database, preferably in <span class="pidoc_code">C:\Program Files\astap</span>.</li>
+<li class="pidoc_spaced_list_item">For images without coordinates or image scale in their FITS keywords: the Gaia astrometric index file (<span class="pidoc_code">gdr3-idx-1.0.0-g17.xpsd</span>, about 1.8 GB, from the PixInsight Software Distribution), set as <em>Astrometric Index File</em> in <span class="pidoc_menu">Process &gt; Astrometry &gt; Gaia</span> preferences. ImageSolver's blind solver needs it.</li>
 </ul>
 
 <p><strong>Part 2</strong></p>
@@ -500,7 +620,7 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 
 
 <div class="pidoc_note">
-<p>If the scripts can't find the MARS database or ASTAP the first time they run, they ask you to locate it. The path is saved for later runs. If BlurXTerminator or NoiseXTerminator isn't installed, that step is skipped. If StarXTerminator isn't installed, Part 2 uses StarNet2 instead.</p>
+<p>If the scripts can't find the MARS database the first time they run, they ask you to locate it. The path is saved for later runs. If BlurXTerminator or NoiseXTerminator isn't installed, that step is skipped. If StarXTerminator isn't installed, Part 2 uses StarNet2 instead.</p>
 </div>
 <p>If you combine two DNB filters (Ha/OIII and SII/OIII) into a Hubble-palette image, these scripts are not the right tool.</p>
 </div>
@@ -510,9 +630,8 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 <p>Besides your open images, this is everything the scripts store, write, start or download.</p>
 
 <ul class="pidoc_list">
-<li><strong>Settings:</strong> workflow and equipment settings, and the MARS and ASTAP paths, are stored in PixInsight's own settings (<em>Reset Settings</em> clears them).</li>
-<li class="pidoc_spaced_list_item"><strong>Part 1, ASTAP:</strong> if plate solving needs it, Part 1 starts <span class="pidoc_code">astap.exe</span> from the location you chose. It exports a temporary image (<span class="pidoc_code">astap_solve.jpg)</span> to the system temporary folder; ASTAP writes its <span class="pidoc_code">.wcs</span> and <span class="pidoc_code">.ini</span> results next to it. All three are deleted when the solve ends, successful or not. ASTAP is stopped after 2 minutes (targeted solve) or 10 minutes (blind solve); <em>Abort</em> in the Process Console stops it sooner.</li>
-<li class="pidoc_spaced_list_item"><strong>Part 1, ImageSolver:</strong> uses PixInsight's own ImageSolver, which writes temporary star lists (<span class="pidoc_code">stars*.csv</span>) to the system temporary folder.</li>
+<li><strong>Settings:</strong> workflow and equipment settings, and the MARS path, are stored in PixInsight's own settings (<em>Reset Settings</em> clears them).</li>
+<li class="pidoc_spaced_list_item"><strong>Part 1, ImageSolver:</strong> uses PixInsight's own ImageSolver, which writes temporary star lists (<span class="pidoc_code">stars*.csv</span>) to the system temporary folder. Its blind solver reads the astrometric index file set in the Gaia preferences. The scripts start no external programs.</li>
 <li class="pidoc_spaced_list_item"><strong>Part 1, MARS:</strong> the script looks for <span class="pidoc_code">.xmars</span> files in the PixInsight folders and in common <span class="pidoc_code">Astro</span> folders, reading only.</li>
 <li class="pidoc_spaced_list_item"><strong>Part 1, separation profiles:</strong> profiles are <span class="pidoc_code">.txt</span> files in the folder you choose. They are only read for their two factors, never run, and written only when you save one.</li>
 <li class="pidoc_spaced_list_item"><strong>Part 2, Check dust map:</strong> only when you click it, Part 2 sends the image's centre coordinates and field size to the NASA/IPAC IRSA dust service over https and downloads the dust map from that service only to the system temporary folder. The files are deleted afterwards, also when a download fails. No other data is sent, and no other part of the scripts uses the internet.</li>
@@ -603,7 +722,7 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
    <h3 class="pidoc_sectionTitle">4&emsp;Acknowledgments</h3>
    <p class="pidoc_sectionToggleButton" onclick="pidoc_toggleSection( 'Acknowledgments', this );">[hide]</p>
    <div id="Acknowledgments">
-<p>Thanks to the PixInsight team (Pleiades Astrophoto) for PixInsight; to Franklin Marek (SetiAstro) for Blind Solver 2000, whose approach inspired the ASTAP solver step; and to Han Kleijn for ASTAP. Thanks also to the beta testers Jeff, Mike and Stefan.</p>
+<p>Thanks to the PixInsight team (Pleiades Astrophoto) for PixInsight and ImageSolver with its blind solver. Thanks also to the beta testers Jeff, Mike and Stefan.</p>
    </div>
 </div>
 
@@ -647,7 +766,7 @@ Pleiades Astrophoto, <em>MultiscaleGradientCorrection &mdash; Dual-Band OSC Imag
 </div>
 
 <div id="footer">
-   <p>Generated by the PixInsight Documentation Compiler script version 1.8.0 on 2026-10-24 03:50:35 UTC</p>
+   <p>Generated by the PixInsight Documentation Compiler script version 1.8.0 on 2026-11-02 00:51:52 UTC</p>
 </div>
 <br/>
 <br/>
