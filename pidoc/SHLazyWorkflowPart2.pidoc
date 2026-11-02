@@ -38,13 +38,14 @@
    \sref {SH Lazy Workflow Part 1} {SH Lazy Workflow Part 1} ends. Start it on
    the image after you have applied your chosen background extraction.
 
-   It corrects the optics, calibrates colour, sharpens and removes the
-   stars. At the end the starless image is in front with NoiseXTerminator
-   (or MLDenoise) open, and your creative work can begin.
+   It corrects the optics, calibrates colour and sharpens. With the
+   default settings it stops after BXT full, with the image still linear.
+   Optional steps give a stretched glimpse (MAS preview), remove the stars
+   and open MLDenoise or NoiseXTerminator, so your creative work can begin.
 
    \s {Part 2 sequence:} BXT correct &rarr; Find Background &rarr;
    SPCC (or AutoColor) &rarr; Adaptive Auto STF &rarr; BXT full &rarr;
-   SXT (or StarNet2) &rarr; NXT (or MLDenoise).
+   MAS preview &rarr; SXT (or StarNet2) &rarr; MLDenoise (or NXT).
 }
 
 \section { Requirements and License } {
@@ -60,7 +61,8 @@
          \imageselect[menupos:right, imageWidth:400px] {
             images/Part2_0.png { Overview (sections collapsed) }
             images/Part2_1.png { Default settings }
-            images/Part2_3.png { Narrowband filter mode (SPCC) }
+            images/Part2_3.png { Narrowband filter mode (SPCC section) }
+            images/Part2_4.png { MAS preview and StarNet2 }
          }
       }
 
@@ -79,10 +81,11 @@
            { Turning it on turns off Find Background and SPCC. } }
          { { \lref step_stf {5 Adaptive Auto STF} } {On} { Turned on by SPCC. } }
          { { \lref step_bxtf {6 BXT full} } {On, Automatic PSF} {Independent.} }
-         { { \lref step_sxt {7 SXT} } {On} { Mutually exclusive with StarNet2. } }
+         { { \lref step_mas {6b MAS preview} } {Off} {Independent. Needs PixInsight 1.9.6.} }
+         { { \lref step_sxt {7 SXT} } {Off} { Mutually exclusive with StarNet2. } }
          { { \lref step_starnet {8 StarNet2} } {Off} { Mutually exclusive with SXT. } }
-         { { \lref step_nxt {9 NXT} } {On} { Mutually exclusive with MLDenoise. } }
-         { { \lref step_mld {10 MLDenoise} } {Off} { Mutually exclusive with NXT. } }
+         { { \lref step_mld {9 MLDenoise} } {Off} { Mutually exclusive with NXT. } }
+         { { \lref step_nxt {10 NXT} } {Off} { Mutually exclusive with MLDenoise. } }
       }
    }
 
@@ -145,9 +148,11 @@
          where in the frame dust or IFN is expected: the expected IFN level,
          the dustiest and clearest areas, their contrast, and the Galactic
          latitude. The thresholds are rules of thumb, not hard limits; near
-         the Milky Way plane the map is less reliable. If the service doesn't answer within 30
-         seconds, the window says so; you can still click \s {Continue} without
-         the map.
+         the Milky Way plane the map is less reliable. The service sometimes
+         fails to connect on the first try; the script then tries once more by
+         itself. If that fails too, or the service doesn't answer within 30
+         seconds, the window says so: click \s {Check dust map} again, or
+         \s {Continue} without the map.
 
          \definition {
             { Use dust map in the background pick } { The dustier half of the
@@ -249,6 +254,17 @@
       }
    }
 
+   \subsection { \label step_mas Step 6b --- MAS Preview } {
+
+      Off by default. After BXT full, a copy of the image is stretched with
+      MultiscaleAdaptiveStretch (PixInsight 1.9.6 or later) and minimised as
+      \c {<image>_MAS_preview}, for a first look at the stretched result.
+      MAS runs with its default settings; the background is measured in the
+      \c Background preview (the whole image if there is none), the same sky
+      SPCC and Adaptive Auto STF use. The image itself stays linear and
+      continues with star removal. If MAS fails, the script only warns.
+   }
+
    \subsection { \label step_sxt Step 7 --- SXT (StarXTerminator) } {
 
       Removes the stars. Options: \s {ML Version}, \s {Generate Star Image},
@@ -260,22 +276,16 @@
 
    \subsection { \label step_starnet Step 8 --- StarNet2 } {
 
-      Off by default. Options: \s {Stride}, \s {Create starmask},
-      \s {2x upsample} and \s {Linear data}. With Create starmask, a
+      Off by default. The options match the StarNet2 tool: \s {Stride}
+      (Large, Standard or Small), and in three groups \s {2x upsample} and
+      \s {Protect highlights}; \s {Linear data} and \s {Restore clipped
+      pixels}; \s {Starmask} and \s {Unscreen stars}. With Starmask, a
       star-only image named \c stars is created and the starless image is
       brought to front. Install StarNet2 from its PixInsight repository,
       \xref {https://pixinsight.starnetastro.com/} {https://pixinsight.starnetastro.com/}.
    }
 
-   \subsection { \label step_nxt Step 9 --- NXT (NoiseXTerminator) } {
-
-      Opens NoiseXTerminator at the end of the workflow; it is not applied
-      automatically. With the starless image active, drag the instance
-      triangle from the NXT dialog onto the image. Skipped if
-      NoiseXTerminator isn't installed.
-   }
-
-   \subsection { \label step_mld Step 10 --- MLDenoise } {
+   \subsection { \label step_mld Step 9 --- MLDenoise } {
 
       Off by default. An alternative to NXT: opens MLDenoise with the model
       file (\c .xmlm) selected in the dialog. Other settings use MLDenoise's
@@ -283,14 +293,24 @@
       onto the image.
    }
 
+   \subsection { \label step_nxt Step 10 --- NXT (NoiseXTerminator) } {
+
+      Opens NoiseXTerminator at the end of the workflow; it is not applied
+      automatically. With the starless image active, drag the instance
+      triangle from the NXT dialog onto the image. Skipped if
+      NoiseXTerminator isn't installed.
+   }
+
    \subsection { \label notes2 Notes } {
 
       \warning {
-         The script marks each step on the image as it runs. If you start it
-         again on an image that already went through Part 2, it warns you:
-         running the same steps twice alters or damages the image data. The
-         marks follow History Explorer (undo a step and its mark is gone) and
-         are kept when you save and reopen the image.
+         The script marks each step on the image as it runs; running the
+         same step twice alters or damages the image data. When you start it
+         again, steps that are still applied are skipped, with a note in the
+         console, and only the remaining steps run. To redo a step, move back
+         before it in History Explorer first. Only when every selected step
+         is already applied does a warning ask whether to run them again. The
+         marks are kept when you save and reopen the image.
       }
    }
 }
@@ -310,7 +330,7 @@
 
 \relatedtools {
    BlurXTerminator, StarNet2, ScreenTransferFunction, BackgroundNeutralization,
-   ColorCalibration
+   ColorCalibration, MultiscaleAdaptiveStretch
 }
 
 \related {https://www.youtube.com/watch?v=tBHKdt-lzNQ} {PixInsight YouTube: SpectrophotometricColorCalibration}

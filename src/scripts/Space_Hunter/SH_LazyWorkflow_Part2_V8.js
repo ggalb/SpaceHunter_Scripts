@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.3.12<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.4<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -9,7 +9,8 @@
    Tiled background finder (Exclude previews honoured) with pre-check and optional IFN/dust map, SPCC with auto-detected ROI,<br/>\
    AutoColor (Background Neutralization + Color Calibration, alternative to Background + SPCC),<br/>\
    BlurXTerminator full with adjustable parameters, Adaptive Auto STF (auto linked/unlinked),<br/>\
-   StarXTerminator or StarNet2 for star removal, NoiseXTerminator or MLDenoise. New Instance support.<br/>\
+   StarXTerminator or StarNet2 for star removal, NoiseXTerminator or MLDenoise,<br/>\
+   optional MultiscaleAdaptiveStretch preview copy. New Instance support.<br/>\
    <br/>\
    Copyright &copy; 2026 Georg G Albrecht. MIT License.<br/>\
    AutoColor.js Copyright &copy; 2016 Hartmut V. Bornemann. Used with written permission.<br/>\
@@ -46,10 +47,12 @@
 // Part 4: Run AutoColor - Background Neutralization + Color Calibration (alternative to Parts 2 & 3)
 // Part 5: Run Adaptive Auto STF (auto linked/unlinked, Background-preview statistics)
 // Part 6: Run BlurXTerminator full (adjustable parameters)
+// Part 6b: MAS stretch preview - copy after BXT full, stretched with
+//          MultiscaleAdaptiveStretch, minimised (optional)
 // Part 7: Run StarXTerminator (configurable options)
 // Part 8: Run StarNet2 as an alternative to SXT (configurable options)
-// Part 9: Open NoiseXTerminator (selected AI version and tile overlap)
-// Part 10: Open MLDenoise with the user's model, as an alternative to NXT
+// Part 9: Open MLDenoise with the user's model, as an alternative to NXT
+// Part 10: Open NoiseXTerminator (selected AI version and tile overlap)
 //
 // v2.3.1: Documentation button opens the PixInsight manual
 //       (Dialog.browseScriptDocumentation, ID-form #feature-id "SHLazyWorkflowPart2")
@@ -83,6 +86,32 @@
 //       NXT line corrected, STF/MLDenoise credited, requirements updated
 //       (PixInsight 1.9.5, AutoColor built in, MLDenoise, dust-map internet),
 //       Part list moved before the change log (same layout as Part 1).
+// v2.4.1: Optional "MAS stretch preview" (off by default): after BXT full a
+//       copy of the image (<image>_MAS_preview) is stretched with
+//       MultiscaleAdaptiveStretch (PixInsight 1.9.6, default settings) and
+//       minimised, for a glimpse of the stretched result. The main image
+//       is not touched. StarNet2 section for the new StarNet2: stride
+//       Large / Standard / Small and all six options of the tool.
+//       MLDenoise moved before NoiseXTerminator. Defaults: SXT and NXT
+//       off - BXT full is the last step on by default.
+// v2.4.2: Re-run marks as in Part 1 v2.7.2: each mark stores its history
+//       position and counts only while its step is still active in History
+//       Explorer. Steps already applied are skipped (console note); the
+//       warning comes up only when every ticked step is already applied.
+//       Background finder and its pre-check are skipped while the earlier
+//       Background preview is still valid. Dust map download retries once.
+//       StarNet2 option boxes side by side; MAS and SXT sections start
+//       collapsed.
+// v2.4.3: Re-run marks exactly as Part 1 (no process check at the mark's
+//       position: on a reopened file new steps could fill it and a step
+//       would run twice). MAS preview measures the background in the
+//       Background preview (whole image without one). Filter list also
+//       groups "_R/_G/_B" (SvBony DNB) and "Red/Green/Blue" names (skipped
+//       when the same filter is listed as R/G/B); incomplete sets are a
+//       note, not a warning. Equipment summary shows the narrowband
+//       wavelengths in narrowband mode.
+// v2.4.4: StarNet2 option boxes start at the left edge (no label indent),
+//       so the dialog keeps its width.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -105,7 +134,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 5);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.3.12"
+#define SCRIPT_VERSION "v2.4.4"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -178,10 +207,13 @@ var WorkflowParameters = {
    enableSPCC:       true,
    enableAutoSTF:    true,
    enableBXTFull:    true,
-   enableSXT:        true,
-   enableNXT:        true,
+   enableSXT:        false,
+   enableNXT:        false,
    enableMLDenoise:  false,
    mldModelPath:     "",
+
+   // MAS stretch preview (copy after BXT full)
+   enableMASPreview:    false,
 
    // AutoColor
    enableAutoColor: false,
@@ -240,6 +272,9 @@ var WorkflowParameters = {
    sn2Mask:          true,
    sn2Upsample:      false,
    sn2Linear:        true,
+   sn2RestoreClipped:     true,
+   sn2HighlightProtection: true,
+   sn2Unscreen:      false,
 
    save: function()
    {
@@ -285,6 +320,7 @@ var WorkflowParameters = {
       Parameters.set("nxtMlVersion",     this.nxtMlVersion);
 	  
 	  Parameters.set("enableNXT",        this.enableNXT);
+      Parameters.set("enableMASPreview",    this.enableMASPreview);
       Parameters.set("enableMLDenoise",  this.enableMLDenoise);
       Parameters.set("mldModelPath",     this.mldModelPath);
       Parameters.set("enableStarNet2",   this.enableStarNet2);
@@ -292,6 +328,9 @@ var WorkflowParameters = {
       Parameters.set("sn2Mask",        this.sn2Mask);
       Parameters.set("sn2Upsample",    this.sn2Upsample);
       Parameters.set("sn2Linear",      this.sn2Linear);
+      Parameters.set("sn2RestoreClipped",      this.sn2RestoreClipped);
+      Parameters.set("sn2HighlightProtection", this.sn2HighlightProtection);
+      Parameters.set("sn2Unscreen",            this.sn2Unscreen);
    },
 
    load: function()
@@ -378,6 +417,8 @@ var WorkflowParameters = {
 	 
 	  if (Parameters.has("enableNXT"))
          this.enableNXT = Parameters.getBoolean("enableNXT");
+      if (Parameters.has("enableMASPreview"))
+         this.enableMASPreview = Parameters.getBoolean("enableMASPreview");
       if (Parameters.has("enableMLDenoise"))
          this.enableMLDenoise = Parameters.getBoolean("enableMLDenoise");
       if (Parameters.has("mldModelPath"))
@@ -392,6 +433,12 @@ var WorkflowParameters = {
          this.sn2Upsample = Parameters.getBoolean("sn2Upsample");
       if (Parameters.has("sn2Linear"))
          this.sn2Linear = Parameters.getBoolean("sn2Linear");
+      if (Parameters.has("sn2RestoreClipped"))
+         this.sn2RestoreClipped = Parameters.getBoolean("sn2RestoreClipped");
+      if (Parameters.has("sn2HighlightProtection"))
+         this.sn2HighlightProtection = Parameters.getBoolean("sn2HighlightProtection");
+      if (Parameters.has("sn2Unscreen"))
+         this.sn2Unscreen = Parameters.getBoolean("sn2Unscreen");
    },
 
    saveUserPrefs: function()
@@ -406,6 +453,7 @@ var WorkflowParameters = {
          enableBXTFull:        this.enableBXTFull,
          enableSXT:            this.enableSXT,
          enableNXT:            this.enableNXT,
+         enableMASPreview:     this.enableMASPreview,
          enableMLDenoise:      this.enableMLDenoise,
          mldModelPath:         this.mldModelPath,
          enableStarNet2:       this.enableStarNet2,
@@ -439,7 +487,10 @@ var WorkflowParameters = {
          sn2Stride:            this.sn2Stride,
          sn2Mask:              this.sn2Mask,
          sn2Upsample:          this.sn2Upsample,
-         sn2Linear:            this.sn2Linear
+         sn2Linear:            this.sn2Linear,
+         sn2RestoreClipped:    this.sn2RestoreClipped,
+         sn2HighlightProtection: this.sn2HighlightProtection,
+         sn2Unscreen:          this.sn2Unscreen
       };
       try {
          Settings.write(SETTINGS_KEY_USERPREFS, DataType.String, JSON.stringify(prefs));
@@ -460,6 +511,7 @@ var WorkflowParameters = {
             if (prefs.enableBXTFull        !== undefined) this.enableBXTFull        = prefs.enableBXTFull;
             if (prefs.enableSXT            !== undefined) this.enableSXT            = prefs.enableSXT;
             if (prefs.enableNXT            !== undefined) this.enableNXT            = prefs.enableNXT;
+            if (prefs.enableMASPreview     !== undefined) this.enableMASPreview     = prefs.enableMASPreview;
             if (prefs.enableMLDenoise      !== undefined) this.enableMLDenoise      = prefs.enableMLDenoise;
             if (prefs.mldModelPath         !== undefined) this.mldModelPath         = prefs.mldModelPath;
             if (prefs.enableStarNet2       !== undefined) this.enableStarNet2       = prefs.enableStarNet2;
@@ -501,6 +553,9 @@ var WorkflowParameters = {
             if (prefs.sn2Mask              !== undefined) this.sn2Mask              = prefs.sn2Mask;
             if (prefs.sn2Upsample          !== undefined) this.sn2Upsample          = prefs.sn2Upsample;
             if (prefs.sn2Linear            !== undefined) this.sn2Linear            = prefs.sn2Linear;
+            if (prefs.sn2RestoreClipped    !== undefined) this.sn2RestoreClipped    = prefs.sn2RestoreClipped;
+            if (prefs.sn2HighlightProtection !== undefined) this.sn2HighlightProtection = prefs.sn2HighlightProtection;
+            if (prefs.sn2Unscreen          !== undefined) this.sn2Unscreen          = prefs.sn2Unscreen;
          }
       } catch (e) {}
    },
@@ -546,6 +601,9 @@ var WorkflowParameters = {
       this.sn2Mask              = true;
       this.sn2Upsample          = false;
       this.sn2Linear            = true;
+      this.sn2RestoreClipped    = true;
+      this.sn2HighlightProtection = true;
+      this.sn2Unscreen          = false;
       try {
          Settings.write(SETTINGS_KEY_USERPREFS, DataType.String, JSON.stringify({
             enableAutoColor:      this.enableAutoColor,
@@ -556,6 +614,7 @@ var WorkflowParameters = {
             enableBXTFull:        this.enableBXTFull,
             enableSXT:            this.enableSXT,
             enableNXT:            this.enableNXT,
+            enableMASPreview:     this.enableMASPreview,
             enableMLDenoise:      this.enableMLDenoise,
             mldModelPath:         this.mldModelPath,
             enableStarNet2:       this.enableStarNet2,
@@ -581,7 +640,10 @@ var WorkflowParameters = {
             sn2Stride:            this.sn2Stride,
             sn2Mask:              this.sn2Mask,
             sn2Upsample:          this.sn2Upsample,
-            sn2Linear:            this.sn2Linear
+            sn2Linear:            this.sn2Linear,
+            sn2RestoreClipped:    this.sn2RestoreClipped,
+            sn2HighlightProtection: this.sn2HighlightProtection,
+            sn2Unscreen:          this.sn2Unscreen
          }));
       } catch (e) {}
    },
@@ -807,17 +869,31 @@ function buildDropdownLists()
          if (!gEntries[gName] && gEntries[rName.replace(/ R$/, " V")])
             gName = rName.replace(/ R$/, " V");
       }
+      else if (rName.match(/_R$/)) {
+         gName = rName.replace(/_R$/, "_G");
+         bName = rName.replace(/_R$/, "_B");
+         groupLabel = rName.replace(/_R$/, "").replace(/_/g, " ");
+      }
+      else if (rName.match(/ Red$/)) {
+         // Same filter often also listed as "... R/G/B": keep that one only
+         var shortR = rName.replace(/ Red$/, " R").toLowerCase();
+         var dup = false;
+         for (var k = 0; k < rEntries.length; k++)
+            if (rEntries[k] !== rName && rEntries[k].toLowerCase() === shortR) dup = true;
+         if (dup) continue;
+         gName = rName.replace(/ Red$/, " Green");
+         bName = rName.replace(/ Red$/, " Blue");
+         groupLabel = rName.replace(/ Red$/, "");
+      }
       else {
-         console.writeln("  WARNING: Cannot group R entry: " + rName);
+         console.writeln("  Note: filter not listed (no R/G/B naming): " + rName);
          continue;
       }
 
-      if (!gEntries[gName]) {
-         console.writeln("  WARNING: Missing G for: " + rName + " (expected: " + gName + ")");
-         continue;
-      }
-      if (!bEntries[bName]) {
-         console.writeln("  WARNING: Missing B for: " + rName + " (expected: " + bName + ")");
+      // Incomplete sets (e.g. a database without the B curve) cannot be used by SPCC
+      if (!gEntries[gName] || !bEntries[bName]) {
+         console.writeln("  Note: filter not listed (no " + (!gEntries[gName] ? gName : bName) +
+                         " curve in the filter database): " + rName);
          continue;
       }
 
@@ -1562,6 +1638,39 @@ var SpaceHunterDialog2 = class extends Dialog
    this.bxtFull_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
+   // SECTION 6b: MAS stretch preview (copy after BXT full)
+   // =================================================================
+
+   this.masInfo_Label = new Label( this );
+   this.masInfo_Label.useRichText = true;
+   this.masInfo_Label.wordWrapping = true;
+   this.masInfo_Label.text = "<p>After BXT full, a copy of the image is stretched with " +
+      "MultiscaleAdaptiveStretch (default settings, background measured in the " +
+      "Background preview) and minimised as " +
+      "<i>&lt;image&gt;_MAS_preview</i>, for a glimpse of the stretched result.</p>";
+
+   this.mas_Control = new Control( this );
+   this.mas_Control.sizer = new VerticalSizer;
+   this.mas_Control.sizer.margin = 6;
+   this.mas_Control.sizer.spacing = 4;
+   this.mas_Control.sizer.add( this.masInfo_Label );
+
+   this.mas_Section = new SectionBar( this, "MAS stretch preview (copy)" );
+   this.mas_Section.setSection( this.mas_Control );
+   this.mas_Section.enableCheckBox( true );
+   this.mas_Section.checkBox.checked = WorkflowParameters.enableMASPreview;
+   this.mas_Section.checkBox.toolTip = "<p>Stretch a copy of the image with " +
+      "MultiscaleAdaptiveStretch after BXT full (display only, needs PixInsight 1.9.6).</p>" +
+      "<p>The image itself stays linear and continues with star removal.</p>";
+   this.mas_Section.onCheckSection = function( sectionbar )
+   {
+      WorkflowParameters.enableMASPreview = sectionbar.checkBox.checked;
+      dlg.mas_Control.enabled = WorkflowParameters.enableMASPreview;
+      WorkflowParameters.saveUserPrefs();
+   };
+   this.mas_Section.onToggleSection = toggleSectionHandler;
+
+   // =================================================================
    // SECTION 7: StarXTerminator
    // =================================================================
 
@@ -1679,19 +1788,22 @@ var SpaceHunterDialog2 = class extends Dialog
    // SECTION 8: StarNet2
    // =================================================================
 
-   // Stride dropdown
+   // Stride dropdown (StarNet2's own names; stored as 384 / 256 / 128)
    this.sn2Stride_Label = new Label( this );
    this.sn2Stride_Label.text = "Stride:";
    this.sn2Stride_Label.textAlignment = TextAlignment.Right | TextAlignment.VertCenter;
    this.sn2Stride_Label.setFixedWidth( labelWidth );
 
    this.sn2Stride_ComboBox = new ComboBox( this );
-   this.sn2Stride_ComboBox.addItem( "384" );
-   this.sn2Stride_ComboBox.addItem( "256" );
-   this.sn2Stride_ComboBox.addItem( "128" );
+   this.sn2Stride_ComboBox.addItem( "Large" );
+   this.sn2Stride_ComboBox.addItem( "Standard" );
+   this.sn2Stride_ComboBox.addItem( "Small" );
    this.sn2Stride_ComboBox.currentItem = WorkflowParameters.sn2Stride === 384 ? 0 :
                                           WorkflowParameters.sn2Stride === 128 ? 2 : 1;
-   this.sn2Stride_ComboBox.toolTip = "<p>Tile stride size. Smaller = better quality but slower.</p>";
+   this.sn2Stride_ComboBox.toolTip = "<p>Controls tile overlap during star removal.</p>" +
+      "<p><b>Large:</b> use for super wide landscape images.<br/>" +
+      "<b>Standard:</b> recommended default for telescope images.<br/>" +
+      "<b>Small:</b> slower; may help with extremely large stars.</p>";
    this.sn2Stride_ComboBox.onItemSelected = function( index )
    {
       WorkflowParameters.sn2Stride = index === 0 ? 384 : index === 2 ? 128 : 256;
@@ -1704,62 +1816,71 @@ var SpaceHunterDialog2 = class extends Dialog
    this.sn2Stride_Sizer.add( this.sn2Stride_ComboBox );
    this.sn2Stride_Sizer.addStretch();
 
-   // Create starmask checkbox
-   this.sn2Mask_CheckBox = new CheckBox( this );
-   this.sn2Mask_CheckBox.text = "Create starmask";
-   this.sn2Mask_CheckBox.checked = WorkflowParameters.sn2Mask;
-   this.sn2Mask_CheckBox.toolTip = "<p>Generate a star mask image.</p>";
-   this.sn2Mask_CheckBox.onCheck = function( checked )
+   // One option checkbox bound to a WorkflowParameters field.
+   function sn2Option( parent, text, field, tip )
    {
-      WorkflowParameters.sn2Mask = checked;
-      WorkflowParameters.saveUserPrefs();
-   };
+      var cb = new CheckBox( parent );
+      cb.text = text;
+      cb.checked = WorkflowParameters[field];
+      cb.toolTip = tip;
+      cb.onCheck = function( checked )
+      {
+         WorkflowParameters[field] = checked;
+         WorkflowParameters.saveUserPrefs();
+      };
+      return cb;
+   }
 
-   // 2x upsample checkbox
-   this.sn2Upsample_CheckBox = new CheckBox( this );
-   this.sn2Upsample_CheckBox.text = "2x upsample";
-   this.sn2Upsample_CheckBox.checked = WorkflowParameters.sn2Upsample;
-   this.sn2Upsample_CheckBox.toolTip = "<p>Upsample image 2x before processing for better quality on small images.</p>";
-   this.sn2Upsample_CheckBox.onCheck = function( checked )
+   // One group box like StarNet2's own: title + two options.
+   function sn2Group( parent, title, a, b )
    {
-      WorkflowParameters.sn2Upsample = checked;
-      WorkflowParameters.saveUserPrefs();
-   };
+      var gb = new GroupBox( parent );
+      gb.title = title;
+      gb.sizer = new VerticalSizer;
+      gb.sizer.margin = 6;
+      gb.sizer.spacing = 4;
+      gb.sizer.add( a );
+      gb.sizer.add( b );
+      return gb;
+   }
 
-   // Linear data checkbox
-   this.sn2Linear_CheckBox = new CheckBox( this );
-   this.sn2Linear_CheckBox.text = "Linear data";
-   this.sn2Linear_CheckBox.checked = WorkflowParameters.sn2Linear;
-   this.sn2Linear_CheckBox.toolTip = "<p>Check if the image is linear (not yet stretched).</p>";
-   this.sn2Linear_CheckBox.onCheck = function( checked )
-   {
-      WorkflowParameters.sn2Linear = checked;
-      WorkflowParameters.saveUserPrefs();
-   };
+   this.sn2Upsample_CheckBox = sn2Option( this, "2x upsample", "sn2Upsample",
+      "<p>Upsample the image 2x before processing (better on small stars, slower).</p>" );
+   this.sn2HighlightProtection_CheckBox = sn2Option( this, "Protect highlights", "sn2HighlightProtection",
+      "<p>Protect bright non-stellar highlights from being removed.</p>" );
+   this.sn2Linear_CheckBox = sn2Option( this, "Linear data", "sn2Linear",
+      "<p>The image is linear (not yet stretched) - true at this point of the workflow.</p>" );
+   this.sn2RestoreClipped_CheckBox = sn2Option( this, "Restore clipped pixels", "sn2RestoreClipped",
+      "<p>Restore pixels clipped by StarNet2's internal stretch of linear data.</p>" );
+   this.sn2Mask_CheckBox = sn2Option( this, "Starmask", "sn2Mask",
+      "<p>Create the stars image (renamed to <i>stars</i>, as with StarXTerminator).</p>" );
+   this.sn2Unscreen_CheckBox = sn2Option( this, "Unscreen stars", "sn2Unscreen",
+      "<p>Create the stars image by unscreening (for screen recombination).</p>" );
 
-   this.sn2Mask_Sizer = new HorizontalSizer;
-   this.sn2Mask_Sizer.addSpacing( labelWidth + 4 );
-   this.sn2Mask_Sizer.add( this.sn2Mask_CheckBox );
-   this.sn2Mask_Sizer.addStretch();
+   this.sn2Processing_GroupBox = sn2Group( this, "Processing Options",
+      this.sn2Upsample_CheckBox, this.sn2HighlightProtection_CheckBox );
+   this.sn2LinearOptions_GroupBox = sn2Group( this, "Linear Data Options",
+      this.sn2Linear_CheckBox, this.sn2RestoreClipped_CheckBox );
+   this.sn2Output_GroupBox = sn2Group( this, "Output Options",
+      this.sn2Mask_CheckBox, this.sn2Unscreen_CheckBox );
 
-   this.sn2Upsample_Sizer = new HorizontalSizer;
-   this.sn2Upsample_Sizer.addSpacing( labelWidth + 4 );
-   this.sn2Upsample_Sizer.add( this.sn2Upsample_CheckBox );
-   this.sn2Upsample_Sizer.addStretch();
+   this.sn2Groups_Sizer = new HorizontalSizer;
+   this.sn2Groups_Sizer.spacing = 6;
+   this.sn2Groups_Sizer.add( this.sn2Processing_GroupBox );
+   this.sn2Groups_Sizer.add( this.sn2LinearOptions_GroupBox );
+   this.sn2Groups_Sizer.add( this.sn2Output_GroupBox );
 
-   this.sn2Linear_Sizer = new HorizontalSizer;
-   this.sn2Linear_Sizer.addSpacing( labelWidth + 4 );
-   this.sn2Linear_Sizer.add( this.sn2Linear_CheckBox );
-   this.sn2Linear_Sizer.addStretch();
+   // No label indent: the three boxes side by side would widen the dialog.
+   this.sn2GroupsIndent_Sizer = new HorizontalSizer;
+   this.sn2GroupsIndent_Sizer.add( this.sn2Groups_Sizer );
+   this.sn2GroupsIndent_Sizer.addStretch();
 
    this.sn2_Control = new Control( this );
    this.sn2_Control.sizer = new VerticalSizer;
    this.sn2_Control.sizer.margin = 6;
    this.sn2_Control.sizer.spacing = 4;
    this.sn2_Control.sizer.add( this.sn2Stride_Sizer );
-   this.sn2_Control.sizer.add( this.sn2Mask_Sizer );
-   this.sn2_Control.sizer.add( this.sn2Upsample_Sizer );
-   this.sn2_Control.sizer.add( this.sn2Linear_Sizer );
+   this.sn2_Control.sizer.add( this.sn2GroupsIndent_Sizer );
 
    this.sn2_Section = new SectionBar( this, "StarNet2" );
    this.sn2_Section.setSection( this.sn2_Control );
@@ -1786,7 +1907,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.sn2_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 9: NoiseXTerminator
+   // SECTION 10: NoiseXTerminator
    // =================================================================
 
    this.nxt_Control = new Control( this );
@@ -1825,7 +1946,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.nxt_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 10: MLDenoise
+   // SECTION 9: MLDenoise
    // =================================================================
 
    this.mldenoise_Control = new Control( this );
@@ -1978,6 +2099,9 @@ var SpaceHunterDialog2 = class extends Dialog
       WorkflowParameters.enableMLDenoise = false;
       dlg.mldenoise_Section.checkBox.checked = false;
       dlg.mldenoise_Control.enabled = false;
+      WorkflowParameters.enableMASPreview = false;
+      dlg.mas_Section.checkBox.checked = false;
+      dlg.mas_Control.enabled = false;
    };
 
    // Reset Defaults button
@@ -1985,7 +2109,8 @@ var SpaceHunterDialog2 = class extends Dialog
    this.resetDefaultsButton.icon = this.scaledResource( ":/icons/reload.png" );
    this.resetDefaultsButton.setScaledFixedSize( 24, 24 );
    this.resetDefaultsButton.toolTip = "<p>Reset all workflow steps to default values.<br/>" +
-      "Default: BXTCorrect, Background, SPCC, AutoSTF, BXTFull, SXT, NXT enabled. StarNet2 disabled.<br/>" +
+      "Default: BXT Correct, Background, SPCC, Adaptive Auto STF and BXT Full enabled; " +
+      "MAS preview, SXT, StarNet2, MLDenoise and NXT disabled.<br/>" +
       "Equipment and processing settings (camera, filter, white reference, BXT, SXT, StarNet2 parameters) are not changed.</p>";
    this.resetDefaultsButton.onClick = function()
    {
@@ -1996,8 +2121,8 @@ var SpaceHunterDialog2 = class extends Dialog
       WorkflowParameters.enableSPCC         = true;
       WorkflowParameters.enableAutoSTF      = true;
       WorkflowParameters.enableBXTFull      = true;
-      WorkflowParameters.enableSXT          = true;
-      WorkflowParameters.enableNXT          = true;
+      WorkflowParameters.enableSXT          = false;
+      WorkflowParameters.enableNXT          = false;
       WorkflowParameters.enableMLDenoise    = false;
       WorkflowParameters.enableStarNet2     = false;
       WorkflowParameters.enableBgPrecheck   = true;
@@ -2014,14 +2139,17 @@ var SpaceHunterDialog2 = class extends Dialog
       dlg.autoSTF_Control.enabled = true;
       dlg.bxtFull_Section.checkBox.checked = true;
       dlg.bxtFull_Control.enabled = true;
-      dlg.sxt_Section.checkBox.checked = true;
-      dlg.sxt_Control.enabled = true;
+      dlg.sxt_Section.checkBox.checked = false;
+      dlg.sxt_Control.enabled = false;
       dlg.sn2_Section.checkBox.checked = false;
       dlg.sn2_Control.enabled = false;
-      dlg.nxt_Section.checkBox.checked = true;
-      dlg.nxt_Control.enabled = true;
+      dlg.nxt_Section.checkBox.checked = false;
+      dlg.nxt_Control.enabled = false;
       dlg.mldenoise_Section.checkBox.checked = false;
       dlg.mldenoise_Control.enabled = false;
+      WorkflowParameters.enableMASPreview = false;
+      dlg.mas_Section.checkBox.checked = false;
+      dlg.mas_Control.enabled = false;
 
       WorkflowParameters.saveUserPrefs();
       dlg.updateDependencies();
@@ -2078,6 +2206,9 @@ var SpaceHunterDialog2 = class extends Dialog
       dlg.sn2Mask_CheckBox.checked = true;
       dlg.sn2Upsample_CheckBox.checked = false;
       dlg.sn2Linear_CheckBox.checked = true;
+      dlg.sn2RestoreClipped_CheckBox.checked = true;
+      dlg.sn2HighlightProtection_CheckBox.checked = true;
+      dlg.sn2Unscreen_CheckBox.checked = false;
       dlg.updateDependencies();
       WorkflowParameters.saveUserPrefs();
    };
@@ -2125,14 +2256,16 @@ var SpaceHunterDialog2 = class extends Dialog
    this.sizer.add( this.autoSTF_Control );
    this.sizer.add( this.bxtFull_Section );
    this.sizer.add( this.bxtFull_Control );
+   this.sizer.add( this.mas_Section );
+   this.sizer.add( this.mas_Control );
    this.sizer.add( this.sxt_Section );
    this.sizer.add( this.sxt_Control );
    this.sizer.add( this.sn2_Section );
    this.sizer.add( this.sn2_Control );
-   this.sizer.add( this.nxt_Section );
-   this.sizer.add( this.nxt_Control );
    this.sizer.add( this.mldenoise_Section );
    this.sizer.add( this.mldenoise_Control );
+   this.sizer.add( this.nxt_Section );
+   this.sizer.add( this.nxt_Control );
    this.sizer.addSpacing( 8 );
    this.sizer.add( this.info_Label );
    this.sizer.addSpacing( 8 );
@@ -2149,12 +2282,15 @@ var SpaceHunterDialog2 = class extends Dialog
    this.sxt_Control.enabled = WorkflowParameters.enableSXT;
    this.sn2_Control.enabled = WorkflowParameters.enableStarNet2;
    this.nxt_Control.enabled = WorkflowParameters.enableNXT;
+   this.mas_Control.enabled = WorkflowParameters.enableMASPreview;
    this.mldenoise_Control.enabled = WorkflowParameters.enableMLDenoise;
    this.autoColor_Control.enabled = WorkflowParameters.enableAutoColor;
 
-   // Collapse sections with no user-selectable parameters
+   // Sections start collapsed, except the ones the user usually adjusts
    this.bxtCorrect_Control.hide();
    this.autoSTF_Control.hide();
+   this.mas_Control.hide();
+   this.sxt_Control.hide();
    this.sn2_Control.hide();
    this.nxt_Control.hide();
    this.mldenoise_Control.hide();
@@ -2195,7 +2331,14 @@ function selectEquipment()
    console.writeln("\nSelected equipment:");
    console.writeln("  White reference: " + wr.label);
    console.writeln("  Camera: " + cam.label);
-   console.writeln("  Filter: " + flt.label + " [" + flt.type + "]");
+   if (WorkflowParameters.enableNarrowband)
+      console.writeln("  Filter: Narrowband mode (R " + WorkflowParameters.nbRedWavelength.toFixed(1) +
+         " / G " + WorkflowParameters.nbGreenWavelength.toFixed(1) +
+         " / B " + WorkflowParameters.nbBlueWavelength.toFixed(1) + " nm; bandwidth " +
+         WorkflowParameters.nbRedBandwidth.toFixed(1) + " / " + WorkflowParameters.nbGreenBandwidth.toFixed(1) +
+         " / " + WorkflowParameters.nbBlueBandwidth.toFixed(1) + " nm)");
+   else
+      console.writeln("  Filter: " + flt.label + " [" + flt.type + "]");
 
    console.writeln("\nWorkflow sections enabled:");
    console.writeln("  BXT Correct:  " + (WorkflowParameters.enableBXTCorrect ? "Yes" : "No") +
@@ -2223,8 +2366,9 @@ function selectEquipment()
       console.writeln("    Tile Overlap:   " + WorkflowParameters.sxtTileOverlap.toFixed(2));
    }
    console.writeln("  StarNet2:     " + (WorkflowParameters.enableStarNet2 ? "Yes" : "No"));
-   console.writeln("  NXT:          " + (WorkflowParameters.enableNXT ? "Yes" : "No"));
+   console.writeln("  MAS preview:  " + (WorkflowParameters.enableMASPreview ? "Yes" : "No"));
    console.writeln("  MLDenoise:    " + (WorkflowParameters.enableMLDenoise ? "Yes" : "No"));
+   console.writeln("  NXT:          " + (WorkflowParameters.enableNXT ? "Yes" : "No"));
    console.writeln("=".repeat(80) + "\n");
 }
 
@@ -2233,21 +2377,78 @@ function selectEquipment()
 // ============================================================
 
 // ============================================================
-// Re-run Protection: warn if tool already ran on this image
+// Re-run Protection: skip steps already applied to this image
 // ============================================================
-// Re-run marks. Each mark is written right after its step runs: PixInsight
-// keeps view properties per history state, so undoing that step (History
-// Explorer) removes its mark again, while later steps keep it. Storable: saved
-// with the file, so the warning also works after reopening it.
-// (view.processing is NOT usable for this: it still lists undone steps.)
+// Re-run marks (same method as Part 1 v2.7.2). Each mark is written right
+// after its step runs; its value is the history position (view.historyIndex
+// = number of active steps) right after that step. Properties are NOT
+// reliably rolled back by History Explorer, so a mark only counts while its
+// step is still active. view.processing still lists undone steps; a reopened
+// file starts with an empty list, and then the stored mark is the only
+// evidence. Storable: saved with the file.
 function shMarkDone(view, id)
 {
-   try { view.setPropertyValue(id, true, PropertyType.Boolean,
+   try { view.setPropertyValue(id, view.historyIndex, PropertyType.Int32,
                                PropertyAttribute.Storable | PropertyAttribute.Permanent); } catch(e) {}
 }
-function shHasMark(view, id)
+function shHasProperty(view, id)
 {
    try { return view.hasProperty(id); } catch(e) { return false; }
+}
+// No check of which process sits at the mark's position: on a reopened file
+// new steps can fill that position, and the step would then run twice.
+function shHasMark(view, id)
+{
+   if (!shHasProperty(view, id))
+      return false;
+   try {
+      var pos = view.propertyValue(id);
+      if (typeof pos != "number")
+         return true;                    // boolean mark from v2.4.1 and older
+      if (pos > view.processing.length)
+         return true;                    // from an earlier session (reopened file)
+      return pos <= view.historyIndex;   // false = its step was undone
+   } catch(e) {}
+   return true;
+}
+
+// Steps that change the image. Each is skipped while it is still applied;
+// the user is asked only when every ticked step is already applied.
+var SH_STEPS = [
+   { name: "BlurXTerminator (Correct Only)", enable: "enableBXTCorrect", mark: "SpaceHunter:BXTCorrectDone" },
+   { name: "SPCC",                           enable: "enableSPCC",       mark: "SpaceHunter:SPCCDone" },
+   { name: "AutoColor",                      enable: "enableAutoColor",  mark: "SpaceHunter:AutoColorDone" },
+   { name: "BlurXTerminator (Full)",         enable: "enableBXTFull",    mark: "SpaceHunter:BXTFullDone" },
+   { name: "StarXTerminator",                enable: "enableSXT",        mark: "SpaceHunter:SXTDone" },
+   { name: "StarNet2",                       enable: "enableStarNet2",   mark: "SpaceHunter:StarNet2Done" }
+];
+
+function shStepDone(view, step)
+{
+   if (shHasMark(view, step.mark))
+      return true;
+   // SPCC run outside the script, on a reopened file: SPCC's own property
+   if (step.enable === "enableSPCC" && view.processing.length === 0)
+      return shHasProperty(view, "PCL:SPCC:WhiteBalanceFactors");
+   return false;
+}
+
+// Background preview found by an earlier run and still valid: its mark is
+// active and the preview is still there.
+function shBackgroundDone(win)
+{
+   if (!shHasMark(win.mainView, "SpaceHunter:BackgroundDone"))
+      return false;
+   var pv = win.previews;
+   for (var i = 0; i < pv.length; i++)
+      if (pv[i].id === "Background")
+         return true;
+   return false;
+}
+
+function shLogSkip(name)
+{
+   console.writeln("✔ " + name + " already applied to this image - skipped.\n");
 }
 
 // Text of a caught exception. A PI process stopped with Abort throws an object
@@ -2267,40 +2468,6 @@ function shIsCancel(e)
    return t === "Script cancelled by user." || t.indexOf("Process aborted") >= 0 ||
           console.abortRequested;
 }
-var SH_STEP_MARKS = ["SpaceHunter:ScriptRan", "SpaceHunter:BXTCorrectDone", "SpaceHunter:SPCCDone",
-                     "SpaceHunter:AutoColorDone", "SpaceHunter:BXTFullDone",
-                     "SpaceHunter:SXTDone", "SpaceHunter:StarNet2Done"];
-
-function checkPropertyAndWarn(propertyName, toolName)
-{
-   var win = ImageWindow.activeWindow;
-   if (win.isNull) return true;
-
-   var view = win.mainView;
-   var found = false;
-   try {
-      var val = view.propertyValue(propertyName);
-      if (val !== null && val !== undefined)
-         found = true;
-   } catch(e) {}
-
-   if (found) {
-      var msg = new MessageBox(
-         "<p><b>" + toolName + "</b> has already been applied to this image.</p>" +
-         "<p>Running it again may damage your image.</p>" +
-         "<p>Continue anyway?</p>",
-         "Warning: Tool Already Applied",
-         StdIcon.Warning,
-         StdButton.Yes, StdButton.No
-      );
-      var result = msg.execute();
-      if (result === StdButton.No)
-         throw new Error("Script cancelled by user.");
-   }
-
-   return true;
-}
-
 function runBXT_CorrectOnly()
 {
     let win = ImageWindow.activeWindow;
@@ -2310,8 +2477,6 @@ function runBXT_CorrectOnly()
     let view = win.mainView;   // always the whole image, never a selected preview tab
     if (view.isNull)
         throw new Error("No active view.");
-
-    checkPropertyAndWarn("SpaceHunter:BXTCorrectDone", "BlurXTerminator (Correct Only)");
 
     console.writeln("\n" + "=".repeat(80));
     console.writeln("STEP 2: Running BlurXTerminator (Correct Only)");
@@ -2487,7 +2652,24 @@ function bgPixelToSky(win, x, y)
 var BG_CONNECT_TIMEOUT_S  = 15;
 var BG_DOWNLOAD_TIMEOUT_S = 30;
 
+// One automatic retry: the service sometimes fails to connect on the first
+// try and answers at once on the next.
+var BG_RETRY_DELAY_MS = 2000;
+
 function bgDownloadToFile(url, path)
+{
+   try {
+      bgDownloadOnce(url, path);
+   } catch (e) {
+      console.warningln("Dust map download failed (" + shErrorText(e) + ") - retrying once.");
+      if (typeof msleep === "function")
+         msleep(BG_RETRY_DELAY_MS);
+      CoreApplication.processEvents();
+      bgDownloadOnce(url, path);
+   }
+}
+
+function bgDownloadOnce(url, path)
 {
    var f = new File;
    f.createForWriting(path);
@@ -4000,6 +4182,99 @@ function runBXT_Full()
 }
 
 // ============================================================
+// STEP 6b: MAS stretch preview (copy, display only)
+// ============================================================
+
+// Copy of the image (stars still in) stretched with MultiscaleAdaptiveStretch
+// and minimised: a glimpse of the stretched result. The image itself is not
+// touched. Failures only warn - this step is optional.
+function runMASPreview(win)
+{
+   console.writeln("\n" + "=".repeat(80));
+   console.writeln("STEP 6b: MAS stretch preview (copy)");
+   console.writeln("=".repeat(80) + "\n");
+
+   if ( typeof MultiscaleAdaptiveStretch === "undefined" ) {
+      console.warningln("⚠ MultiscaleAdaptiveStretch is not available (PixInsight 1.9.6 or later) - skipping.\n");
+      return false;
+   }
+
+   var view = win.mainView;
+   var img = view.image;
+   var copy = null;
+   try {
+      var t0 = Date.now();
+      copy = new ImageWindow(img.width, img.height, img.numberOfChannels,
+                             img.bitsPerSample, img.isReal, img.isColor,
+                             view.id + "_MAS_preview");
+      copy.mainView.beginProcess(0xFFFFFFFF);   // UndoFlag_NoSwapFile: throwaway copy
+      copy.mainView.image.assign(img);
+      copy.mainView.endProcess();
+      copy.keywords = win.keywords;
+      try { copy.copyAstrometricSolution(win); } catch (e) {}
+
+      // MultiscaleAdaptiveStretch defaults, set explicitly.
+      var P = new MultiscaleAdaptiveStretch;
+      P.aggressiveness = 0.70;
+      P.targetBackground = 0.150;
+      P.dynamicRangeCompression = 0.40;
+      P.contrastRecovery = true;
+      P.scaleSeparation = 1024;
+      P.contrastRecoveryIntensity = 1.000;
+      P.previewLargeScale = false;
+      P.saturationEnabled = true;
+      P.saturationAmount = 0.75;
+      P.saturationBoost = 0.50;
+      P.saturationLightnessMask = true;
+
+      // Background reference: the Background preview found by the script
+      // (the same sky BN/SPCC and the STF use); whole image without one.
+      var bg = null;
+      var pv = win.previews;
+      for (var i = 0; i < pv.length; i++)
+         if (pv[i].id == "Background")
+            bg = win.previewRect(pv[i]);
+      if (bg != null) {
+         P.backgroundROIEnabled = true;
+         P.backgroundROIX0 = bg.x0;
+         P.backgroundROIY0 = bg.y0;
+         P.backgroundROIWidth = bg.width;
+         P.backgroundROIHeight = bg.height;
+         console.writeln("Background reference: Background preview (" + bg.x0 + ", " + bg.y0 +
+                         ", " + bg.width + " x " + bg.height + ")");
+      } else {
+         P.backgroundROIEnabled = false;
+         console.writeln("Background reference: whole image (no Background preview).");
+      }
+
+      CoreApplication.processEvents();
+      if (!P.executeOn(copy.mainView, false)) {
+         if (console.abortRequested)
+            throw new Error("Script cancelled by user.");
+         throw new Error("MultiscaleAdaptiveStretch failed.");
+      }
+
+      // Stretched data: show it as it is, without a screen stretch.
+      copy.mainView.stf = [[0.5, 0, 1, 0, 1], [0.5, 0, 1, 0, 1],
+                           [0.5, 0, 1, 0, 1], [0.5, 0, 1, 0, 1]];
+      copy.show();
+      copy.iconize();
+      win.bringToFront();
+      console.writeln("✔ " + copy.mainView.id + " created and minimised in " +
+                      ((Date.now() - t0) / 1000).toFixed(1) + " s.\n");
+      return true;
+   } catch (e) {
+      if (shIsCancel(e)) {
+         if (copy != null && !copy.isNull) copy.forceClose();
+         throw e;
+      }
+      console.warningln("⚠ MAS stretch preview failed: " + shErrorText(e) + "\n");
+      if (copy != null && !copy.isNull) copy.forceClose();
+      return false;
+   }
+}
+
+// ============================================================
 // STEP 7: StarXTerminator (with dialog params)
 // ============================================================
 
@@ -4064,6 +4339,13 @@ function runSXT()
 // MAIN EXECUTION
 // ============================================================
 
+// Stride as shown in StarNet2: stored as 384 / 256 / 128 (older versions'
+// tile strides) = Large / Standard / Small.
+function sn2StrideName(stride)
+{
+   return stride === 384 ? "Large" : stride === 128 ? "Small" : "Standard";
+}
+
 function runStarNet2()
 {
    let win = ImageWindow.activeWindow;
@@ -4080,10 +4362,13 @@ function runStarNet2()
    console.writeln("=".repeat(80) + "\n");
 
    console.writeln("Target view: " + view.id);
-   console.writeln("  Stride:        " + WorkflowParameters.sn2Stride);
-   console.writeln("  Create mask:   " + (WorkflowParameters.sn2Mask ? "Yes" : "No"));
-   console.writeln("  2x upsample:   " + (WorkflowParameters.sn2Upsample ? "Yes" : "No"));
-   console.writeln("  Linear data:   " + (WorkflowParameters.sn2Linear ? "Yes" : "No"));
+   console.writeln("  Stride:              " + sn2StrideName(WorkflowParameters.sn2Stride));
+   console.writeln("  2x upsample:         " + (WorkflowParameters.sn2Upsample ? "Yes" : "No"));
+   console.writeln("  Protect highlights:  " + (WorkflowParameters.sn2HighlightProtection ? "Yes" : "No"));
+   console.writeln("  Linear data:         " + (WorkflowParameters.sn2Linear ? "Yes" : "No"));
+   console.writeln("  Restore clipped:     " + (WorkflowParameters.sn2RestoreClipped ? "Yes" : "No"));
+   console.writeln("  Starmask:            " + (WorkflowParameters.sn2Mask ? "Yes" : "No"));
+   console.writeln("  Unscreen stars:      " + (WorkflowParameters.sn2Unscreen ? "Yes" : "No"));
    console.writeln("");
 
   if ( typeof StarNet2 === "undefined" ) {
@@ -4091,11 +4376,22 @@ function runStarNet2()
       return false;
    }
    var P = new StarNet2;
-   P.stride = WorkflowParameters.sn2Stride === 384 ? 0 :
-              WorkflowParameters.sn2Stride === 128 ? 2 : 1;
+   // Stride constants of the current StarNet2; old versions: 0/1/2.
+   if ( StarNet2.maxStride !== undefined )
+      P.stride = WorkflowParameters.sn2Stride === 384 ? StarNet2.maxStride :
+                 WorkflowParameters.sn2Stride === 128 ? StarNet2.minStride : StarNet2.defStride;
+   else
+      P.stride = WorkflowParameters.sn2Stride === 384 ? 0 :
+                 WorkflowParameters.sn2Stride === 128 ? 2 : 1;
    P.mask = WorkflowParameters.sn2Mask;
    P.upsample = WorkflowParameters.sn2Upsample;
    P.linear = WorkflowParameters.sn2Linear;
+   // Options of the current StarNet2 only.
+   if ( "restoreClippedPixels" in P ) P.restoreClippedPixels = WorkflowParameters.sn2RestoreClipped;
+   if ( "highlightProtection" in P )  P.highlightProtection = WorkflowParameters.sn2HighlightProtection;
+   if ( "unscreen" in P )             P.unscreen = WorkflowParameters.sn2Unscreen;
+   if ( "shadows_clipping" in P )     P.shadows_clipping = -2.80;
+   if ( "target_background" in P )    P.target_background = 0.25;
 
    if (!P.executeOn(view)) {
       if (console.abortRequested)
@@ -4183,65 +4479,81 @@ function main()
          console.writeln("\u2714 Astrometric solution found - SPCC can proceed.\n");
       }
 
-      // Re-run Protection: warn if script was previously applied to this image
+      // Re-run Protection: steps still applied to this image (History
+      // Explorer) are skipped. Asks only when every ticked step is applied.
       var win = ImageWindow.activeWindow;
       var view = win.mainView;
-      // Marks and SPCC's own property follow History Explorer rollbacks.
-      var scriptRanBefore = shHasMark(view, "PCL:SPCC:WhiteBalanceFactors");
-      for (var m = 0; m < SH_STEP_MARKS.length; m++)
-         if (shHasMark(view, SH_STEP_MARKS[m])) scriptRanBefore = true;
+      var done = {}, ticked = 0, applied = [];
+      for (var m = 0; m < SH_STEPS.length; m++) {
+         var st = SH_STEPS[m];
+         if (!WorkflowParameters[st.enable]) continue;
+         ticked++;
+         done[st.enable] = shStepDone(view, st);
+         if (done[st.enable]) applied.push(st.name);
+      }
+      var bgDone = WorkflowParameters.enableBackground && shBackgroundDone(win);
 
-      if (scriptRanBefore) {
+      if (ticked > 0 && applied.length === ticked) {
          var msg = new MessageBox(
-            "<p><b>Warning: This script may have already been applied to this image.</b></p>" +
-            "<p>Running it again may damage your image.</p>" +
-            "<p>Check History Explorer before continuing.</p>" +
-            "<p>Continue anyway?</p>",
+            "<p><b>Warning: All selected steps are already applied to this image:</b></p>" +
+            "<p>" + applied.join("<br/>") + "</p>" +
+            "<p>Running them again may damage your image.</p>" +
+            "<p>To redo steps, move back in History Explorer first.</p>" +
+            "<p>Run them again anyway?</p>",
             "Warning: Script Already Applied",
             StdIcon.Warning,
             StdButton.Yes, StdButton.No
          );
          if (msg.execute() === StdButton.No)
             throw new Error("Script cancelled by user.");
+         done = {};
+         bgDone = false;
       }
 
       // Background pre-check: previews + optional dust map, before anything is processed
-      if (WorkflowParameters.enableBackground && WorkflowParameters.enableBgPrecheck) {
+      if (WorkflowParameters.enableBackground && WorkflowParameters.enableBgPrecheck && !bgDone) {
          if (!runBackgroundPrecheck())
             throw new Error("Script cancelled by user.");
       }
 
       // Steps whose tool is not installed return false: no "done" mark then,
-      // or the next run would warn about a step that never ran.
+      // or the next run would skip a step that never ran.
       if (WorkflowParameters.enableBXTCorrect) {
-         if (runBXT_CorrectOnly()) {
-            shMarkDone(view, "SpaceHunter:ScriptRan");
+         if (done.enableBXTCorrect)
+            shLogSkip("BlurXTerminator (Correct Only)");
+         else if (runBXT_CorrectOnly())
             shMarkDone(view, "SpaceHunter:BXTCorrectDone");
-         }
       } else {
          console.writeln("BXT Correct Only is DISABLED - skipping\n");
       }
 
       if (WorkflowParameters.enableBackground) {
-         findDarkestBackgroundPreview();   // throws on failure
-         shMarkDone(view, "SpaceHunter:BackgroundDone");
+         if (bgDone)
+            console.writeln("✔ Background preview from the earlier run kept - finder skipped.\n");
+         else {
+            findDarkestBackgroundPreview();   // throws on failure
+            shMarkDone(view, "SpaceHunter:BackgroundDone");
+         }
       } else {
          console.writeln("Background Finder is DISABLED - skipping\n");
       }
 
       if (WorkflowParameters.enableSPCC) {
-         runSPCC();
-         shMarkDone(view, "SpaceHunter:ScriptRan");
-         shMarkDone(view, "SpaceHunter:SPCCDone");
+         if (done.enableSPCC)
+            shLogSkip("SPCC");
+         else {
+            runSPCC();
+            shMarkDone(view, "SpaceHunter:SPCCDone");
+         }
       } else {
          console.writeln("SPCC is DISABLED - skipping\n");
       }
 
       if (WorkflowParameters.enableAutoColor) {
-         if (runAutoColor()) {
-            shMarkDone(view, "SpaceHunter:ScriptRan");
+         if (done.enableAutoColor)
+            shLogSkip("AutoColor");
+         else if (runAutoColor())
             shMarkDone(view, "SpaceHunter:AutoColorDone");
-         }
       } else {
          console.writeln("AutoColor is DISABLED - skipping\n");
       }
@@ -4253,28 +4565,32 @@ function main()
       }
 
       if (WorkflowParameters.enableBXTFull) {
-         if (runBXT_Full()) {
-            shMarkDone(view, "SpaceHunter:ScriptRan");
+         if (done.enableBXTFull)
+            shLogSkip("BlurXTerminator (Full)");
+         else if (runBXT_Full())
             shMarkDone(view, "SpaceHunter:BXTFullDone");
-         }
       } else {
          console.writeln("BXT Full is DISABLED - skipping\n");
       }
 
+      if (WorkflowParameters.enableMASPreview) {
+         runMASPreview(win);
+      }
+
       if (WorkflowParameters.enableSXT) {
-         if (runSXT()) {
-            shMarkDone(view, "SpaceHunter:ScriptRan");
+         if (done.enableSXT)
+            shLogSkip("StarXTerminator");
+         else if (runSXT())
             shMarkDone(view, "SpaceHunter:SXTDone");
-         }
       } else {
          console.writeln("StarXTerminator is DISABLED - skipping\n");
       }
 
       if (WorkflowParameters.enableStarNet2) {
-         if (runStarNet2()) {
-            shMarkDone(view, "SpaceHunter:ScriptRan");
+         if (done.enableStarNet2)
+            shLogSkip("StarNet2");
+         else if (runStarNet2())
             shMarkDone(view, "SpaceHunter:StarNet2Done");
-         }
       } else {
          console.writeln("StarNet2 is DISABLED - skipping\n");
       }
@@ -4284,26 +4600,9 @@ function main()
       if (!originalWin.isNull)
          originalWin.bringToFront();
 
-      if (WorkflowParameters.enableNXT) {
-         console.writeln("\n" + "=".repeat(80));
-         console.writeln("STEP 9: Opening NoiseXTerminator");
-         console.writeln("=".repeat(80) + "\n");
-         if ( typeof NoiseXTerminator === "undefined" ) {
-            console.warningln("\u26A0 NoiseXTerminator is not installed - skipping NXT.\n");
-         } else {
-            var nxt = new NoiseXTerminator;
-            nxt.ml_version = WorkflowParameters.nxtMlVersion;
-            nxt.overlap = WorkflowParameters.nxtTileOverlap;
-            nxt.launch();
-         }
-         console.writeln("\u2714 NoiseXTerminator opened.\n");
-      } else {
-         console.writeln("NoiseXTerminator is DISABLED - skipping\n");
-      }
-
       if (WorkflowParameters.enableMLDenoise) {
          console.writeln("\n" + "=".repeat(80));
-         console.writeln("STEP 10: Opening MLDenoise");
+         console.writeln("STEP 9: Opening MLDenoise");
          console.writeln("=".repeat(80) + "\n");
          if ( typeof MLDenoise === "undefined" ) {
             console.warningln("\u26a0 MLDenoise is not installed - skipping.\n");
@@ -4320,6 +4619,23 @@ function main()
          console.writeln("\u2714 MLDenoise opened.\n");
       } else {
          console.writeln("MLDenoise is DISABLED - skipping\n");
+      }
+
+      if (WorkflowParameters.enableNXT) {
+         console.writeln("\n" + "=".repeat(80));
+         console.writeln("STEP 10: Opening NoiseXTerminator");
+         console.writeln("=".repeat(80) + "\n");
+         if ( typeof NoiseXTerminator === "undefined" ) {
+            console.warningln("\u26A0 NoiseXTerminator is not installed - skipping NXT.\n");
+         } else {
+            var nxt = new NoiseXTerminator;
+            nxt.ml_version = WorkflowParameters.nxtMlVersion;
+            nxt.overlap = WorkflowParameters.nxtTileOverlap;
+            nxt.launch();
+         }
+         console.writeln("\u2714 NoiseXTerminator opened.\n");
+      } else {
+         console.writeln("NoiseXTerminator is DISABLED - skipping\n");
       }
 
       let endTime = new Date();
