@@ -289,26 +289,8 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
 
       \subsection { \label gradient_scale Choosing Gradient Scales } {
 
-         The gradient scale is measured in image pixels. The same piece of sky
-         therefore needs a larger scale on a finely sampled image than on a
-         coarse one, and a 2&times; drizzled master needs about twice the
-         scale of the same master without drizzle.
-
-         Good starting points by image scale (arcseconds per pixel; with
-         drizzle use the drizzled value, e.g. 3.1"/px at 2&times; drizzle =
-         1.55"/px):
-
-         \table[caption, header, numbered: gradient_scales] {
-            { \tbltag Suggested starting gradient scale }
-            { {Image scale} {Start with} {Example (native, no drizzle)} }
-            { {about 1.0"/px} {3072} {IMX571 (3.76 &mu;m) at 800 mm} }
-            { {about 1.5"/px} {2048} {IMX571 at 500 mm, or RedCat 51 at 2&times; drizzle} }
-            { {about 2.0"/px} {1536} {IMX585 (2.9 &mu;m) at 300 mm} }
-            { {about 3.0"/px} {1024} {IMX571 at 250 mm (RedCat 51)} }
-            { {about 4.0"/px} {768}  {IMX294 (4.63 &mu;m) at 250 mm} }
-         }
-
-         Image scale = 206.265 &times; pixel size (&mu;m) / focal length (mm).
+         Start with 1024. With a 2&times; drizzled image, double it (2048):
+         the scale is measured in pixels, and drizzle doubles the pixels.
          Large, faint nebulae need larger scales than star fields. Set the
          four previews around the starting value and compare.
 
