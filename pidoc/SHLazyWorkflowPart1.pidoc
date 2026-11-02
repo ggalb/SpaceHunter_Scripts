@@ -83,10 +83,10 @@
          { {Step} {Default} {Dependencies} }
          { { \lref step_solve {1 Plate Solve} (with blind solve) } {On}
            { Can run alone. Blind solve can only be on while Plate Solve is on. } }
-         { { \lref step_spfc {2 SPFC} } {On}
-           { Turning it on also turns on Plate Solve and blind solve. } }
-         { { \lref separation {Ha/OIII separation} } {Off}
+         { { \lref separation {2a Ha/OIII separation} } {Off}
            { Only in narrowband filters mode. Runs just before SPFC. } }
+         { { \lref step_spfc {2b SPFC} } {On}
+           { Turning it on also turns on Plate Solve and blind solve. } }
          { { \lref step_previews {3 Previews (MGC only)} } {On, 4 previews}
            { Turned on by MGC; turned off by GC and DBE. } }
          { { \lref step_mgc {4 MGC} } {On}
@@ -127,7 +127,7 @@
       SPFC and MGC need this astrometric solution, and so does SPCC in Part 2.
    }
 
-   \subsection { \label step_spfc Step 2 --- SPFC (SpectrophotometricFluxCalibration) } {
+   \subsection { \label step_spfc Step 2b --- SPFC (SpectrophotometricFluxCalibration) } {
 
       Applies spectrophotometric flux calibration with the camera and filter
       curves selected in the dialog. This linearises the colour response of
@@ -148,7 +148,7 @@
                                Ha/OIII/OIII. }
       }
 
-      \subsection { \label separation Ha/OIII Separation (dual-band only) } {
+      \subsection { \label separation Step 2a --- Ha/OIII Separation (dual-band only) } {
 
          \center {
             \image[width:560px] images/Part1_4.png
@@ -358,7 +358,7 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
          1.0 model.
       }
 
-      \subsection { \label choose_model Choose Background Model } {
+      \subsection { \label choose_model Step 4b --- Choose Background Model } {
 
          \center {
             \image[width:420px] images/Part1_MGC.png
@@ -417,7 +417,7 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
 
       The gradient model windows get an Adaptive Auto STF. Differences
       usually show more clearly in the models than in the corrected previews.
-      Then the \s {Choose GC result} window opens:
+      Then the \s {Choose GC result} window opens (step 5b):
 
       \center {
          \image[width:520px] images/Part1_GC.png

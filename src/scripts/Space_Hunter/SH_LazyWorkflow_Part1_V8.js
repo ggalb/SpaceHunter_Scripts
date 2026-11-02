@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.4<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.5<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.4
+// Space Hunter Lazy Workflow Part 1 v2.7.5
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -30,17 +30,18 @@
 // - Ha/OIII separation method from PixInsight's "MGC - Dual-Band OSC Images (II)" video tutorial
 // - Developed with assistance from Claude AI (Anthropic)
 //
-// Part 0: Process & Equipment selection dialog (SectionBar UI)
-// Part 1: Smart Plate Solve (blind solve only if needed)
-// Part 2: ImageSolve
-// Part 2b: Ha/OIII separation (optional, dual-band OSC, narrowband mode only)
-// Part 3: SPFC
-// Part 4: Creates 1-4 Previews in full size (user selectable)
-// Part 5: MGC with per-preview gradient scale selection
-// Part 5b: Choose background model - apply any preview's MGC model instantly
-// Part 6: GradientCorrection (MGC fallback or manual, previews GC_ / GC_1)
-// Part 6b: Choose GC result - apply GC_ or GC_1, or open GC with its settings
-// Part 7: cDBE - DynamicBackgroundExtraction
+// Steps (same numbers in the dialog, the console and the manual; a letter
+// marks a sub-step of the same tool: a = before it, b = after it):
+// Step 0: Process & Equipment selection dialog (SectionBar UI)
+// Step 1: Smart Plate Solve - ImageSolver (blind solve only if needed)
+// Step 2a: Ha/OIII separation (optional, dual-band OSC, narrowband mode only)
+// Step 2b: SPFC
+// Step 3: Creates 1-4 Previews in full size (user selectable)
+// Step 4: MGC with per-preview gradient scale selection
+// Step 4b: Choose background model - apply any preview's MGC model instantly
+// Step 5: GradientCorrection (MGC fallback or manual, previews GC_ / GC_1)
+// Step 5b: Choose GC result - apply GC_ or GC_1, or open GC with its settings
+// Step 6: cDBE - DynamicBackgroundExtraction
 //
 // v2.4: SPFC gray filter and RGB filter set chosen in separate dropdowns
 //       (PAN/L entries no longer mixed into the RGB list; filters saved by
@@ -130,6 +131,9 @@
 // v2.7.4: GC result panel: "Show gradient models (same stretch for all)" -
 //       clicking a result shows its GC_gradient_model window, all models
 //       with one shared stretch (display only, Apply unchanged).
+// v2.7.5: One step numbering in the header, console and manual (Step 1
+//       solve, 2a Ha/OIII separation, 2b SPFC, 3 Previews, 4 MGC, 4b model
+//       chooser, 5 GC, 5b GC chooser, 6 DBE). Text only.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -328,7 +332,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.4"
+#define SCRIPT_VERSION "v2.7.5"
 var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
@@ -2713,7 +2717,7 @@ function selectEquipment()
 }
 
 // ============================================================
-// PART 1: PLATE SOLVING FUNCTIONS
+// STEP 1: PLATE SOLVING FUNCTIONS
 // ============================================================
 
 function checkRequiredKeywords() {
@@ -2972,7 +2976,7 @@ function openImageSolver() {
 
 function smartPlateSolve() {
     console.writeln("\n" + "=".repeat(80));
-    console.writeln("PART 1: Smart Plate Solve");
+    console.writeln("STEP 1: Smart Plate Solve");
     console.writeln("=".repeat(80) + "\n");
 
     // Check if plate solving is completely disabled
@@ -3077,11 +3081,11 @@ function smartPlateSolve() {
 }
 
 // ============================================================
-// PART 2: WORKFLOW FUNCTIONS (SPFC + Previews + MGC)
+// STEPS 2-6: WORKFLOW FUNCTIONS (SPFC + Previews + MGC/GC/DBE)
 // ============================================================
 
 // ============================================================
-// Ha/OIII separation (dual-band OSC, before SPFC)
+// STEP 2a: Ha/OIII separation (dual-band OSC, before SPFC)
 // ------------------------------------------------------------
 // With a dual-band filter the G and B pixels also see some H-alpha. Removing
 // k * (R - med(R)) from G and B leaves them with OIII only, so SPFC and MGC
@@ -3184,7 +3188,7 @@ function channelMedian(image, c)
 function runSeparation()
 {
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("Ha/OIII SEPARATION (dual-band OSC)");
+   console.writeln("STEP 2a: Ha/OIII separation (dual-band OSC)");
    console.writeln("=".repeat(80) + "\n");
 
    let win = ImageWindow.activeWindow;
@@ -3235,7 +3239,7 @@ function runSeparation()
 function runSPFC()
 {
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 1: Running SPFC (Dynamic XSPD Version)");
+   console.writeln("STEP 2b: Running SPFC (Dynamic XSPD Version)");
    console.writeln("=".repeat(80) + "\n");
 
    var spfcStartTime = Date.now();
@@ -3393,7 +3397,7 @@ function runSPFC()
 }
 
 // ============================================================
-// STEP 2: Create Previews (variable count)
+// STEP 3: Create Previews (variable count)
 // ============================================================
 
 // count: number of previews; defaults to the Previews section setting.
@@ -3408,7 +3412,7 @@ function createPreviews(prefix, count)
    var numPreviews = (count !== undefined) ? count : WorkflowParameters.numPreviews;
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 2: Creating " + numPreviews + " Preview(s)");
+   console.writeln("STEP 3: Creating " + numPreviews + " Preview(s)");
    console.writeln("=".repeat(80) + "\n");
 
    var pvStartTime = Date.now();
@@ -3490,7 +3494,7 @@ function createPreviews(prefix, count)
 }
 
 // ============================================================
-// STEP 3: MGC on Previews (variable count + per-preview scales)
+// STEP 4: MGC on Previews (variable count + per-preview scales)
 // ============================================================
 
 // Builds the MGC instance used both for the preview runs and for the tool
@@ -3723,7 +3727,7 @@ function runMGCOnPreviews()
    var numPreviews = WorkflowParameters.numPreviews;
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 3: MGC Multi-Preview Processor (" + numPreviews + " previews)");
+   console.writeln("STEP 4: MGC Multi-Preview Processor (" + numPreviews + " previews)");
    console.writeln("=".repeat(80) + "\n");
 
    var mgcStartTime = Date.now();
@@ -3810,7 +3814,7 @@ function mgcRunOrder(previews)
 }
 
 // ============================================================
-// STEP 4: GradientCorrection on 2 Previews (fallback or manual)
+// STEP 5: GradientCorrection on 2 Previews (fallback or manual)
 // ============================================================
 
 // preset: one entry of GC_PRESETS.
@@ -3892,7 +3896,7 @@ function gcExpectedModelId(previewId)
 function runGCOnPreviews()
 {
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 4: GradientCorrection on " + GC_PRESETS.length + " previews");
+   console.writeln("STEP 5: GradientCorrection on " + GC_PRESETS.length + " previews");
    console.writeln("=".repeat(80) + "\n");
 
    var gcStartTime = Date.now();
@@ -4187,7 +4191,7 @@ function applyAdaptiveAutoSTF(targetWindow)
 }
 
 // ============================================================
-// STEP 5b: Choose background model (apply a preview's MGC model)
+// STEP 4b: Choose background model (apply a preview's MGC model)
 // ------------------------------------------------------------
 // MGC keeps only its LAST run cached: re-applying the last scale takes ~2 s,
 // any other scale is a full recompute (measured 2026-10-05 on a 12438x8264
@@ -4297,7 +4301,7 @@ function bgmApply(win, preview, previews, removePreviews)
    var mgc = bgmMgcInstanceOf(preview);
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP: Apply background model " + preview.id + " to " + win.mainView.id);
+   console.writeln("STEP 4b: Apply background model " + preview.id + " to " + win.mainView.id);
    console.writeln("MGC settings: " + bgmDescribe(mgc));
    var factors = mgcFactorsOf(preview, mgc);
    var factorsText = mgcFactorsText(factors, "");
@@ -4736,7 +4740,7 @@ function chooseBackgroundModel(win)
    }
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP: Choose background model (" + previews.length + " preview(s))");
+   console.writeln("STEP 4b: Choose background model (" + previews.length + " preview(s))");
    console.writeln("=".repeat(80));
    for (var i = 0; i < previews.length; ++i)
       console.writeln("  " + previews[i].id + ": " + bgmDescribe(bgmMgcInstanceOf(previews[i])));
@@ -4788,7 +4792,7 @@ function chooseBackgroundModel(win)
 }
 
 // ============================================================
-// STEP 4b: Choose GC result
+// STEP 5b: Choose GC result
 // ------------------------------------------------------------
 // GC previews hold the corrected image itself (the gradient model goes to a
 // separate GC_gradient_model<n> window), so applying is a straight copy.
@@ -4833,7 +4837,7 @@ function gcApply(win, preview, previews, modelIds, cleanUp)
    var gc = gcInstanceOf(preview);
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP: Apply GC result " + preview.id + " to " + win.mainView.id);
+   console.writeln("STEP 5b: Apply GC result " + preview.id + " to " + win.mainView.id);
    console.writeln("GC settings: " + gcDescribe(gc));
    console.writeln("=".repeat(80));
 
@@ -5090,7 +5094,7 @@ function chooseGCResult(win, modelIds)
    }
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP: Choose GC result (" + previews.length + " preview(s))");
+   console.writeln("STEP 5b: Choose GC result (" + previews.length + " preview(s))");
    console.writeln("=".repeat(80));
    for (var i = 0; i < previews.length; ++i)
       console.writeln("  " + previews[i].id + ": " + gcDescribe(gcInstanceOf(previews[i])));
@@ -5195,7 +5199,7 @@ function main()
          }
       }
 
-      // Part 1: Plate solving
+      // Step 1: Plate solving
       let plateSolveComplete = smartPlateSolve();
 
       if (!plateSolveComplete) {
@@ -5216,9 +5220,9 @@ function main()
          return;
       }
 
-      // Part 2: Workflow
+      // Steps 2-6: Workflow
       console.writeln("\n" + "=".repeat(80));
-      console.writeln("PART 2: SPFC + Previews + MGC Workflow");
+      console.writeln("WORKFLOW: SPFC + Previews + Gradient correction");
       console.writeln("=".repeat(80) + "\n");
 
       var spfcFailed = false;
@@ -5319,7 +5323,7 @@ function main()
       // DBE: manual mode only (just opens the tool)
       if (WorkflowParameters.enableDBE) {
          console.writeln("\n" + "=".repeat(80));
-         console.writeln("STEP: DynamicBackgroundExtraction");
+         console.writeln("STEP 6: DynamicBackgroundExtraction");
          console.writeln("=".repeat(80) + "\n");
       }
 

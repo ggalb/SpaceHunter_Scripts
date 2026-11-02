@@ -1,23 +1,23 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.4<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.5<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
    Includes: Equipment selection with collapsible sections, BlurXTerminator (correct only),<br/>\
    Tiled background finder (Exclude previews honoured) with pre-check and optional IFN/dust map, SPCC with auto-detected ROI,<br/>\
    AutoColor (Background Neutralization + Color Calibration, alternative to Background + SPCC),<br/>\
-   BlurXTerminator full with adjustable parameters, Adaptive Auto STF (auto linked/unlinked),<br/>\
-   StarXTerminator or StarNet2 for star removal, NoiseXTerminator or MLDenoise,<br/>\
-   optional MultiscaleAdaptiveStretch preview copy. New Instance support.<br/>\
+   Adaptive Auto STF (auto linked/unlinked), BlurXTerminator full with adjustable parameters,<br/>\
+   optional MultiscaleAdaptiveStretch preview copy, StarXTerminator or StarNet2 for star removal,<br/>\
+   MLDenoise or NoiseXTerminator. New Instance support.<br/>\
    <br/>\
    Copyright &copy; 2026 Georg G Albrecht. MIT License.<br/>\
    AutoColor.js Copyright &copy; 2016 Hartmut V. Bornemann. Used with written permission.<br/>\
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.3.12
+// Space Hunter Lazy Workflow Part 2 v2.4.5
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -39,20 +39,21 @@
 //   https://irsa.ipac.caltech.edu/applications/DUST/), SFD map by Schlegel, Finkbeiner & Davis (1998)
 // - Developed with assistance from Claude AI (Anthropic)
 //
-// Part 0: Process & Equipment selection dialog (SectionBar UI)
-// Part 1: Run BlurXTerminator correct only
-// Part 2: Find background: deterministic tiled robust finder (v2.3), Exclude* previews honoured,
+// Steps (same numbers in the dialog, the console and the manual):
+// Step 0: Process & Equipment selection dialog (SectionBar UI)
+// Step 1: Run BlurXTerminator correct only
+// Step 2: Find background: deterministic tiled robust finder (v2.3), Exclude* previews honoured,
 //         preceded by a pre-check dialog (previews + optional IRSA dust map to avoid IFN)
-// Part 3: Run SPCC with selected filter and extracted ROI
-// Part 4: Run AutoColor - Background Neutralization + Color Calibration (alternative to Parts 2 & 3)
-// Part 5: Run Adaptive Auto STF (auto linked/unlinked, Background-preview statistics)
-// Part 6: Run BlurXTerminator full (adjustable parameters)
-// Part 6b: MAS stretch preview - copy after BXT full, stretched with
-//          MultiscaleAdaptiveStretch, minimised (optional)
-// Part 7: Run StarXTerminator (configurable options)
-// Part 8: Run StarNet2 as an alternative to SXT (configurable options)
-// Part 9: Open MLDenoise with the user's model, as an alternative to NXT
-// Part 10: Open NoiseXTerminator (selected AI version and tile overlap)
+// Step 3: Run SPCC with selected filter and extracted ROI
+// Step 4: Run AutoColor - Background Neutralization + Color Calibration (alternative to Steps 2 & 3)
+// Step 5: Run Adaptive Auto STF (auto linked/unlinked, Background-preview statistics)
+// Step 6: Run BlurXTerminator full (adjustable parameters)
+// Step 7: MAS stretch preview - copy after BXT full, stretched with
+//         MultiscaleAdaptiveStretch, minimised (optional)
+// Step 8: Run StarXTerminator (configurable options)
+// Step 9: Run StarNet2 as an alternative to SXT (configurable options)
+// Step 10: Open MLDenoise with the user's model, as an alternative to NXT
+// Step 11: Open NoiseXTerminator (selected AI version and tile overlap)
 //
 // v2.3.1: Documentation button opens the PixInsight manual
 //       (Dialog.browseScriptDocumentation, ID-form #feature-id "SHLazyWorkflowPart2")
@@ -112,6 +113,12 @@
 //       wavelengths in narrowband mode.
 // v2.4.4: StarNet2 option boxes start at the left edge (no label indent),
 //       so the dialog keeps its width.
+// v2.4.5: One step numbering in the header, dialog, console and manual:
+//       1 BXT correct, 2 Find Background (incl. pre-check), 3 SPCC,
+//       4 AutoColor, 5 STF, 6 BXT full, 7 MAS preview, 8 SXT, 9 StarNet2,
+//       10 MLDenoise, 11 NXT. Header title line showed v2.3.12. Dialog and
+//       menu info texts list the steps in run order, incl. MAS preview.
+//       Text only.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -134,7 +141,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 5);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.4"
+#define SCRIPT_VERSION "v2.4.5"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -946,7 +953,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.helpLabel.wordWrapping = true;
    this.helpLabel.useRichText = true;
    this.helpLabel.text = "<p><b>" + SCRIPT_NAME + " " + SCRIPT_VERSION + "</b> &mdash; " +
-      "BXT correct-only, Background, SPCC or AutoColor, Adaptive Auto STF, BXT Full, SXT or StarNet2, NXT or MLDenoise for OSC camera images.<br/>" +
+      "BXT correct-only, Background, SPCC or AutoColor, Adaptive Auto STF, BXT Full, MAS preview, SXT or StarNet2, MLDenoise or NXT for OSC camera images.<br/>" +
       "Copyright &copy; 2026 Georg G Albrecht. MIT License.<br/>" +
 	  "AutoColor.js script Copyright &copy; 2016 Hartmut V. Bornemann. Used with written permission.</p>"
 
@@ -1638,7 +1645,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.bxtFull_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 6b: MAS stretch preview (copy after BXT full)
+   // SECTION 7: MAS stretch preview (copy after BXT full)
    // =================================================================
 
    this.masInfo_Label = new Label( this );
@@ -1671,7 +1678,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.mas_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 7: StarXTerminator
+   // SECTION 8: StarXTerminator
    // =================================================================
 
    // Generate Star Image checkbox
@@ -1785,7 +1792,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.sxt_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 8: StarNet2
+   // SECTION 9: StarNet2
    // =================================================================
 
    // Stride dropdown (StarNet2's own names; stored as 384 / 256 / 128)
@@ -1907,7 +1914,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.sn2_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 10: NoiseXTerminator
+   // SECTION 11: NoiseXTerminator
    // =================================================================
 
    this.nxt_Control = new Control( this );
@@ -1946,7 +1953,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.nxt_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 9: MLDenoise
+   // SECTION 10: MLDenoise
    // =================================================================
 
    this.mldenoise_Control = new Control( this );
@@ -2373,7 +2380,7 @@ function selectEquipment()
 }
 
 // ============================================================
-// STEP 2: BlurXTerminator - Correct Only
+// STEP 1: BlurXTerminator - Correct Only
 // ============================================================
 
 // ============================================================
@@ -2479,7 +2486,7 @@ function runBXT_CorrectOnly()
         throw new Error("No active view.");
 
     console.writeln("\n" + "=".repeat(80));
-    console.writeln("STEP 2: Running BlurXTerminator (Correct Only)");
+    console.writeln("STEP 1: Running BlurXTerminator (Correct Only)");
     console.writeln("=".repeat(80) + "\n");
 
     console.writeln("Running BlurXTerminator on view: " + view.id);
@@ -2514,7 +2521,7 @@ function runBXT_CorrectOnly()
 }
 
 // ============================================================
-// STEP 0b: Background Pre-check (previews + optional IRSA dust map)
+// STEP 2 (before processing starts): Background Pre-check (previews + optional IRSA dust map)
 // ============================================================
 //
 // Runs before anything is processed. Shown only when it is relevant:
@@ -3194,7 +3201,7 @@ function runBackgroundPrecheck()
 }
 
 // ============================================================
-// STEP 3: Background Finder (v2.3 - deterministic tiled finder)
+// STEP 2: Background Finder (v2.3 - deterministic tiled finder)
 // ============================================================
 //
 // Replaces the v2.2 random gradient-descent finder, which ranked by mean
@@ -3407,7 +3414,7 @@ function findBackgroundTile(img, rects, dust) {
 
 function findDarkestBackgroundPreview() {
     console.writeln("\n" + "=".repeat(80));
-    console.writeln("STEP 3: Background Finder (tiled)");
+    console.writeln("STEP 2: Background Finder (tiled)");
     console.writeln("=".repeat(80) + "\n");
 
     var bgStartTime = Date.now();
@@ -3477,7 +3484,7 @@ function findDarkestBackgroundPreview() {
 }
 
 // ============================================================
-// STEP 4: SPCC with Background ROI
+// STEP 3: SPCC with Background ROI
 // ============================================================
 
 function runSPCC()
@@ -3488,7 +3495,7 @@ function runSPCC()
     if (view.isNull) throw new Error("No active view.");
 
     console.writeln("\n" + "=".repeat(80));
-    console.writeln("STEP 4: SPCC with Background ROI");
+    console.writeln("STEP 3: SPCC with Background ROI");
     console.writeln("=".repeat(80) + "\n");
 
     let backgroundPreview = null;
@@ -3628,7 +3635,7 @@ function runSPCC()
 }
 
 // ============================================================
-// STEP 4b: AutoColor - Background Neutralization + Color Calibration
+// STEP 4: AutoColor - Background Neutralization + Color Calibration
 //
 // Based on AutoColor.js
 // Copyright Hartmut V. Bornemann, 2016
@@ -3664,7 +3671,7 @@ function runAutoColor()
    if ( view.isNull ) throw new Error( "No active view." );
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 4b: AutoColor - Background Neutralization + Color Calibration");
+   console.writeln("STEP 4: AutoColor - Background Neutralization + Color Calibration");
    console.writeln("=".repeat(80) + "\n");
 
    var img = view.image;
@@ -4013,7 +4020,7 @@ function ac_calibration( view, r, g, b, target )
 //     SPCC white balance present on the view   -> linked (keeps SPCC colour)
 //     else background medians within ASTF.linkSpreadMADN x avg MADN
 //                                               -> linked, otherwise unlinked
-// - Statistics from the "Background" preview (the sky tile found in STEP 3)
+// - Statistics from the "Background" preview (the sky tile found in STEP 2)
 //   when present, else the whole image. Sky-only noise puts the black point
 //   close to the sky, which gives the nebula more depth.
 // - Target background 0.225: halfway between PI default 0.25 and the
@@ -4182,7 +4189,7 @@ function runBXT_Full()
 }
 
 // ============================================================
-// STEP 6b: MAS stretch preview (copy, display only)
+// STEP 7: MAS stretch preview (copy, display only)
 // ============================================================
 
 // Copy of the image (stars still in) stretched with MultiscaleAdaptiveStretch
@@ -4191,7 +4198,7 @@ function runBXT_Full()
 function runMASPreview(win)
 {
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 6b: MAS stretch preview (copy)");
+   console.writeln("STEP 7: MAS stretch preview (copy)");
    console.writeln("=".repeat(80) + "\n");
 
    if ( typeof MultiscaleAdaptiveStretch === "undefined" ) {
@@ -4275,7 +4282,7 @@ function runMASPreview(win)
 }
 
 // ============================================================
-// STEP 7: StarXTerminator (with dialog params)
+// STEP 8: StarXTerminator (with dialog params)
 // ============================================================
 
 function runSXT()
@@ -4290,7 +4297,7 @@ function runSXT()
    let expectedStarsName = originalName + "_stars";
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 7: Running StarXTerminator");
+   console.writeln("STEP 8: Running StarXTerminator");
    console.writeln("=".repeat(80) + "\n");
 
    console.writeln("Target view: " + view.id);
@@ -4358,7 +4365,7 @@ function runStarNet2()
    let expectedMaskName = "star_mask";
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 8: Running StarNet2");
+   console.writeln("STEP 9: Running StarNet2");
    console.writeln("=".repeat(80) + "\n");
 
    console.writeln("Target view: " + view.id);
@@ -4602,7 +4609,7 @@ function main()
 
       if (WorkflowParameters.enableMLDenoise) {
          console.writeln("\n" + "=".repeat(80));
-         console.writeln("STEP 9: Opening MLDenoise");
+         console.writeln("STEP 10: Opening MLDenoise");
          console.writeln("=".repeat(80) + "\n");
          if ( typeof MLDenoise === "undefined" ) {
             console.warningln("\u26a0 MLDenoise is not installed - skipping.\n");
@@ -4623,7 +4630,7 @@ function main()
 
       if (WorkflowParameters.enableNXT) {
          console.writeln("\n" + "=".repeat(80));
-         console.writeln("STEP 10: Opening NoiseXTerminator");
+         console.writeln("STEP 11: Opening NoiseXTerminator");
          console.writeln("=".repeat(80) + "\n");
          if ( typeof NoiseXTerminator === "undefined" ) {
             console.warningln("\u26A0 NoiseXTerminator is not installed - skipping NXT.\n");

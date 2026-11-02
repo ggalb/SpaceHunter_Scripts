@@ -81,11 +81,11 @@
            { Turning it on turns off Find Background and SPCC. } }
          { { \lref step_stf {5 Adaptive Auto STF} } {On} { Turned on by SPCC. } }
          { { \lref step_bxtf {6 BXT full} } {On, Automatic PSF} {Independent.} }
-         { { \lref step_mas {6b MAS preview} } {Off} {Independent. Needs PixInsight 1.9.6.} }
-         { { \lref step_sxt {7 SXT} } {Off} { Mutually exclusive with StarNet2. } }
-         { { \lref step_starnet {8 StarNet2} } {Off} { Mutually exclusive with SXT. } }
-         { { \lref step_mld {9 MLDenoise} } {Off} { Mutually exclusive with NXT. } }
-         { { \lref step_nxt {10 NXT} } {Off} { Mutually exclusive with MLDenoise. } }
+         { { \lref step_mas {7 MAS preview} } {Off} {Independent. Needs PixInsight 1.9.6.} }
+         { { \lref step_sxt {8 SXT} } {Off} { Mutually exclusive with StarNet2. } }
+         { { \lref step_starnet {9 StarNet2} } {Off} { Mutually exclusive with SXT. } }
+         { { \lref step_mld {10 MLDenoise} } {Off} { Mutually exclusive with NXT. } }
+         { { \lref step_nxt {11 NXT} } {Off} { Mutually exclusive with MLDenoise. } }
       }
    }
 
@@ -254,7 +254,7 @@
       }
    }
 
-   \subsection { \label step_mas Step 6b --- MAS Preview } {
+   \subsection { \label step_mas Step 7 --- MAS Preview } {
 
       Off by default. After BXT full, a copy of the image is stretched with
       MultiscaleAdaptiveStretch (PixInsight 1.9.6 or later) and minimised as
@@ -265,7 +265,7 @@
       continues with star removal. If MAS fails, the script only warns.
    }
 
-   \subsection { \label step_sxt Step 7 --- SXT (StarXTerminator) } {
+   \subsection { \label step_sxt Step 8 --- SXT (StarXTerminator) } {
 
       Removes the stars. Options: \s {ML Version}, \s {Generate Star Image},
       \s {Unscreen Stars} and \s {Tile Overlap}. With Generate Star Image, a
@@ -274,7 +274,7 @@
       StarNet2.
    }
 
-   \subsection { \label step_starnet Step 8 --- StarNet2 } {
+   \subsection { \label step_starnet Step 9 --- StarNet2 } {
 
       Off by default. The options match the StarNet2 tool: \s {Stride}
       (Large, Standard or Small), and in three groups \s {2x upsample} and
@@ -285,7 +285,7 @@
       \xref {https://pixinsight.starnetastro.com/} {https://pixinsight.starnetastro.com/}.
    }
 
-   \subsection { \label step_mld Step 9 --- MLDenoise } {
+   \subsection { \label step_mld Step 10 --- MLDenoise } {
 
       Off by default. An alternative to NXT: opens MLDenoise with the model
       file (\c .xmlm) selected in the dialog. Other settings use MLDenoise's
@@ -293,7 +293,7 @@
       onto the image.
    }
 
-   \subsection { \label step_nxt Step 10 --- NXT (NoiseXTerminator) } {
+   \subsection { \label step_nxt Step 11 --- NXT (NoiseXTerminator) } {
 
       Opens NoiseXTerminator at the end of the workflow; it is not applied
       automatically. With the starless image active, drag the instance
