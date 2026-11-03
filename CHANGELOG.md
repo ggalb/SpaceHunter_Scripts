@@ -4,7 +4,7 @@ Newest release first. Each script's source file also has a detailed change log i
 
 ---
 
-## Next release (in preparation) — PixInsight 1.9.6+
+## 3 November 2026, second update (V8, PixInsight 1.9.6+)
 
 **Part 1 (v2.7.11):** GC model windows: the display stretch is now called Auto Display Stretch (PixInsight's ScreenTransferFunction with the AutoSTF method).
 
