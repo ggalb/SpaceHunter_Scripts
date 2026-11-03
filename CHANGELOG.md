@@ -28,12 +28,13 @@ Newest release first. Each script's source file also has a detailed change log i
 - Reset Settings keeps the workflow steps and the profile folder, also when you click Cancel afterwards.
 - Save profile asks before replacing an existing profile file.
 
-**Part 2 (v2.4.10):**
+**Part 2 (v2.4.11):**
 
 - New optional MAS stretch preview: a MultiscaleAdaptiveStretch copy after BXT full, with the background measured in the Background preview.
 - StarNet2 section for the current StarNet2: stride Large / Standard / Small and all six options.
 - MLDenoise now runs before NoiseXTerminator; StarXTerminator and NoiseXTerminator are off by default.
-- Dust-map check retries once; Abort stops it. Its temporary files are removed in every case.
+- Dust-map check retries once after a connection failure (not when the service answers with an error such as HTTP 504); Abort stops it. Its temporary files are removed in every case.
+- Re-run check: MLDenoise, NoiseXTerminator and the MAS preview count as new work, so ticking one of them after the earlier steps are applied skips those steps instead of warning. MLDenoise / NoiseXTerminator count as applied while they are in the image's active history.
 - The star image renamed to `stars` is always the one SXT or StarNet2 just created (an older one left open was renamed before).
 - Reset Settings keeps the MLDenoise model path.
 - Filter list also groups `_R/_G/_B` and `Red/Green/Blue` names (e.g. SvBony DNB).

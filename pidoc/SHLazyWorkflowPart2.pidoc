@@ -11,6 +11,7 @@
 %    Dialog.browseScriptDocumentation( "SH Lazy Workflow Part 2" )
 % Written against script v2.3 (ScriptsTesting/Final Tests/SH_LazyWorkflow_Part2_V8_v2.3.js), 2026-10-11.
 % Star image naming and MLDenoise model path updated for v2.4.8, 2026-11-02.
+% Re-run check (MLDenoise / NXT / MAS) and dust retry updated for v2.4.11, 2026-11-03.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 2}
@@ -151,8 +152,9 @@
          latitude. The thresholds are rules of thumb, not hard limits; near
          the Milky Way plane the map is less reliable. The service sometimes
          fails to connect on the first try; the script then tries once more by
-         itself. If that fails too, or the service doesn't answer within 30
-         seconds, the window says so: click \s {Check dust map} again, or
+         itself. It doesn't retry when the service answers with an error (for
+         example HTTP 504 while it is down). If the query fails, or the service
+         doesn't answer within 30 seconds, the window says so: click \s {Check dust map} again, or
          \s {Continue} without the map.
 
          \definition {
@@ -310,8 +312,11 @@
          same step twice alters or damages the image data. When you start it
          again, steps that are still applied are skipped, with a note in the
          console, and only the remaining steps run. To redo a step, move back
-         before it in History Explorer first. Only when every selected step
-         is already applied does a warning ask whether to run them again. The
+         before it in History Explorer first. MLDenoise and NXT, which the
+         script only opens, count as applied while they are in the image's
+         active history; the MAS preview is a copy and always runs. Only when
+         every selected step is already applied does a warning ask whether to
+         run them again. The
          marks are kept when you save the image as XISF and reopen it (other
          formats, such as FITS, don't keep them).
       }

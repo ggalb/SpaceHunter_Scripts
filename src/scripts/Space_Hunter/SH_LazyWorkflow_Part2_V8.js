@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.10<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.11<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.10
+// Space Hunter Lazy Workflow Part 2 v2.4.11
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -140,6 +140,12 @@
 //       window the tool opened (an older one left open was renamed).
 // v2.4.9: Space Hunter banner (orange to pale blue) in the console.
 // v2.4.10: Banner bold, darker orange.
+// v2.4.11: MLDenoise, NXT and the MAS preview count as new work in the
+//       re-run check (no "all applied" warning when one of them is ticked);
+//       MLDenoise / NXT are skipped while they are in the active history.
+//       Dust map: no second try when the server answered with an HTTP
+//       error; System.msleep. Pre-check tooltip: previews are replaced by
+//       the Background preview.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -162,7 +168,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.10"
+#define SCRIPT_VERSION "v2.4.11"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -1128,7 +1134,9 @@ var SpaceHunterDialog2 = class extends Dialog
       "<p>When checked, a pre-check window opens before anything is processed if no Exclude " +
       "preview exists, or if other previews are left over (e.g. from Part 1 MGC). It lists the " +
       "previews and can query an online dust map (IRSA) to show where IFN is likely.</p>" +
-      "<p>All previews are removed after the background search completes.</p>";
+      "<p>When the search is done, all existing previews (Exclude ones included) are " +
+      "deleted and one preview named <b>Background</b> is created. SPCC and the MAS " +
+      "preview use it as background reference.</p>";
    this.exclusionZones_CheckBox.onCheck = function( checked )
    {
       WorkflowParameters.enableBgPrecheck = checked;
@@ -2471,8 +2479,31 @@ var SH_STEPS = [
    { name: "StarNet2",                       enable: "enableStarNet2",   mark: "SpaceHunter:StarNet2Done" }
 ];
 
+// Tools the script only opens (MLDenoise, NXT): no mark, since the script
+// can't know whether you applied them. They count as applied while the tool
+// is among the image's active history steps. A reopened file has no history
+// list, so the tool simply opens again (harmless).
+var SH_TOOL_STEPS = [
+   { name: "MLDenoise",        enable: "enableMLDenoise", processId: "MLDenoise" },
+   { name: "NoiseXTerminator", enable: "enableNXT",       processId: "NoiseXTerminator" }
+];
+
+function shToolActive(view, processId)
+{
+   try {
+      var pc = view.processing;
+      var active = view.historyIndex;
+      for (var i = 0; i < pc.length && i < active; i++)
+         if (pc[i].processId() == processId)
+            return true;
+   } catch (e) {}
+   return false;
+}
+
 function shStepDone(view, step)
 {
+   if (step.processId)
+      return shToolActive(view, step.processId);
    if (shHasMark(view, step.mark))
       return true;
    // SPCC run outside the script, on a reopened file: SPCC's own property
@@ -2704,7 +2735,9 @@ var BG_CONNECT_TIMEOUT_S  = 15;
 var BG_DOWNLOAD_TIMEOUT_S = 30;
 
 // One automatic retry: the service sometimes fails to connect on the first
-// try and answers at once on the next.
+// try and answers at once on the next. Not when the server answered with an
+// HTTP error (e.g. 504 while the service is down): a retry only freezes
+// PixInsight longer.
 var BG_RETRY_DELAY_MS = 2000;
 
 // Text from outside (a server reply, an error message) for the console:
@@ -2719,11 +2752,10 @@ function bgDownloadToFile(url, path)
    try {
       bgDownloadOnce(url, path);
    } catch (e) {
-      if (shIsCancel(e))
+      if (shIsCancel(e) || e.httpStatus)
          throw e;
       console.warningln("Dust map download failed (" + shRaw(shErrorText(e)) + ") - retrying once.");
-      if (typeof msleep === "function")
-         msleep(BG_RETRY_DELAY_MS);
+      System.msleep(BG_RETRY_DELAY_MS);
       CoreApplication.processEvents();
       bgDownloadOnce(url, path);
    }
@@ -2770,8 +2802,11 @@ function bgDownloadOnce(url, path)
                          BG_DOWNLOAD_TIMEOUT_S + " s. Try again later.");
       if (!ok)
          throw new Error("Download failed: " + transfer.errorInformation);
-      if (transfer.responseCode !== undefined && transfer.responseCode >= 400)
-         throw new Error("HTTP error " + transfer.responseCode);
+      if (transfer.responseCode !== undefined && transfer.responseCode >= 400) {
+         var he = new Error("HTTP error " + transfer.responseCode);
+         he.httpStatus = transfer.responseCode;
+         throw he;
+      }
       done = true;
    } finally {
       // Also when the transfer itself throws: the file is closed, and a
@@ -4621,12 +4656,14 @@ function main()
       }
 
       // Re-run Protection: steps still applied to this image (History
-      // Explorer) are skipped. Asks only when every ticked step is applied.
+      // Explorer) are skipped. Asks only when every ticked step is applied
+      // and nothing new is ticked. The MAS preview is a copy and always new.
       var win = ImageWindow.activeWindow;
       var view = win.mainView;
       var done = {}, ticked = 0, applied = [];
-      for (var m = 0; m < SH_STEPS.length; m++) {
-         var st = SH_STEPS[m];
+      var allSteps = SH_STEPS.concat(SH_TOOL_STEPS);
+      for (var m = 0; m < allSteps.length; m++) {
+         var st = allSteps[m];
          if (!WorkflowParameters[st.enable]) continue;
          ticked++;
          done[st.enable] = shStepDone(view, st);
@@ -4634,7 +4671,7 @@ function main()
       }
       var bgDone = WorkflowParameters.enableBackground && shBackgroundDone(win);
 
-      if (ticked > 0 && applied.length === ticked) {
+      if (ticked > 0 && applied.length === ticked && !WorkflowParameters.enableMASPreview) {
          var msg = new MessageBox(
             "<p><b>Warning: All selected steps are already applied to this image:</b></p>" +
             "<p>" + applied.join("<br/>") + "</p>" +
@@ -4741,7 +4778,9 @@ function main()
       if (!originalWin.isNull)
          originalWin.bringToFront();
 
-      if (WorkflowParameters.enableMLDenoise) {
+      if (WorkflowParameters.enableMLDenoise && done.enableMLDenoise) {
+         shLogSkip("MLDenoise");
+      } else if (WorkflowParameters.enableMLDenoise) {
          console.writeln("\n" + "=".repeat(80));
          console.writeln("STEP 10: Opening MLDenoise");
          console.writeln("=".repeat(80) + "\n");
@@ -4762,7 +4801,9 @@ function main()
          console.writeln("MLDenoise is DISABLED - skipping\n");
       }
 
-      if (WorkflowParameters.enableNXT) {
+      if (WorkflowParameters.enableNXT && done.enableNXT) {
+         shLogSkip("NoiseXTerminator");
+      } else if (WorkflowParameters.enableNXT) {
          console.writeln("\n" + "=".repeat(80));
          console.writeln("STEP 11: Opening NoiseXTerminator");
          console.writeln("=".repeat(80) + "\n");
