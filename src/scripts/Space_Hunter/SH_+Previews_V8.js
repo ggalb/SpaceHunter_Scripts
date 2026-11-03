@@ -2,7 +2,7 @@
 
 #feature-id    SHPlusPreviews : Space_Hunter > SH +Previews
 #feature-icon  @script_icons_dir/SH_PlusPreviews.svg
-#feature-info  Space Hunter +Previews v2.2.4<br/>\
+#feature-info  Space Hunter +Previews v2.2.5<br/>\
    <br/>\
    Creates 1-6 full-view previews with preset or custom naming<br/>\
    and zooms each to optimal fit.<br/>\
@@ -135,7 +135,7 @@ var PreviewDialog = class extends Dialog
       this.helpLabel.wordWrapping = true;
       this.helpLabel.useRichText  = true;
       this.helpLabel.text =
-         "<p><b>+Previews v2.2.4</b> &mdash; Space Hunter Toolset<br/>" +
+         "<p><b>+Previews v2.2.5</b> &mdash; Space Hunter Toolset<br/>" +
          "Creates 1&ndash;6 full-image previews zoomed to fit.<br/>" +
          "Copyright &copy; 2026 Georg G Albrecht. MIT License.</p>";
 
@@ -657,7 +657,7 @@ function createPreviews( names, overwrite )
 // ---------------------------------------------------------------------------
 
 // Space Hunter banner for the Process Console, deep orange at the top to
-// pale blue at the bottom (24-bit ANSI colour codes).
+// pale blue at the bottom, bold (24-bit ANSI colour codes).
 function shBanner()
 {
    var art = [
@@ -668,21 +668,21 @@ function shBanner()
       "/____/ .___/\\__,_/\\___/\\___/_/ /_/\\__,_/_/ /_/\\__/\\___/_/",
       "    /_/"
    ];
-   var c0 = [215, 85, 10], c1 = [175, 210, 255];
+   var c0 = [180, 50, 0], c1 = [175, 210, 255];
    console.writeln("");
    for (var i = 0; i < art.length; i++)
    {
       var t = i / (art.length - 1), rgb = [];
       for (var k = 0; k < 3; k++)
          rgb.push(Math.round(c0[k] + (c1[k] - c0[k]) * t));
-      console.writeln("\x1b[38;2;" + rgb.join(";") + "m" + art[i] + "\x1b[0m");
+      console.writeln("\x1b[1;38;2;" + rgb.join(";") + "m" + art[i] + "\x1b[0m");
    }
 }
 
 function main()
 {
    shBanner();
-   console.writeln("Space Hunter +Previews v2.2.4\n");
+   console.writeln("Space Hunter +Previews v2.2.5\n");
    if ( Parameters.isViewTarget && !Parameters.targetView.isNull )
       Parameters.targetView.window.bringToFront();
 

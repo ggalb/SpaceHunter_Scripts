@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.9<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.10<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.9
+// Space Hunter Lazy Workflow Part 2 v2.4.10
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -139,6 +139,7 @@
 //       shown raw in the console. The SXT / StarNet2 star image is the
 //       window the tool opened (an older one left open was renamed).
 // v2.4.9: Space Hunter banner (orange to pale blue) in the console.
+// v2.4.10: Banner bold, darker orange.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -161,7 +162,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.9"
+#define SCRIPT_VERSION "v2.4.10"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -4529,7 +4530,7 @@ function runStarNet2()
 }
 
 // Space Hunter banner for the Process Console, deep orange at the top to
-// pale blue at the bottom (24-bit ANSI colour codes).
+// pale blue at the bottom, bold (24-bit ANSI colour codes).
 function shBanner()
 {
    var art = [
@@ -4540,14 +4541,14 @@ function shBanner()
       "/____/ .___/\\__,_/\\___/\\___/_/ /_/\\__,_/_/ /_/\\__/\\___/_/",
       "    /_/"
    ];
-   var c0 = [215, 85, 10], c1 = [175, 210, 255];
+   var c0 = [180, 50, 0], c1 = [175, 210, 255];
    console.writeln("");
    for (var i = 0; i < art.length; i++)
    {
       var t = i / (art.length - 1), rgb = [];
       for (var k = 0; k < 3; k++)
          rgb.push(Math.round(c0[k] + (c1[k] - c0[k]) * t));
-      console.writeln("\x1b[38;2;" + rgb.join(";") + "m" + art[i] + "\x1b[0m");
+      console.writeln("\x1b[1;38;2;" + rgb.join(";") + "m" + art[i] + "\x1b[0m");
    }
 }
 

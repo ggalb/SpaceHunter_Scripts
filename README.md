@@ -9,7 +9,7 @@ Copyright © 2026 Georg G Albrecht. MIT License.
 
 | PixInsight | Scripts |
 |---|---|
-| 1.9.6 and later | Part 1 v2.7.8, Part 2 v2.4.9, +Previews v2.2.4, NamePreviews v2.1.1, KillPreviews v2.0.2 |
+| 1.9.6 and later | Part 1 v2.7.9, Part 2 v2.4.10, +Previews v2.2.5, NamePreviews v2.1.1, KillPreviews v2.0.2 |
 
 Older packages (for PixInsight 1.9.5 and earlier) have been withdrawn. Script file names carry
 no version number (e.g. `SH_LazyWorkflow_Part1_V8.js`); the version is shown in each script's
