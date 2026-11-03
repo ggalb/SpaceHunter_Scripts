@@ -8,76 +8,24 @@
       <p>Repository: https://github.com/ggalb/SpaceHunter_Scripts</p>
    </description>
 
-   <!-- Legacy scripts for PixInsight 1.8.0 through 1.9.3 (SpiderMonkey engine) -->
-   <platform os="all" arch="noarch" version="1.8.0:1.9.3">
+   <!-- PixInsight 1.9.6 and later. Packages for 1.9.5 and earlier are withdrawn. -->
+   <platform os="all" arch="noarch" version="1.9.6:1.9.9">
       <package
-         fileName="SpaceHunter_Scripts_20260329.zip"
-         sha1="db83859a36628eb26f046482fb842cf93baa5b86"
+         fileName="SpaceHunter_Scripts_20261103.zip"
+         sha1="f12f9b0549f5aff12c075a1f8f8a57d9ba9656f5"
          type="script"
-         releaseDate="20260729"
-         title="Space Hunter Scripts v1.4">
+         releaseDate="20261103"
+         title="Space Hunter Scripts 20261103">
          <description>
-            <p><b>Space Hunter Scripts v1.4</b></p>
-            <p>- Per-step elapsed time in console output for SPFC, Create Previews, MGC, and GC.</p>
-            <p>- Section title tooltips on GradientCorrection and DynamicBackgroundExtraction.</p>
-            <p>- Updated workflow guide (PDF).</p>
-            <p>Includes:</p>
-            <p>- SH Lazy Workflow Part 1: Smart plate solving (ASTAP), ImageSolver, SPFC, variable previews, MultiscaleGradientCorrection, optional GradientCorrection and DynamicBackgroundExtraction.</p>
-            <p>- SH Lazy Workflow Part 2: BlurXTerminator, Background finder with Exclusion Zones, SPCC, AutoColor, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator.</p>
-            <p>- SH +Previews: Creates 1-6 full-size previews with preset or custom naming.</p>
-            <p>- SH KillPreviews: Deletes all previews from the active image window.</p>
-            <p>- SH NamePreviews: Renames previews to Exclude1, Exclude2, etc.</p>
-         </description>
-      </package>
-   </platform>
-
-   <!-- V8 scripts for PixInsight 1.9.4 only (frozen since the 20261013 release) -->
-   <platform os="all" arch="noarch" version="1.9.4:1.9.4">
-      <package
-         fileName="SpaceHunter_Scripts_V8_v2.0.zip"
-         sha1="2452bddffdc0f744be29819a23dc5a8ca7ff78c4"
-         type="script"
-         releaseDate="20260729"
-         title="Space Hunter Scripts V8 v2.1">
-         <description>
-            <p><b>Space Hunter Scripts V8 v2.1</b></p>
-            <p>- RC-Astro v1.1.2.2 support: ML Version selection and Tile Overlap controls for BXT and SXT.</p>
-            <p>- NXT simplified — opens tool directly for manual configuration.</p>
-            <p>- Per-step elapsed time in console output for key workflow steps.</p>
-            <p>- Section title tooltips for BXT, SXT, GC, and DBE.</p>
-            <p>- UI alignment improvements.</p>
-            <p>- Legacy Part 1 (with ImageSolver) bundled for convenience.</p>
-            <p>- Updated workflow guide (PDF).</p>
-            <p>- Requires PixInsight 1.9.4 or later.</p>
-            <p>NOTE: If you received the earlier v2.1 update and see duplicate scripts in your Space_Hunter menu, delete the files ending in _V8_v2.1.js from your Space_Hunter folder, then re-add the scripts via Feature Scripts.</p>
-            <p>Includes:</p>
-            <p>- SH Lazy Workflow Part 1 V8: Smart plate solving (ASTAP), SPFC, variable previews, MultiscaleGradientCorrection, optional GradientCorrection and DynamicBackgroundExtraction.</p>
-            <p>- SH Lazy Workflow Part 1 (Legacy+ImageSolver): For users who need ImageSolver integrated in the script.</p>
-            <p>- SH Lazy Workflow Part 2 V8: BlurXTerminator, Background finder with Exclusion Zones, SPCC, AutoColor, Adaptive Auto STF, StarXTerminator or StarNet2, NoiseXTerminator.</p>
-            <p>- SH +Previews: Creates 1-6 full-size previews with preset or custom naming.</p>
-            <p>- SH KillPreviews: Deletes all previews from the active image window.</p>
-            <p>- SH NamePreviews: Renames previews to Exclude1, Exclude2, etc.</p>
-         </description>
-      </package>
-   </platform>
-
-   <!-- V8 scripts for PixInsight 1.9.5+ : one dated zip per release, fixed script file names -->
-   <platform os="all" arch="noarch" version="1.9.5:1.9.9">
-      <package
-         fileName="SpaceHunter_Scripts_20261025.zip"
-         sha1="387eba5990e4197e25051aa014de5bdc55bc0aca"
-         type="script"
-         releaseDate="20261025"
-         title="Space Hunter Scripts 20261025">
-         <description>
-            <p><b>Space Hunter Scripts, 25 October 2026</b> (requires PixInsight 1.9.5)</p>
-            <p>Part 1 v2.5.14, Part 2 v2.3.12, +Previews v2.2.3, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
-            <p>- Part 1 fix: targeted ASTAP solve now starts at the image's real position (RA was sent in the wrong units, Dec mirrored). ASTAP runs directly, with a time limit, Abort support and clean-up of its temp files.</p>
-            <p>- Abort works for the whole run in Part 1 and Part 2; an aborted tool counts as cancel.</p>
-            <p>- Part 2: dust map downloaded over https from IRSA only; AutoColor leaves the image unchanged when a channel has no usable background.</p>
-            <p>- Menu icons moved to PixInsight's standard icon folder; the old icon files are removed automatically. Your saved settings are kept.</p>
-            <p>- Smaller fixes in all five scripts and the manuals.</p>
-            <p>Full changelog: https://github.com/ggalb/SpaceHunter_Scripts</p>
+            <p>Changelog (requires PixInsight 1.9.6):</p>
+            <p>Part 1 v2.7.10, Part 2 v2.4.12, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
+            <p>No external programs: plate solving runs entirely in PixInsight (ImageSolver, blind solve for images without coordinates).</p>
+            <p>Steps already applied to the image are skipped on a second run, following History Explorer.</p>
+            <p>Part 1: MGC scale factors Standard, Automatic or Both; improved background model and GC result choosers.</p>
+            <p>Part 2: optional MultiscaleAdaptiveStretch preview copy; StarNet2 options for the current StarNet2; MLDenoise before NoiseXTerminator.</p>
+            <p>Damaged or out-of-range saved settings fall back to their defaults; process icons store no paths from your computer.</p>
+            <p>Manuals list every file, image property, setting and internet connection the scripts use.</p>
+            <p>Full changelog: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/CHANGELOG.md</p>
          </description>
          <remove>
             src/scripts/Space_Hunter/SH_LazyWorkflow_Part1_V8_v2.0.js,
