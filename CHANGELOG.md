@@ -4,6 +4,17 @@ Newest release first. Each script's source file also has a detailed change log i
 
 ---
 
+## 3 November 2026, second update (V8, PixInsight 1.9.6+)
+
+**Part 1 (v2.7.11):** GC model windows: the display stretch is now called Auto Display Stretch (PixInsight's ScreenTransferFunction with the AutoSTF method).
+
+**Part 2 (v2.4.13):**
+
+- Step 5 renamed Auto Display Stretch (linked/unlinked). Dialog, console and manual say that it sets PixInsight's ScreenTransferFunction with the AutoSTF method by Juan Conejero; the script adds the automatic linked/unlinked choice and the sky statistics from the Background preview.
+- Dust map: the downloaded file's header and every map value are checked before use; a damaged map is not used.
+
+---
+
 ## 3 November 2026 (V8, PixInsight 1.9.6+)
 
 **General:**

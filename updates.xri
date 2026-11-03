@@ -11,20 +11,17 @@
    <!-- PixInsight 1.9.6 and later. Packages for 1.9.5 and earlier are withdrawn. -->
    <platform os="all" arch="noarch" version="1.9.6:1.9.9">
       <package
-         fileName="SpaceHunter_Scripts_20261103.zip"
-         sha1="f12f9b0549f5aff12c075a1f8f8a57d9ba9656f5"
+         fileName="SpaceHunter_Scripts_20261103_1540.zip"
+         sha1="b5aea00c176868debd7ca67ddd061d876b94ad98"
          type="script"
          releaseDate="20261103"
-         title="Space Hunter Scripts 20261103">
+         title="Space Hunter Scripts 20261103_1540">
          <description>
             <p>Changelog (requires PixInsight 1.9.6):</p>
-            <p>Part 1 v2.7.10, Part 2 v2.4.12, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
-            <p>No external programs: plate solving runs entirely in PixInsight (ImageSolver, blind solve for images without coordinates).</p>
-            <p>Steps already applied to the image are skipped on a second run, following History Explorer.</p>
-            <p>Part 1: MGC scale factors Standard, Automatic or Both; improved background model and GC result choosers.</p>
-            <p>Part 2: optional MultiscaleAdaptiveStretch preview copy; StarNet2 options for the current StarNet2; MLDenoise before NoiseXTerminator.</p>
-            <p>Damaged or out-of-range saved settings fall back to their defaults; process icons store no paths from your computer.</p>
-            <p>Manuals list every file, image property, setting and internet connection the scripts use.</p>
+            <p>Part 1 v2.7.11, Part 2 v2.4.13, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
+            <p>Part 2 step 5 renamed Auto Display Stretch (linked/unlinked): it sets PixInsight's ScreenTransferFunction with the AutoSTF method and chooses linked or unlinked automatically.</p>
+            <p>Part 1: the gradient model windows use the same Auto Display Stretch.</p>
+            <p>Part 2: the downloaded dust map is checked value by value before use.</p>
             <p>Full changelog: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/CHANGELOG.md</p>
          </description>
          <remove>
