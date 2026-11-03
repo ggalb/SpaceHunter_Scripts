@@ -5,7 +5,7 @@
    <title>PixInsight Reference Documentation | SH Lazy Workflow Part 2</title>
    <meta name="keywords" content="Space Hunter, OSC, BlurXTerminator, background, IFN, dust map, exclusion zones, SPCC, color calibration, AutoColor, screen transfer function, StarXTerminator, StarNet2, NoiseXTerminator, MLDenoise" />
    <meta name="author" content="Georg G. Albrecht" />
-   <meta name="description" content="Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto STF, star removal and noise reduction." />
+   <meta name="description" content="Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto Display Stretch, star removal and noise reduction." />
    <meta name="robots" content="INDEX,FOLLOW" />
    <meta name="generator" content="PixInsight Documentation Compiler script version 1.8.1" />
    <meta name="pidoc-document-class" content="PIScriptDoc" />
@@ -29,7 +29,7 @@
 <hr class="separator"/>
 
 <div id="brief">
-<p>Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto STF, star removal and noise reduction. <a href="#__contents__">[more]</a></p></div>
+<p>Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto Display Stretch, star removal and noise reduction. <a href="#__contents__">[more]</a></p></div>
 
 <div id="keywords">
 <p><strong>Keywords:</strong> Space Hunter, OSC, BlurXTerminator, background, IFN, dust map, exclusion zones, SPCC, color calibration, AutoColor, screen transfer function, StarXTerminator, StarNet2, NoiseXTerminator, MLDenoise</p>
@@ -52,7 +52,7 @@
 </li>
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_3_mdash_SPCC_SpectrophotometricColorCalibration__">2.4&emsp;Step 3 &mdash; SPCC (SpectrophotometricColorCalibration)</a></li>
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_4_mdash_AutoColor__">2.5&emsp;Step 4 &mdash; AutoColor</a></li>
-<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_5_mdash_Adaptive_Auto_STF__">2.6&emsp;Step 5 &mdash; Adaptive Auto STF</a></li>
+<li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_5_mdash_Auto_Display_Stretch_linkedunlinked__">2.6&emsp;Step 5 &mdash; Auto Display Stretch (linked/unlinked)</a></li>
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_6_mdash_BXT_Full__">2.7&emsp;Step 6 &mdash; BXT Full</a></li>
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_7_mdash_MAS_Preview__">2.8&emsp;Step 7 &mdash; MAS Preview</a></li>
 <li class="pidoc_tocSubitem"><a href="#__Usage_:_Step_8_mdash_SXT_StarXTerminator__">2.9&emsp;Step 8 &mdash; SXT (StarXTerminator)</a></li>
@@ -87,7 +87,7 @@
    <div id="Description">
 <p>Part 2 of the Space Hunter Lazy Workflow continues where <a href="../../scripts/SH%20Lazy%20Workflow%20Part%201/SH%20Lazy%20Workflow%20Part%201.html" title="../../scripts/SH Lazy Workflow Part 1/SH Lazy Workflow Part 1.html">SH Lazy Workflow Part 1</a> ends. Start it on the image after you have applied your chosen background extraction.</p>
 <p>It corrects the optics, calibrates colour and sharpens. With the default settings it stops after BXT full, with the image still linear. Optional steps give a stretched glimpse (MAS preview), remove the stars and open MLDenoise or NoiseXTerminator, so your creative work can begin.</p>
-<p><strong>Part 2 sequence:</strong> BXT correct &rarr; Find Background &rarr; SPCC (or AutoColor) &rarr; Adaptive Auto STF &rarr; BXT full &rarr; MAS preview &rarr; SXT (or StarNet2) &rarr; MLDenoise (or NXT).</p>
+<p><strong>Part 2 sequence:</strong> BXT correct &rarr; Find Background &rarr; SPCC (or AutoColor) &rarr; Auto Display Stretch &rarr; BXT full &rarr; MAS preview &rarr; SXT (or StarNet2) &rarr; MLDenoise (or NXT).</p>
    </div>
 </div>
 
@@ -102,12 +102,12 @@
 <a id="__figure_1__"></a>
 <p><span class="pidoc_figure_title">Figure 1 &mdash;</span>  <strong>Part 2 dialog</strong></p>
 <div class="pidoc_mouseover">
-<img class="pidoc_image_right" src="images/Part2_0.png" style="width:400px;" id="uBMI4wUKRLMenxqa" alt="" />
+<img class="pidoc_image_right" src="images/Part2_0.png" style="width:400px;" id="e9Warg6AixeoKlwS" alt="" />
 <ul>
-<li><span class="pidoc_indicator_default" id="uBMI4wUKRLMenxqa_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('uBMI4wUKRLMenxqa', 'images/Part2_0.png'); pidoc_hideGroup('uBMI4wUKRLMenxqa', 4); pidoc_setOpacity('uBMI4wUKRLMenxqa_1', 1.0);">Overview (sections collapsed)</a></li>
-<li><span class="pidoc_indicator" id="uBMI4wUKRLMenxqa_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('uBMI4wUKRLMenxqa', 'images/Part2_1.png'); pidoc_hideGroup('uBMI4wUKRLMenxqa', 4); pidoc_setOpacity('uBMI4wUKRLMenxqa_2', 1.0);">Default settings</a></li>
-<li><span class="pidoc_indicator" id="uBMI4wUKRLMenxqa_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('uBMI4wUKRLMenxqa', 'images/Part2_3.png'); pidoc_hideGroup('uBMI4wUKRLMenxqa', 4); pidoc_setOpacity('uBMI4wUKRLMenxqa_3', 1.0);">Narrowband filter mode (SPCC section)</a></li>
-<li><span class="pidoc_indicator" id="uBMI4wUKRLMenxqa_4"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('uBMI4wUKRLMenxqa', 'images/Part2_4.png'); pidoc_hideGroup('uBMI4wUKRLMenxqa', 4); pidoc_setOpacity('uBMI4wUKRLMenxqa_4', 1.0);">MAS preview and StarNet2</a></li>
+<li><span class="pidoc_indicator_default" id="e9Warg6AixeoKlwS_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('e9Warg6AixeoKlwS', 'images/Part2_0.png'); pidoc_hideGroup('e9Warg6AixeoKlwS', 4); pidoc_setOpacity('e9Warg6AixeoKlwS_1', 1.0);">Overview (sections collapsed)</a></li>
+<li><span class="pidoc_indicator" id="e9Warg6AixeoKlwS_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('e9Warg6AixeoKlwS', 'images/Part2_1.png'); pidoc_hideGroup('e9Warg6AixeoKlwS', 4); pidoc_setOpacity('e9Warg6AixeoKlwS_2', 1.0);">Default settings</a></li>
+<li><span class="pidoc_indicator" id="e9Warg6AixeoKlwS_3"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('e9Warg6AixeoKlwS', 'images/Part2_3.png'); pidoc_hideGroup('e9Warg6AixeoKlwS', 4); pidoc_setOpacity('e9Warg6AixeoKlwS_3', 1.0);">Narrowband filter mode (SPCC section)</a></li>
+<li><span class="pidoc_indicator" id="e9Warg6AixeoKlwS_4"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('e9Warg6AixeoKlwS', 'images/Part2_4.png'); pidoc_hideGroup('e9Warg6AixeoKlwS', 4); pidoc_setOpacity('e9Warg6AixeoKlwS_4', 1.0);">MAS preview and StarNet2</a></li>
 </ul>
 </div>
 </div>
@@ -145,7 +145,7 @@
 </td>
 <td><p>On</p>
 </td>
-<td><p>Turning it on also turns on Find Background and Adaptive Auto STF. To run either of those alone, turn SPCC off first.</p>
+<td><p>Turning it on also turns on Find Background and Auto Display Stretch. To run either of those alone, turn SPCC off first.</p>
 </td>
 </tr>
 <tr>
@@ -157,7 +157,7 @@
 </td>
 </tr>
 <tr>
-<td><p><a href="#step_stf">5 Adaptive Auto STF</a></p>
+<td><p><a href="#step_stf">5 Auto Display Stretch</a></p>
 </td>
 <td><p>On</p>
 </td>
@@ -223,7 +223,7 @@
 
 <div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_Find_Background__">
    <h4 class="pidoc_subsectionTitle">2.3&emsp;<a id="step_fdb"></a>Step 2 &mdash; Find Background</h4>
-<p>Finds a clean, typical patch of sky and marks it with a preview named <span class="pidoc_code">Background.</span> SPCC uses it as its background reference, and Adaptive Auto STF takes its statistics from it.</p>
+<p>Finds a clean, typical patch of sky and marks it with a preview named <span class="pidoc_code">Background.</span> SPCC uses it as its background reference, and Auto Display Stretch takes its statistics from it.</p>
 <p><strong>How the search works.</strong> The frame, minus a 3% border, is cut into square tiles (5% of the image height, at most 50 px). For every tile the script measures the median, the noise and how much stars or galaxies lift the mean above the median; star-rich tiles are rejected. It then looks for tiles at the <em>typical</em> sky level (10th percentile of the clean tiles), not the darkest ones: the darkest tiles are usually dark nebulae or over-corrected holes. Among those, the flattest tile that matches its surroundings and isn't near the edge wins.</p>
 <p>So the finder avoids dark nebulae on its own. Faint IFN (integrated flux nebula) or galactic cirrus can still pull the pick. For that there are the pre-check, the dust map and exclusion zones.</p>
 <div class="pidoc_subsection" id="__Usage_:_Step_2_mdash_Find_Background_:_Background_Precheck__">
@@ -233,10 +233,10 @@
 <a id="__figure_2__"></a>
 <p><span class="pidoc_figure_title">Figure 2 &mdash;</span>  <strong>Background pre-check</strong></p>
 <div class="pidoc_mouseover">
-<img class="pidoc_image_right" src="images/Part2_Background_1.png" style="width:560px;" id="8IZGD2IBHC3ILDDh" alt="" />
+<img class="pidoc_image_right" src="images/Part2_Background_1.png" style="width:560px;" id="44j500ISm9UgRxf4" alt="" />
 <ul>
-<li><span class="pidoc_indicator_default" id="8IZGD2IBHC3ILDDh_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('8IZGD2IBHC3ILDDh', 'images/Part2_Background_1.png'); pidoc_hideGroup('8IZGD2IBHC3ILDDh', 2); pidoc_setOpacity('8IZGD2IBHC3ILDDh_1', 1.0);">Before the dust map check</a></li>
-<li><span class="pidoc_indicator" id="8IZGD2IBHC3ILDDh_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('8IZGD2IBHC3ILDDh', 'images/Part2_Background_2.png'); pidoc_hideGroup('8IZGD2IBHC3ILDDh', 2); pidoc_setOpacity('8IZGD2IBHC3ILDDh_2', 1.0);">After Check dust map</a></li>
+<li><span class="pidoc_indicator_default" id="44j500ISm9UgRxf4_1"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('44j500ISm9UgRxf4', 'images/Part2_Background_1.png'); pidoc_hideGroup('44j500ISm9UgRxf4', 2); pidoc_setOpacity('44j500ISm9UgRxf4_1', 1.0);">Before the dust map check</a></li>
+<li><span class="pidoc_indicator" id="44j500ISm9UgRxf4_2"></span><a href="javascript:void(0);" onmouseover="pidoc_setImgSrc('44j500ISm9UgRxf4', 'images/Part2_Background_2.png'); pidoc_hideGroup('44j500ISm9UgRxf4', 2); pidoc_setOpacity('44j500ISm9UgRxf4_2', 1.0);">After Check dust map</a></li>
 </ul>
 </div>
 </div>
@@ -312,10 +312,10 @@ NASA/IPAC Infrared Science Archive, <em>Galactic Dust Reddening and Extinction</
 Hartmut V. Bornemann, <em>AutoColor</em>, <a href='https://www.skypixels.at/pixinsight_scripts.html#autocolor' title='https://www.skypixels.at/pixinsight_scripts.html#autocolor'>https://www.skypixels.at/pixinsight_scripts.html</a>">[2]</a></sup>, built into Part 2 with his written permission. AutoColor is fully integrated: you don't need to install or load the AutoColor script separately (see <a href="#requirements">Requirements</a>).</p>
 </div>
 
-<div class="pidoc_subsection" id="__Usage_:_Step_5_mdash_Adaptive_Auto_STF__">
-   <h4 class="pidoc_subsectionTitle">2.6&emsp;<a id="step_stf"></a>Step 5 &mdash; Adaptive Auto STF</h4>
+<div class="pidoc_subsection" id="__Usage_:_Step_5_mdash_Auto_Display_Stretch_linkedunlinked__">
+   <h4 class="pidoc_subsectionTitle">2.6&emsp;<a id="step_stf"></a>Step 5 &mdash; Auto Display Stretch (linked/unlinked)</h4>
 <p>Applies an automatic screen stretch to the linear image so you can judge the colour calibration. It is a display stretch only: pixel data are not changed.</p>
-<p>It uses the method of PixInsight's AutoSTF (Juan Conejero, Pleiades Astrophoto) in its own implementation:</p>
+<p>It sets PixInsight's ScreenTransferFunction (STF) on the image, with the parameters of PixInsight's AutoSTF method (Juan Conejero, Pleiades Astrophoto). The script computes these parameters itself and adds:</p>
 
 <ul class="pidoc_list">
 <li><strong>Statistics from the sky:</strong> measured in the <span class="pidoc_code">Background</span> preview (the whole image if there is none). With sky-only noise the black point sits close to the sky, which gives the nebula more depth.</li>
@@ -336,7 +336,7 @@ Hartmut V. Bornemann, <em>AutoColor</em>, <a href='https://www.skypixels.at/pixi
 
 <div class="pidoc_subsection" id="__Usage_:_Step_7_mdash_MAS_Preview__">
    <h4 class="pidoc_subsectionTitle">2.8&emsp;<a id="step_mas"></a>Step 7 &mdash; MAS Preview</h4>
-<p>Off by default. After BXT full, a copy of the image is stretched with MultiscaleAdaptiveStretch (PixInsight 1.9.6 or later) and minimised as <span class="pidoc_code">&lt;image&gt;_MAS_preview</span>, for a first look at the stretched result. MAS runs with its default settings; the background is measured in the <span class="pidoc_code">Background</span> preview (the whole image if there is none), the same sky SPCC and Adaptive Auto STF use. The image itself stays linear and continues with star removal. If MAS fails, the script only warns.</p>
+<p>Off by default. After BXT full, a copy of the image is stretched with MultiscaleAdaptiveStretch (PixInsight 1.9.6 or later) and minimised as <span class="pidoc_code">&lt;image&gt;_MAS_preview</span>, for a first look at the stretched result. MAS runs with its default settings; the background is measured in the <span class="pidoc_code">Background</span> preview (the whole image if there is none), the same sky SPCC and Auto Display Stretch use. The image itself stays linear and continues with star removal. If MAS fails, the script only warns.</p>
 </div>
 
 <div class="pidoc_subsection" id="__Usage_:_Step_8_mdash_SXT_StarXTerminator__">
@@ -560,7 +560,7 @@ Hartmut V. Bornemann, <em>AutoColor</em>, <a href='https://www.skypixels.at/pixi
 </div>
 
 <div id="footer">
-   <p>Generated by the PixInsight Documentation Compiler script version 1.8.1 on 2026-11-03 21:00:32 UTC</p>
+   <p>Generated by the PixInsight Documentation Compiler script version 1.8.1 on 2026-11-03 23:22:06 UTC</p>
 </div>
 <br/>
 <br/>

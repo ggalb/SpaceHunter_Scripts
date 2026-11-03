@@ -9,7 +9,7 @@ Copyright © 2026 Georg G Albrecht. MIT License.
 
 | PixInsight | Scripts |
 |---|---|
-| 1.9.6 and later | Part 1 v2.7.10, Part 2 v2.4.12, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2 |
+| 1.9.6 and later | Part 1 v2.7.11, Part 2 v2.4.13, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2 |
 
 Older packages (for PixInsight 1.9.5 and earlier) have been withdrawn. Script file names carry
 no version number (e.g. `SH_LazyWorkflow_Part1_V8.js`); the version is shown in each script's
@@ -69,7 +69,7 @@ The Lazy Workflow scripts are designed so you don't have to manually call and se
 Plate solving with PixInsight's ImageSolver (blind solve when the image has no coordinates), optional Ha/OIII separation for dual-band OSC images, SpectrophotometricFluxCalibration (SPFC), variable previews (1–4), MultiscaleGradientCorrection with per-preview gradient scale selection, optional automatic scale factors and an instant background-model chooser, optional GradientCorrection with result chooser, and DynamicBackgroundExtraction (cDBE). Steps already applied to the image are skipped on a second run. New Instance support.
 
 ### SH Lazy Workflow Part 2
-Continues from Part 1: BlurXTerminator (correct only), tiled background finder with a pre-check and optional dust map, SPCC with auto-detected ROI or AutoColor, Adaptive Auto STF (linked/unlinked chosen automatically), BlurXTerminator full with adjustable parameters, optional MultiscaleAdaptiveStretch preview copy, StarXTerminator or StarNet2, MLDenoise or NoiseXTerminator. Steps already applied to the image are skipped on a second run. New Instance support.
+Continues from Part 1: BlurXTerminator (correct only), tiled background finder with a pre-check and optional dust map, SPCC with auto-detected ROI or AutoColor, Auto Display Stretch (PixInsight STF with the AutoSTF method, linked/unlinked chosen automatically), BlurXTerminator full with adjustable parameters, optional MultiscaleAdaptiveStretch preview copy, StarXTerminator or StarNet2, MLDenoise or NoiseXTerminator. Steps already applied to the image are skipped on a second run. New Instance support.
 
 ### Bonus Scripts
 
@@ -99,7 +99,7 @@ See the full [LICENSE](https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LI
 
 - [PixInsight](https://pixinsight.com/) by Pleiades Astrophoto S.L.
 - ImageSolver by Andrés del Pozo and Juan Conejero (PTeam)
-- Adaptive Auto STF based on PixInsight's AutoSTF method by Juan Conejero (Pleiades Astrophoto)
+- Auto Display Stretch: PixInsight's ScreenTransferFunction set with the AutoSTF method by Juan Conejero (Pleiades Astrophoto)
 - Ha/OIII separation method from the PixInsight video "MultiscaleGradientCorrection — Dual-Band OSC Images (II)" — [youtube.com/watch?v=ZYP7niz2hKU](https://www.youtube.com/watch?v=ZYP7niz2hKU)
 - Background finder concept inspired by FindBackground by Gerrit Erdt and Franklin Marek (SetiAstro)
 - Dust map: [IRSA Galactic Dust Reddening and Extinction](https://irsa.ipac.caltech.edu/applications/DUST/) (NASA/IPAC), SFD map by Schlegel, Finkbeiner & Davis (1998)

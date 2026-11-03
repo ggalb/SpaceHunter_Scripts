@@ -31,7 +31,7 @@
 }
 
 \brief {
-   Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto STF, star removal and noise reduction.
+   Takes a background-extracted linear OSC image to a star-separated, stretch-ready result: BXT, background search, SPCC or AutoColor, Auto Display Stretch, star removal and noise reduction.
 }
 
 \description {
@@ -46,7 +46,7 @@
    and open MLDenoise or NoiseXTerminator, so your creative work can begin.
 
    \s {Part 2 sequence:} BXT correct &rarr; Find Background &rarr;
-   SPCC (or AutoColor) &rarr; Adaptive Auto STF &rarr; BXT full &rarr;
+   SPCC (or AutoColor) &rarr; Auto Display Stretch &rarr; BXT full &rarr;
    MAS preview &rarr; SXT (or StarNet2) &rarr; MLDenoise (or NXT).
 }
 
@@ -77,11 +77,11 @@
          { { \lref step_fdb {2 Find Background} } {On, with pre-check}
            { Turned on by SPCC. Turning it on turns off AutoColor. } }
          { { \lref step_spcc {3 SPCC} } {On}
-           { Turning it on also turns on Find Background and Adaptive Auto
-             STF. To run either of those alone, turn SPCC off first. } }
+           { Turning it on also turns on Find Background and Auto Display
+             Stretch. To run either of those alone, turn SPCC off first. } }
          { { \lref step_autocolor {4 AutoColor} } {Off}
            { Turning it on turns off Find Background and SPCC. } }
-         { { \lref step_stf {5 Adaptive Auto STF} } {On} { Turned on by SPCC. } }
+         { { \lref step_stf {5 Auto Display Stretch} } {On} { Turned on by SPCC. } }
          { { \lref step_bxtf {6 BXT full} } {On, Automatic PSF} {Independent.} }
          { { \lref step_mas {7 MAS preview} } {Off} {Independent. Needs PixInsight 1.9.6.} }
          { { \lref step_sxt {8 SXT} } {Off} { Mutually exclusive with StarNet2. } }
@@ -103,8 +103,8 @@
    \subsection { \label step_fdb Step 2 --- Find Background } {
 
       Finds a clean, typical patch of sky and marks it with a preview named
-      \c Background. SPCC uses it as its background reference, and Adaptive
-      Auto STF takes its statistics from it.
+      \c Background. SPCC uses it as its background reference, and
+      Auto Display Stretch takes its statistics from it.
 
       \s {How the search works.} The frame, minus a 3\% border, is cut into
       square tiles (5\% of the image height, at most 50 px). For every tile
@@ -222,14 +222,15 @@
       \lref requirements {Requirements}).
    }
 
-   \subsection { \label step_stf Step 5 --- Adaptive Auto STF } {
+   \subsection { \label step_stf Step 5 --- Auto Display Stretch (linked/unlinked) } {
 
       Applies an automatic screen stretch to the linear image so you can
       judge the colour calibration. It is a display stretch only: pixel data
       are not changed.
 
-      It uses the method of PixInsight's AutoSTF (Juan Conejero, Pleiades
-      Astrophoto) in its own implementation:
+      It sets PixInsight's ScreenTransferFunction (STF) on the image, with
+      the parameters of PixInsight's AutoSTF method (Juan Conejero, Pleiades
+      Astrophoto). The script computes these parameters itself and adds:
 
       \list[spaced] {
          { \s {Statistics from the sky:} measured in the \c Background
@@ -264,7 +265,7 @@
       \c {<image>_MAS_preview}, for a first look at the stretched result.
       MAS runs with its default settings; the background is measured in the
       \c Background preview (the whole image if there is none), the same sky
-      SPCC and Adaptive Auto STF use. The image itself stays linear and
+      SPCC and Auto Display Stretch use. The image itself stays linear and
       continues with star removal. If MAS fails, the script only warns.
    }
 

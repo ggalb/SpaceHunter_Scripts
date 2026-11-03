@@ -401,7 +401,8 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
                        { \c GC_gradient_model1 } }
       }
 
-      The gradient model windows get an Adaptive Auto STF. Differences
+      The gradient model windows get an Auto Display Stretch (PixInsight's
+      STF with the AutoSTF method). Differences
       usually show more clearly in the models than in the corrected previews.
       Then the \s {Choose GC result} window opens (step 5b):
 

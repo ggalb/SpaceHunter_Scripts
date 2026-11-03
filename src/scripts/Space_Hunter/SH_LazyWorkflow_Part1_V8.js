@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.10<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.11<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.10
+// Space Hunter Lazy Workflow Part 1 v2.7.11
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -122,6 +122,8 @@
 // v2.7.8: Space Hunter banner (orange to pale blue) in the console.
 // v2.7.9: Banner bold, darker orange.
 // v2.7.10: Banner strokes as double lines.
+// v2.7.11: GC model windows: "Auto Display Stretch" (PixInsight STF with the
+//       AutoSTF method) instead of "Auto Display Stretch".
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -331,7 +333,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.10"
+#define SCRIPT_VERSION "v2.7.11"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -4108,10 +4110,11 @@ function openDBETool()
 }
 
 // ============================================================
-// Adaptive Auto STF (internal use - for GC gradient model images)
+// Auto Display Stretch (GC gradient model images): PixInsight's
+// ScreenTransferFunction set with the AutoSTF method
 // ============================================================
 
-function applyAdaptiveAutoSTF(targetWindow)
+function applyDisplayStretch(targetWindow)
 {
    targetWindow.bringToFront();
    var view = targetWindow.mainView;
@@ -5389,12 +5392,12 @@ function main()
             console.warningln("\n\u26A0  GradientCorrection failed: " + shErrorText(gcError) + "\n");
          }
 
-         // Apply Adaptive Auto STF to GC gradient model images
+         // Apply Auto Display Stretch to GC gradient model images
          for (var g = 0; g < gcModelIds.length; g++) {
             var modelWin = ImageWindow.windowById(gcModelIds[g]);
             if (!modelWin.isNull) {
-               console.writeln("Applying Adaptive Auto STF to " + gcModelIds[g] + "...");
-               applyAdaptiveAutoSTF(modelWin);
+               console.writeln("Applying Auto Display Stretch to " + gcModelIds[g] + "...");
+               applyDisplayStretch(modelWin);
                console.writeln("\u2714 " + gcModelIds[g] + " stretched.");
             }
          }

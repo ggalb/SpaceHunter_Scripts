@@ -1,14 +1,14 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.12<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.13<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
    Includes: Equipment selection with collapsible sections, BlurXTerminator (correct only),<br/>\
    Tiled background finder (Exclude previews honoured) with pre-check and optional IFN/dust map, SPCC with auto-detected ROI,<br/>\
    AutoColor (Background Neutralization + Color Calibration, alternative to Background + SPCC),<br/>\
-   Adaptive Auto STF (auto linked/unlinked), BlurXTerminator full with adjustable parameters,<br/>\
+   Auto Display Stretch (PixInsight STF, AutoSTF method, linked/unlinked), BlurXTerminator full with adjustable parameters,<br/>\
    optional MultiscaleAdaptiveStretch preview copy, StarXTerminator or StarNet2 for star removal,<br/>\
    MLDenoise or NoiseXTerminator. New Instance support.<br/>\
    <br/>\
@@ -17,14 +17,15 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.12
+// Space Hunter Lazy Workflow Part 2 v2.4.13
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
 //
 // Acknowledgments:
 // - PixInsight platform by Pleiades Astrophoto (https://pixinsight.com/)
-// - Adaptive Auto STF based on PixInsight's AutoSTF method by Juan Conejero (Pleiades Astrophoto);
+// - Auto Display Stretch: PixInsight's ScreenTransferFunction, set with the AutoSTF method by
+//   Juan Conejero (Pleiades Astrophoto);
 //   own implementation with automatic linked/unlinked selection and sky-based statistics
 // - Background finder concept inspired by FindBackground by
 //   Gerrit Erdt and Franklin Marek (SetiAstro), licensed under CC BY-NC 4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
@@ -46,7 +47,7 @@
 //         preceded by a pre-check dialog (previews + optional IRSA dust map to avoid IFN)
 // Step 3: Run SPCC with selected filter and extracted ROI
 // Step 4: Run AutoColor - Background Neutralization + Color Calibration (alternative to Steps 2 & 3)
-// Step 5: Run Adaptive Auto STF (auto linked/unlinked, Background-preview statistics)
+// Step 5: Auto Display Stretch = PixInsight STF with the AutoSTF method (auto linked/unlinked, Background-preview statistics)
 // Step 6: Run BlurXTerminator full (adjustable parameters)
 // Step 7: MAS stretch preview - copy after BXT full, stretched with
 //         MultiscaleAdaptiveStretch, minimised (optional)
@@ -147,6 +148,10 @@
 //       error; System.msleep. Pre-check tooltip: previews are replaced by
 //       the Background preview.
 // v2.4.12: Banner strokes as double lines.
+// v2.4.13: Step 5 renamed "Auto Display Stretch (linked/unlinked)"; texts
+//       say it sets PixInsight's ScreenTransferFunction with the AutoSTF
+//       method. Dust map: header values and every map value are checked
+//       (finite, plausible range) before the map is used.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -169,7 +174,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.12"
+#define SCRIPT_VERSION "v2.4.13"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -999,7 +1004,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.helpLabel.wordWrapping = true;
    this.helpLabel.useRichText = true;
    this.helpLabel.text = "<p><b>" + SCRIPT_NAME + " " + SCRIPT_VERSION + "</b> &mdash; " +
-      "BXT correct-only, Background, SPCC or AutoColor, Adaptive Auto STF, BXT Full, MAS preview, SXT or StarNet2, MLDenoise or NXT for OSC camera images.<br/>" +
+      "BXT correct-only, Background, SPCC or AutoColor, Auto Display Stretch, BXT Full, MAS preview, SXT or StarNet2, MLDenoise or NXT for OSC camera images.<br/>" +
       "Copyright &copy; 2026 Georg G Albrecht. MIT License.<br/>" +
 	  "AutoColor.js script Copyright &copy; 2016 Hartmut V. Bornemann. Used with written permission.</p>"
 
@@ -1023,7 +1028,7 @@ var SpaceHunterDialog2 = class extends Dialog
 
    this.updateDependencies = function()
    {
-      // SPCC -> auto-enable Background + Adaptive Auto STF (only when AutoColor is off)
+      // SPCC -> auto-enable Background + Auto Display Stretch (only when AutoColor is off)
       if ( WorkflowParameters.enableSPCC && !WorkflowParameters.enableAutoColor )
       {
          if ( !WorkflowParameters.enableBackground )
@@ -1437,7 +1442,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.spcc_Section.setSection( this.spcc_Control );
    this.spcc_Section.enableCheckBox( true );
    this.spcc_Section.checkBox.checked = WorkflowParameters.enableSPCC;
-   this.spcc_Section.checkBox.toolTip = "<p>Enable/disable SPCC. Enabling auto-enables Background and Adaptive Auto STF.</p>";
+   this.spcc_Section.checkBox.toolTip = "<p>Enable/disable SPCC. Enabling auto-enables Background and Auto Display Stretch.</p>";
 
    this.spcc_Section.onCheckSection = function( sectionbar )
    {
@@ -1496,20 +1501,22 @@ var SpaceHunterDialog2 = class extends Dialog
    this.autoColor_Section.onToggleSection = toggleSectionHandler;
 
    // =================================================================
-   // SECTION 5: Adaptive Auto STF
+   // SECTION 5: Auto Display Stretch
    // =================================================================
 
    this.autoSTF_Control = new Control( this );
    this.autoSTF_Control.sizer = new VerticalSizer;
    this.autoSTF_Control.sizer.margin = 6;
 
-   this.autoSTF_Section = new SectionBar( this, "Adaptive Auto STF" );
+   this.autoSTF_Section = new SectionBar( this, "Auto Display Stretch (linked/unlinked)" );
    this.autoSTF_Section.setSection( this.autoSTF_Control );
    this.autoSTF_Section.enableCheckBox( true );
    this.autoSTF_Section.checkBox.checked = WorkflowParameters.enableAutoSTF;
-   this.autoSTF_Section.checkBox.toolTip = "<p>Adaptive Auto STF — automatically stretches the linear image for visualization after color calibration " +
-      "(display only). Linked after SPCC to keep the calibrated colour, unlinked otherwise; " +
-      "uses the Background preview's sky statistics when present.</p>";
+   this.autoSTF_Section.checkBox.toolTip = "<p>Auto Display Stretch — sets PixInsight's ScreenTransferFunction (STF) on the linear image " +
+      "after colour calibration, with the parameters of PixInsight's AutoSTF method (Juan Conejero, " +
+      "Pleiades Astrophoto). Display only: pixel data are not changed. The script adds the automatic " +
+      "choice: linked after SPCC to keep the calibrated colour, unlinked otherwise; sky statistics " +
+      "from the Background preview when present.</p>";
 
    this.autoSTF_Section.onCheckSection = function( sectionbar )
    {
@@ -2166,7 +2173,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.resetDefaultsButton.icon = this.scaledResource( ":/icons/reload.png" );
    this.resetDefaultsButton.setScaledFixedSize( 24, 24 );
    this.resetDefaultsButton.toolTip = "<p>Reset all workflow steps to default values.<br/>" +
-      "Default: BXT Correct, Background, SPCC, Adaptive Auto STF and BXT Full enabled; " +
+      "Default: BXT Correct, Background, SPCC, Auto Display Stretch and BXT Full enabled; " +
       "MAS preview, SXT, StarNet2, MLDenoise and NXT disabled.<br/>" +
       "Equipment and processing settings (camera, filter, white reference, BXT, SXT, StarNet2 parameters) are not changed.</p>";
    this.resetDefaultsButton.onClick = function()
@@ -2405,7 +2412,7 @@ function selectEquipment()
       (WorkflowParameters.enableBackground ? (WorkflowParameters.enableBgPrecheck ? " (pre-check on)" : " (pre-check off)") : ""));
    console.writeln("  SPCC:         " + (WorkflowParameters.enableSPCC ? "Yes" : "No"));
    console.writeln("  AutoColor:    " + (WorkflowParameters.enableAutoColor ? "Yes" : "No"));
-   console.writeln("  AASTF:        " + (WorkflowParameters.enableAutoSTF ? "Yes" : "No"));
+   console.writeln("  Stretch:      " + (WorkflowParameters.enableAutoSTF ? "Yes" : "No"));
    console.writeln("  BXT Full:     " + (WorkflowParameters.enableBXTFull ? "Yes" : "No"));
    if (WorkflowParameters.enableBXTFull) {
       console.writeln("    Sharpen Stars:      " + WorkflowParameters.bxtSharpenStars.toFixed(2));
@@ -2849,6 +2856,12 @@ function bgParseFITS(path)
    var bitpix = parseInt(hdr["BITPIX"]), nx = parseInt(hdr["NAXIS1"]), ny = parseInt(hdr["NAXIS2"]);
    if (bitpix !== -64 && bitpix !== -32)
       throw new Error("Unexpected FITS BITPIX " + bitpix);
+   if (parseInt(hdr["NAXIS"]) !== 2 || !(nx >= 2 && nx <= 10000 && ny >= 2 && ny <= 10000))
+      throw new Error("Unexpected FITS size " + hdr["NAXIS"] + ": " + nx + " x " + ny);
+   var wcs = ["CRVAL1", "CRVAL2", "CRPIX1", "CRPIX2", "CDELT1", "CDELT2"];
+   for (var w = 0; w < wcs.length; w++)
+      if (!isFinite(parseFloat(hdr[wcs[w]])) || (w >= 4 && parseFloat(hdr[wcs[w]]) === 0))
+         throw new Error("Invalid FITS keyword " + wcs[w] + " = " + hdr[wcs[w]]);
    if (String(hdr["CTYPE1"]).indexOf("TAN") < 0 || String(hdr["CTYPE2"]).indexOf("TAN") < 0)
       throw new Error("Unexpected FITS projection " + hdr["CTYPE1"] + "/" + hdr["CTYPE2"]);
    var bytes = Math.abs(bitpix) / 8;
@@ -2858,8 +2871,13 @@ function bgParseFITS(path)
 
    var dv = new DataView(u8.buffer, dataStart, nx * ny * bytes);
    var data = new Float64Array(nx * ny);
-   for (var p = 0; p < nx * ny; p++)
+   for (var p = 0; p < nx * ny; p++) {
       data[p] = bitpix === -64 ? dv.getFloat64(p * 8, false) : dv.getFloat32(p * 4, false);
+      // E(B-V) in magnitudes: never negative, far below 1000 even in the
+      // Galactic centre. Anything else means a damaged or wrong file.
+      if (!isFinite(data[p]) || data[p] < -0.01 || data[p] > 1000)
+         throw new Error("Dust map contains invalid values - not used.");
+   }
 
    return {
       nx: nx, ny: ny, data: data,
@@ -4124,11 +4142,12 @@ function ac_calibration( view, r, g, b, target )
 }
 
 // ============================================================
-// STEP 5: Adaptive Auto STF (ASTF)
+// STEP 5: Auto Display Stretch (PixInsight STF, AutoSTF method)
 //
 // Since v2.3 (developed with the R&D harness Test_AdaptiveAutoSTF.js, "BGP020"):
-// - Stretch method: PixInsight's AutoSTF by Juan Conejero (Pleiades Astrophoto),
-//   own implementation. Black point c0 = median - ASTF.clipSigma x MADN,
+// - Stretch method: PixInsight's AutoSTF by Juan Conejero (Pleiades Astrophoto);
+//   the parameters are computed here and applied with PixInsight's
+//   ScreenTransferFunction process. Black point c0 = median - ASTF.clipSigma x MADN,
 //   midtones m so the median lands on ASTF.targetBackground.
 //   Ref: https://pixinsight.com/forum/index.php?threads/programmatic-way-to-do-an-stf-autostretch.6659/
 // - Linked / unlinked chosen automatically:
@@ -4152,7 +4171,7 @@ var ASTF = {
 function autoSTF()
 {
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 5: Applying Adaptive Auto STF");
+   console.writeln("STEP 5: Applying Auto Display Stretch");
    console.writeln("=".repeat(80) + "\n");
 
    var stfStartTime = Date.now();
@@ -4246,7 +4265,7 @@ function autoSTF()
                       ", MADN=" + madns[c].toFixed(7) +
                       "  ->  c0=" + rows[c][0].toFixed(7) + ", m=" + rows[c][2].toFixed(6));
 
-   console.writeln("\n\u2714 Adaptive Auto STF Applied");
+   console.writeln("\n\u2714 Auto Display Stretch Applied");
    var stfElapsed = (Date.now() - stfStartTime) / 1000;
    var stfMin = Math.floor(stfElapsed / 60);
    var stfSec = (stfElapsed % 60).toFixed(2);
@@ -4603,7 +4622,7 @@ function main()
    shBanner();
    console.writeln("\n" + "=".repeat(80));
    console.writeln(SCRIPT_NAME + " " + SCRIPT_VERSION);
-   console.writeln("BXT Correct \u2192 Background \u2192 SPCC / AutoColor \u2192 Adaptive Auto STF \u2192 BXT Full \u2192 MAS preview \u2192 SXT / StarNet2 \u2192 MLDenoise / NXT");
+   console.writeln("BXT Correct \u2192 Background \u2192 SPCC / AutoColor \u2192 Auto Display Stretch \u2192 BXT Full \u2192 MAS preview \u2192 SXT / StarNet2 \u2192 MLDenoise / NXT");
    console.writeln("=".repeat(80) + "\n");
 
    try {
@@ -4742,7 +4761,7 @@ function main()
       if (WorkflowParameters.enableAutoSTF) {
          autoSTF();
       } else {
-         console.writeln("Adaptive Auto STF is DISABLED - skipping\n");
+         console.writeln("Auto Display Stretch is DISABLED - skipping\n");
       }
 
       if (WorkflowParameters.enableBXTFull) {
