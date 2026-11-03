@@ -11,7 +11,8 @@
 %    Dialog.browseScriptDocumentation( "SH Lazy Workflow Part 1" )
 % Written against script v2.5 (ScriptsTesting/Final Tests), 2026-10-11.
 % MGC scale factors, model panels and re-run notes updated for v2.7.4,
-% 2026-11-01.
+% 2026-11-01. Profile folder / save prompt and GC previews for v2.7.7,
+% 2026-11-02.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 1}
@@ -220,13 +221,15 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
 
             \list[spaced] {
                { Choose a \s {Profile folder} once (folder button). The
-                 folder is remembered. }
+                 folder is remembered on this computer (process icons don't
+                 carry it). }
                { \s {Profile} lists the folder's \c .txt files. Choosing one
                  fills in its factors; it is re-read from the file each time
                  the script starts. }
                { \s {Save profile...} writes the current kG and kB to a new
-                 file. Typing a factor switches the profile to \e {(manual
-                 values)}; save it to keep it. }
+                 file; if the file already exists, the script asks before
+                 replacing it. Typing a factor switches the profile to
+                 \e {(manual values)}; save it to keep it. }
                { You can also save PixelMath's \s {Instance Source Code}
                  (the square button at the bottom right of PixelMath) as a
                  \c .txt file in the folder. }
@@ -385,7 +388,8 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
       Off by default. GC also starts automatically when SPFC or MGC fails,
       for example when the MARS database doesn't cover the target.
 
-      GC runs with two presets on its own previews:
+      GC deletes the image's existing previews first and runs with two
+      presets on its own previews:
 
       \table[header, unnumbered] {
          { {Preview} {Preset} {Gradient model window} }

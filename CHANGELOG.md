@@ -13,21 +13,28 @@ Newest release first. Each script's source file also has a detailed change log i
 - Steps already applied to the image are skipped on a second run, following History Explorer; a warning appears only when every selected step is already applied.
 - One step numbering in dialogs, console and manuals.
 - Manuals: new screenshots for PixInsight 1.9.6; ImageSolver's online catalogue documented.
+- Manuals: "Files, Programs and Internet Access" lists the re-run marks, the FITS HISTORY lines, deleted previews, ImageSolver's own settings and star lists, and the third-party tools.
+- Process icons no longer store folder or file paths from your computer.
+- Damaged or out-of-range saved settings (for example in an edited process icon) fall back to their defaults.
 
-**Part 1 (v2.7.6):**
+**Part 1 (v2.7.7):**
 
 - Images without coordinates are solved by ImageSolver's blind solver (needs the Gaia astrometric index file).
 - MGC scale factors: Standard, Automatic or Both (paired previews per scale).
 - Background model chooser: stronger shared model stretch (display only); GC result chooser can show the gradient models.
 - The MARS folder you pick is remembered; Reset Settings forgets it.
 - Reset Defaults no longer changes the gradient scales (Reset Settings does).
+- Reset Settings keeps the workflow steps and the profile folder, also when you click Cancel afterwards.
+- Save profile asks before replacing an existing profile file.
 
-**Part 2 (v2.4.7):**
+**Part 2 (v2.4.8):**
 
 - New optional MAS stretch preview: a MultiscaleAdaptiveStretch copy after BXT full, with the background measured in the Background preview.
 - StarNet2 section for the current StarNet2: stride Large / Standard / Small and all six options.
 - MLDenoise now runs before NoiseXTerminator; StarXTerminator and NoiseXTerminator are off by default.
-- Dust-map check retries once; Abort stops it.
+- Dust-map check retries once; Abort stops it. Its temporary files are removed in every case.
+- The star image renamed to `stars` is always the one SXT or StarNet2 just created (an older one left open was renamed before).
+- Reset Settings keeps the MLDenoise model path.
 - Filter list also groups `_R/_G/_B` and `Red/Green/Blue` names (e.g. SvBony DNB).
 - In narrowband mode the console shows the wavelengths instead of the unused filter.
 

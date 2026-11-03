@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.7<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.8<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.7
+// Space Hunter Lazy Workflow Part 2 v2.4.8
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -130,6 +130,14 @@
 //       PixInsight 1.9.6.
 // v2.4.7: Author's email address removed from the AutoColor port credit
 //       (contact via GitHub). Comment only.
+// v2.4.8: Security review fixes. The MLDenoise model path is no longer
+//       stored in process icons (tooltip corrected). Values from saved
+//       settings or an icon are checked: wrong type or outside the dialog's
+//       range -> default. Reset Settings removes the saved settings and
+//       keeps the MLDenoise model path. Dust map download closes and
+//       deletes its file also when the transfer throws; server text is
+//       shown raw in the console. The SXT / StarNet2 star image is the
+//       window the tool opened (an older one left open was renamed).
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -152,7 +160,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.7"
+#define SCRIPT_VERSION "v2.4.8"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -204,6 +212,10 @@ var whiteRefDB = {};
 var whiteRefList = [];
 var cameraList = [];
 var filterList = [];   // RGB sets only (broadband / precombined); SPCC has no gray filter
+
+// ML versions offered in the dialog (0 = latest downloaded model)
+var BXT_ML_VALUES = [0, 5, 4, 2];
+var SXT_ML_VALUES = [0, 11];
 
 // Index of the entry whose key field equals value, else -1.
 function shIndexBy(list, field, value)
@@ -340,7 +352,8 @@ var WorkflowParameters = {
 	  Parameters.set("enableNXT",        this.enableNXT);
       Parameters.set("enableMASPreview",    this.enableMASPreview);
       Parameters.set("enableMLDenoise",  this.enableMLDenoise);
-      Parameters.set("mldModelPath",     this.mldModelPath);
+      // mldModelPath is a path on this computer: it stays in the user's own
+      // settings and is not put into process icons.
       Parameters.set("enableStarNet2",   this.enableStarNet2);
       Parameters.set("sn2Stride",      this.sn2Stride);
       Parameters.set("sn2Mask",        this.sn2Mask);
@@ -439,8 +452,8 @@ var WorkflowParameters = {
          this.enableMASPreview = Parameters.getBoolean("enableMASPreview");
       if (Parameters.has("enableMLDenoise"))
          this.enableMLDenoise = Parameters.getBoolean("enableMLDenoise");
-      if (Parameters.has("mldModelPath"))
-         this.mldModelPath = Parameters.getString("mldModelPath");
+      // mldModelPath: icons from v2.4.7 and older may hold it; the path saved
+      // on this computer is used instead.
       if (Parameters.has("enableStarNet2"))
          this.enableStarNet2 = Parameters.getBoolean("enableStarNet2");
       if (Parameters.has("sn2Stride"))
@@ -614,7 +627,6 @@ var WorkflowParameters = {
       this.sxtMlVersion         = 0;
       this.nxtTileOverlap       = 0.20;
       this.nxtMlVersion         = 0;
-      this.mldModelPath         = "";
       this.sn2Stride            = 256;
       this.sn2Mask              = true;
       this.sn2Upsample          = false;
@@ -622,47 +634,11 @@ var WorkflowParameters = {
       this.sn2RestoreClipped    = true;
       this.sn2HighlightProtection = true;
       this.sn2Unscreen          = false;
+      // The prefs are removed (old keys too); Reset Settings then saves the
+      // dialog's state once, so the workflow steps are kept. The MLDenoise
+      // model path is kept: it points to the user's own file.
       try {
-         Settings.write(SETTINGS_KEY_USERPREFS, DataType.String, JSON.stringify({
-            enableAutoColor:      this.enableAutoColor,
-            enableBXTCorrect:     this.enableBXTCorrect,
-            enableBackground:     this.enableBackground,
-            enableSPCC:           this.enableSPCC,
-            enableAutoSTF:        this.enableAutoSTF,
-            enableBXTFull:        this.enableBXTFull,
-            enableSXT:            this.enableSXT,
-            enableNXT:            this.enableNXT,
-            enableMASPreview:     this.enableMASPreview,
-            enableMLDenoise:      this.enableMLDenoise,
-            mldModelPath:         this.mldModelPath,
-            enableStarNet2:       this.enableStarNet2,
-            enableBgPrecheck:     this.enableBgPrecheck,
-            selectedWhiteRefName: whiteRefList[this.selectedWhiteRefIdx] ? whiteRefList[this.selectedWhiteRefIdx].name : "",
-            selectedCameraName:   cameraList[this.selectedCameraIdx] ? cameraList[this.selectedCameraIdx].xspdName : "",
-            selectedFilterLabel:  filterList[this.selectedFilterIdx] ? filterList[this.selectedFilterIdx].label : "",
-            bxtSharpenStars:      this.bxtSharpenStars,
-            bxtAdjustHalos:       this.bxtAdjustHalos,
-            bxtAutoPSF:           this.bxtAutoPSF,
-            bxtPSFDiameter:       this.bxtPSFDiameter,
-            bxtSharpenNonstellar: this.bxtSharpenNonstellar,
-            bxtTileOverlap:       this.bxtTileOverlap,
-            bxtMlVersion:         this.bxtMlVersion,
-            bxtCorrectMlVersion:  this.bxtCorrectMlVersion,
-            bxtCorrectTileOverlap: this.bxtCorrectTileOverlap,
-            sxtGenerateStars:     this.sxtGenerateStars,
-            sxtUnscreen:          this.sxtUnscreen,
-            sxtTileOverlap:       this.sxtTileOverlap,
-            sxtMlVersion:         this.sxtMlVersion,
-            nxtTileOverlap:       this.nxtTileOverlap,
-            nxtMlVersion:         this.nxtMlVersion,
-            sn2Stride:            this.sn2Stride,
-            sn2Mask:              this.sn2Mask,
-            sn2Upsample:          this.sn2Upsample,
-            sn2Linear:            this.sn2Linear,
-            sn2RestoreClipped:    this.sn2RestoreClipped,
-            sn2HighlightProtection: this.sn2HighlightProtection,
-            sn2Unscreen:          this.sn2Unscreen
-         }));
+         Settings.remove(SETTINGS_KEY_USERPREFS);
       } catch (e) {}
    },
 
@@ -692,8 +668,58 @@ var WorkflowParameters = {
       }
       idx = shIndexBy(filterList, "label", this.selectedFilterLabel);
       this.selectedFilterIdx = idx >= 0 ? idx : 0;
+   },
+
+   // Check values from saved settings or a process icon: a value of the
+   // wrong type or outside the dialog's range gets its default.
+   validate: function()
+   {
+      for (var k in WP_DEFAULTS)
+         if (typeof this[k] !== typeof WP_DEFAULTS[k] ||
+             (typeof this[k] === "number" && !isFinite(this[k])))
+            this[k] = WP_DEFAULTS[k];
+
+      var positive = ["nbRedWavelength", "nbRedBandwidth", "nbGreenWavelength",
+                      "nbGreenBandwidth", "nbBlueWavelength", "nbBlueBandwidth"];
+      for (var i = 0; i < positive.length; i++)
+         if (!(this[positive[i]] > 0))
+            this[positive[i]] = WP_DEFAULTS[positive[i]];
+      var ranges = {   // [min, max] of the dialog controls
+         bxtSharpenStars:       [0, 1],
+         bxtAdjustHalos:        [-0.5, 0.5],
+         bxtPSFDiameter:        [0, 8],
+         bxtSharpenNonstellar:  [0, 1],
+         bxtTileOverlap:        [0, 0.5],
+         bxtCorrectTileOverlap: [0, 0.5],
+         sxtTileOverlap:        [0, 0.5],
+         nxtTileOverlap:        [0, 0.5]
+      };
+      for (var r in ranges)
+         if (!(this[r] >= ranges[r][0] && this[r] <= ranges[r][1]))
+            this[r] = WP_DEFAULTS[r];
+      if (BXT_ML_VALUES.indexOf(this.bxtMlVersion) < 0)
+         this.bxtMlVersion = WP_DEFAULTS.bxtMlVersion;
+      if (BXT_ML_VALUES.indexOf(this.bxtCorrectMlVersion) < 0)
+         this.bxtCorrectMlVersion = WP_DEFAULTS.bxtCorrectMlVersion;
+      if (SXT_ML_VALUES.indexOf(this.sxtMlVersion) < 0)
+         this.sxtMlVersion = WP_DEFAULTS.sxtMlVersion;
+      if (!(this.nxtMlVersion >= 0 && this.nxtMlVersion % 1 === 0))
+         this.nxtMlVersion = WP_DEFAULTS.nxtMlVersion;
+      if ([384, 256, 128].indexOf(this.sn2Stride) < 0)
+         this.sn2Stride = WP_DEFAULTS.sn2Stride;
    }
 };
+
+// The defaults above, before saved settings or an icon change them
+// (used by validate()).
+var WP_DEFAULTS = (function()
+{
+   var d = {};
+   for (var k in WorkflowParameters)
+      if (typeof WorkflowParameters[k] !== "function")
+         d[k] = WorkflowParameters[k];
+   return d;
+})();
 
 // ============================================================
 // XSPD PARSERS (identical to Part 1)
@@ -1014,7 +1040,7 @@ var SpaceHunterDialog2 = class extends Dialog
    // =================================================================
 
    // ML version value arrays (shared between Correct Only and Full sections)
-   var bxtMlValues = [0, 5, 4, 2];
+   var bxtMlValues = BXT_ML_VALUES;
 
    // BXT Correct Only ML Version dropdown (own setting, independent of BXT Full since v2.3)
    this.bxtCorrectMlVersion_Label = new Label( this );
@@ -1725,7 +1751,7 @@ var SpaceHunterDialog2 = class extends Dialog
    this.sxtMlVersion_ComboBox.addItem( "Latest (ML 11)" );
    this.sxtMlVersion_ComboBox.addItem( "ML 11" );
    // Map: combo index 0 → ml_version 0 (Latest), 1 → 11
-   var sxtMlValues = [0, 11];
+   var sxtMlValues = SXT_ML_VALUES;
    var sxtMlIdx = sxtMlValues.indexOf( WorkflowParameters.sxtMlVersion );
    this.sxtMlVersion_ComboBox.currentItem = sxtMlIdx >= 0 ? sxtMlIdx : 0;
    this.sxtMlVersion_ComboBox.toolTip = "<p>Select SXT machine learning model version.<br/>" +
@@ -1981,8 +2007,9 @@ var SpaceHunterDialog2 = class extends Dialog
    this.mldModelPath_Edit = new Edit( this );
    this.mldModelPath_Edit.text = WorkflowParameters.mldModelPath;
    this.mldModelPath_Edit.toolTip = "<p>Full path to your MLDenoise model file (.xmlm).</p>" +
-      "<p>This path is machine-specific and is stored only in your own preferences " +
-      "(never shared or hardcoded). Leave empty to open MLDenoise without pre-selecting a model.</p>";
+      "<p>This path is machine-specific: it is stored only in this computer's " +
+      "PixInsight settings, not in process icons. Leave empty to open MLDenoise " +
+      "without pre-selecting a model.</p>";
    this.mldModelPath_Edit.onEditCompleted = function()
    {
       WorkflowParameters.mldModelPath = this.text.trim();
@@ -2678,6 +2705,13 @@ var BG_DOWNLOAD_TIMEOUT_S = 30;
 // try and answers at once on the next.
 var BG_RETRY_DELAY_MS = 2000;
 
+// Text from outside (a server reply, an error message) for the console:
+// <raw> stops the console from reading it as markup.
+function shRaw(text)
+{
+   return "<raw>" + String(text).split("</raw>").join("< /raw>") + "</raw>";
+}
+
 function bgDownloadToFile(url, path)
 {
    try {
@@ -2685,7 +2719,7 @@ function bgDownloadToFile(url, path)
    } catch (e) {
       if (shIsCancel(e))
          throw e;
-      console.warningln("Dust map download failed (" + shErrorText(e) + ") - retrying once.");
+      console.warningln("Dust map download failed (" + shRaw(shErrorText(e)) + ") - retrying once.");
       if (typeof msleep === "function")
          msleep(BG_RETRY_DELAY_MS);
       CoreApplication.processEvents();
@@ -2697,49 +2731,52 @@ function bgDownloadOnce(url, path)
 {
    var f = new File;
    f.createForWriting(path);
-   var transfer = new NetworkTransfer;
-   transfer.setURL(url);
-   transfer.setConnectionTimeout(BG_CONNECT_TIMEOUT_S);
-   if (typeof transfer.setSSL === "function")
-      transfer.setSSL(true);
-   transfer.onDownloadDataAvailable = function(data)
-   {
-      f.write(data);
-      return true;
-   };
-   // Called repeatedly during the transfer, also while no data arrives;
-   // returning false aborts it.
-   var t0 = Date.now(), timedOut = false, aborted = false;
-   transfer.onTransferProgress = function(dlTotal, dlCurrent, ulTotal, ulCurrent)
-   {
-      if (console.abortRequested)
+   var done = false;
+   try {
+      var transfer = new NetworkTransfer;
+      transfer.setURL(url);
+      transfer.setConnectionTimeout(BG_CONNECT_TIMEOUT_S);
+      if (typeof transfer.setSSL === "function")
+         transfer.setSSL(true);
+      transfer.onDownloadDataAvailable = function(data)
       {
-         aborted = true;
-         return false;
-      }
-      if (Date.now() - t0 > BG_DOWNLOAD_TIMEOUT_S * 1000)
+         f.write(data);
+         return true;
+      };
+      // Called repeatedly during the transfer, also while no data arrives;
+      // returning false aborts it.
+      var t0 = Date.now(), timedOut = false, aborted = false;
+      transfer.onTransferProgress = function()
       {
-         timedOut = true;
-         return false;
-      }
-      return true;
-   };
-   var ok = transfer.download();
-   f.close();
-   var error = null;
-   if (aborted)
-      error = "Script cancelled by user.";
-   else if (timedOut)
-      error = "The dust map service (NASA/IPAC IRSA) did not answer within " +
-              BG_DOWNLOAD_TIMEOUT_S + " s. Try again later.";
-   else if (!ok)
-      error = "Download failed: " + transfer.errorInformation;
-   else if (transfer.responseCode !== undefined && transfer.responseCode >= 400)
-      error = "HTTP error " + transfer.responseCode;
-   if (error) {
-      // a failed download leaves no partial file behind
-      try { File.remove(path); } catch (e) {}
-      throw new Error(error);
+         if (console.abortRequested)
+         {
+            aborted = true;
+            return false;
+         }
+         if (Date.now() - t0 > BG_DOWNLOAD_TIMEOUT_S * 1000)
+         {
+            timedOut = true;
+            return false;
+         }
+         return true;
+      };
+      var ok = transfer.download();
+      if (aborted)
+         throw new Error("Script cancelled by user.");
+      if (timedOut)
+         throw new Error("The dust map service (NASA/IPAC IRSA) did not answer within " +
+                         BG_DOWNLOAD_TIMEOUT_S + " s. Try again later.");
+      if (!ok)
+         throw new Error("Download failed: " + transfer.errorInformation);
+      if (transfer.responseCode !== undefined && transfer.responseCode >= 400)
+         throw new Error("HTTP error " + transfer.responseCode);
+      done = true;
+   } finally {
+      // Also when the transfer itself throws: the file is closed, and a
+      // failed download leaves no partial file behind.
+      f.close();
+      if (!done)
+         try { File.remove(path); } catch (e) {}
    }
 }
 
@@ -2835,8 +2872,7 @@ function bgDustReport(win)
    var tmp = File.systemTempDirectory + "/SH_dust_" + stamp;
    var url = IRSA_DUST_URL + "?locstr=" + c.ra.toFixed(5) + "+" + c.dec.toFixed(5) +
              "+equ+j2000&regSize=" + regSize.toFixed(2);
-   // the console treats '&' as markup, so escape it for display only
-   console.writeln("Querying IRSA dust service: " + url.replace(/&/g, "&amp;"));
+   console.writeln("Querying IRSA dust service: " + shRaw(url));
    bgDownloadToFile(url, tmp + ".xml");
    var xml;
    try {
@@ -2847,7 +2883,7 @@ function bgDustReport(win)
 
    var status = /<results\s+status\s*=\s*"([^"]*)"/i.exec(xml);
    if (!status || status[1].toLowerCase() !== "ok") {
-      console.warningln("IRSA response (first 500 chars): " + xml.substring(0, 500));
+      console.warningln("IRSA response (first 500 chars): " + shRaw(xml.substring(0, 500)));
       throw new Error("IRSA did not return a valid result.");
    }
    var fitsUrl = null, refSFD = NaN;
@@ -2865,7 +2901,7 @@ function bgDustReport(win)
       throw new Error("IRSA response contained no E(B-V) map.");
    fitsUrl = bgIrsaHttpsUrl(fitsUrl);
 
-   console.writeln("Downloading dust map: " + fitsUrl);
+   console.writeln("Downloading dust map: " + shRaw(fitsUrl));
    bgDownloadToFile(fitsUrl, tmp + ".fits");
    var fits;
    try {
@@ -3194,9 +3230,9 @@ var BgPrecheckDialog = class extends Dialog
             this.cancel();
             return;
          }
-         text = "Dust map query failed: " + e.message +
+         text = "Dust map query failed: " + shErrorText(e) +
                 "\n\nYou can still Continue; the background finder does not need it.";
-         console.warningln("Dust map query failed: " + e.message);
+         console.warningln("Dust map query failed: " + shRaw(shErrorText(e)));
          this.dust_Button.enabled = true;
       }
       this.dust_Box.text = text;
@@ -4326,6 +4362,33 @@ function runMASPreview(win)
 // STEP 8: StarXTerminator (with dialog params)
 // ============================================================
 
+// Ids of all open image windows.
+function shWindowIds()
+{
+   var ids = [];
+   var w = ImageWindow.windows;
+   for (var i = 0; i < w.length; i++)
+      ids.push(w[i].mainView.id);
+   return ids;
+}
+
+// The image window a process opened: not among the ids taken before it ran.
+// If there are several, the one whose id starts with prefix. null if none.
+function shNewWindow(before, prefix)
+{
+   var found = null;
+   var w = ImageWindow.windows;
+   for (var i = 0; i < w.length; i++)
+   {
+      var id = w[i].mainView.id;
+      if (before.indexOf(id) >= 0)
+         continue;
+      if (found == null || id.indexOf(prefix) === 0)
+         found = w[i];
+   }
+   return found;
+}
+
 function runSXT()
 {
    let win = ImageWindow.activeWindow;
@@ -4334,8 +4397,6 @@ function runSXT()
    if (view.isNull) throw new Error("No active view.");
 
    let originalWin = win;
-   let originalName = view.id;
-   let expectedStarsName = originalName + "_stars";
 
    console.writeln("\n" + "=".repeat(80));
    console.writeln("STEP 8: Running StarXTerminator");
@@ -4360,16 +4421,18 @@ function runSXT()
    P.unscreen_stars = WorkflowParameters.sxtUnscreen;
    P.overlap = WorkflowParameters.sxtTileOverlap;
 
+   let before = shWindowIds();
    if (!P.executeOn(view)) {
       if (console.abortRequested)
          throw new Error("Script cancelled by user.");
       throw new Error("StarXTerminator execution failed.");
    }
 
-   // Rename the stars image if generated
+   // Rename the stars image if generated: the window SXT opened (an older
+   // <id>_stars left open would make SXT's new one <id>_stars1).
    if (WorkflowParameters.sxtGenerateStars) {
-      let starsWindow = ImageWindow.windowById(expectedStarsName);
-      if (!starsWindow.isNull) {
+      let starsWindow = shNewWindow(before, view.id + "_stars");
+      if (starsWindow != null) {
          starsWindow.mainView.id = "stars";   // PI makes it stars1, ... if taken
          console.writeln("\u2714 Stars image renamed to: " + starsWindow.mainView.id);
       } else {
@@ -4402,8 +4465,6 @@ function runStarNet2()
    if (view.isNull) throw new Error("No active view.");
 
    let originalWin = win;
-   let originalName = view.id;
-   let expectedMaskName = "star_mask";
 
    console.writeln("\n" + "=".repeat(80));
    console.writeln("STEP 9: Running StarNet2");
@@ -4441,16 +4502,18 @@ function runStarNet2()
    if ( "shadows_clipping" in P )     P.shadows_clipping = -2.80;
    if ( "target_background" in P )    P.target_background = 0.25;
 
+   let before = shWindowIds();
    if (!P.executeOn(view)) {
       if (console.abortRequested)
          throw new Error("Script cancelled by user.");
       throw new Error("StarNet2 execution failed.");
    }
 
-   // Rename star mask image to "stars" to match SXT behaviour
+   // Rename star mask image to "stars" to match SXT behaviour: the window
+   // StarNet2 opened (an older star_mask left open would make it star_mask1).
    if (WorkflowParameters.sn2Mask) {
-      let maskWindow = ImageWindow.windowById(expectedMaskName);
-      if (!maskWindow.isNull) {
+      let maskWindow = shNewWindow(before, "star_mask");
+      if (maskWindow != null) {
          maskWindow.mainView.id = "stars";   // PI makes it stars1, ... if taken
          console.writeln("\u2714 Star mask image renamed to: " + maskWindow.mainView.id);
       } else {
@@ -4496,8 +4559,14 @@ function main()
 
       // Load saved parameters if running from instance
       if (Parameters.isViewTarget || Parameters.isGlobalTarget) {
-         WorkflowParameters.load();
+         try {
+            WorkflowParameters.load();
+         } catch (e) {
+            console.warningln("⚠ Some process icon values could not be read (" +
+                              shErrorText(e) + ") - saved settings used for them.");
+         }
       }
+      WorkflowParameters.validate();
       WorkflowParameters.resolveSelection();
 
       selectEquipment();

@@ -2,7 +2,7 @@
 
 Manual sources in PixInsight's documentation format. Compiled pages are in
 `../doc/scripts/<menu name>/` and ship in the release package.
-Current as of Part 1 v2.7.6 / Part 2 v2.4.7, PixInsight 1.9.6 (compiler 1.8.1).
+Current as of Part 1 v2.7.7 / Part 2 v2.4.8, PixInsight 1.9.6 (compiler 1.8.1).
 
 | File | What it is |
 |---|---|

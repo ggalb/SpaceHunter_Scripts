@@ -11,6 +11,10 @@
 % 2026-10-30 (CPD rule 5.8): blind solving by ImageSolver 6.6.0.
 % Checked against Part 1 v2.7.6 / Part 2 v2.4.6, 2026-11-02 (release review):
 % ImageSolver's online catalogs, MARS folder, no SXT->StarNet2 fallback.
+% "Files, Programs and Internet Access" completed for Part 1 v2.7.7 / Part 2
+% v2.4.8, 2026-11-02 (security review): mark names, HISTORY lines, previews
+% deleted, ImageSolver settings and star lists, local paths not in icons,
+% vendor tools.
 % ----------------------------------------------------------------------------
 
 \subsection { \label requirements Requirements } {
@@ -82,16 +86,42 @@
    start or download.
 
    \list[spaced] {
-      { \s {Settings:} workflow and equipment settings, and the MARS
-        folder you picked, are stored in PixInsight's own settings
-        (\e {Reset Settings} in Part 1 clears them). }
-      { \s {Re-run marks:} each step leaves a small mark (an XISF property)
-        on the image, so a second run can skip steps that are still
-        applied. The marks are saved only in XISF files. }
-      { \s {Part 1, ImageSolver:} uses PixInsight's own ImageSolver, which
-        writes temporary star lists (\c {stars*.csv}) to the system temporary
-        folder. Its blind solver reads the astrometric index file set in
-        the Gaia preferences. The scripts start no external programs. }
+      { \s {Settings:} workflow and equipment settings, the MARS folder you
+        picked and the separation-profile folder (Part 1), and the
+        MLDenoise model path (Part 2) are stored in PixInsight's own
+        settings on this computer. \e {Reset Settings} clears the equipment
+        settings and the MARS folder; the profile folder and the model path
+        are kept. A process icon (\lref buttons {New Instance}) holds the
+        workflow and equipment settings, but not these folder and file
+        paths. }
+      { \s {Re-run marks:} each step leaves a small mark on the image, so a
+        second run can skip steps that are still applied. A mark is an XISF
+        property holding the step's position in the image's history. Part 1:
+        \c {SpaceHunter:SeparationDone}, \c {SpaceHunter:SPFCDone},
+        \c {SpaceHunter:GradientDone}. Part 2:
+        \c {SpaceHunter:BXTCorrectDone}, \c {SpaceHunter:SPCCDone},
+        \c {SpaceHunter:AutoColorDone}, \c {SpaceHunter:BXTFullDone},
+        \c {SpaceHunter:SXTDone}, \c {SpaceHunter:StarNet2Done},
+        \c {SpaceHunter:BackgroundDone}. The marks are saved only in XISF
+        files. }
+      { \s {FITS header:} when you apply an MGC background model or a GC
+        result, Part 1 adds \c HISTORY lines starting with \c {SH:}. They
+        name the preview and its gradient scale (MGC, with the scale
+        factors in a second line) or its GC settings. }
+      { \s {Previews and windows:} steps 3 and 5 (GC) delete the image's
+        existing previews before they create their own. The apply windows
+        (steps 4b and 5b) remove their previews, and GC's model windows,
+        after applying when that option is ticked. Part 2's background
+        finder removes the previews it made. }
+      { \s {Part 1, ImageSolver:} uses PixInsight's own ImageSolver. It
+        starts from the settings you last saved in the ImageSolver script
+        (for example the VizieR server and star detection). Part 1 sets only
+        the catalogue mode (automatic), the automatic limit magnitude,
+        distortion correction and the blind solver, and turns ImageSolver's
+        diagnostic outputs off. ImageSolver writes star lists
+        (\c {stars*.csv}) to the system temporary folder and leaves them
+        there. Its blind solver reads the astrometric index file set in the
+        Gaia preferences. }
       { \s {Part 1, ImageSolver star catalogue (internet):} ImageSolver
         uses the local Gaia star catalogue (XPSD) when it is installed. If
         it isn't, or for very bright limit magnitudes (5 or less), ImageSolver
@@ -104,7 +134,14 @@
         PixInsight folders and in common \c Astro folders, reading only. }
       { \s {Part 1, separation profiles:} profiles are \c .txt files in the
         folder you choose. They are only read for their two factors, never
-        run, and written only when you save one. }
+        run, and written only when you save one (an existing file is
+        replaced only after you confirm). }
+      { \s {Programs:} the scripts start no external programs. }
+      { \s {Part 2, other tools:} BlurXTerminator, StarXTerminator,
+        NoiseXTerminator, StarNet2 and MLDenoise are separate products that
+        Part 2 runs or opens inside PixInsight. Whether they connect to the
+        internet themselves (for example for license or update checks) is up
+        to them. }
       { \s {Part 2, Check dust map:} only when you click it, Part 2 sends the
         image's centre coordinates and field size to the NASA/IPAC IRSA dust
         service over https and downloads the dust map from that service only
@@ -126,7 +163,9 @@
 
    \definition {
       { New Instance }     { Drag the triangle onto the workspace to save
-                             the current settings as a process icon. }
+                             the current settings as a process icon. Folder
+                             and file paths on this computer are not
+                             included. }
       { User Guide }       { Opens the user guide. }
       { Deselect All }     { Clears every workflow step. }
       { Reset Workflow }   { Returns the workflow steps to their defaults.
@@ -140,6 +179,8 @@
    dialog, so they are kept even if you click \s {Cancel} (for example to
    look something up first), and come back the next time you open the
    script. \s {Reset Settings} clears the saved equipment settings at once.
+   Settings that are damaged or out of range (for example in an edited
+   process icon) are replaced by their defaults.
 }
 
 \subsection { \label license License } {

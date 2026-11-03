@@ -10,6 +10,7 @@
 % and the dialog's documentation button calls
 %    Dialog.browseScriptDocumentation( "SH Lazy Workflow Part 2" )
 % Written against script v2.3 (ScriptsTesting/Final Tests/SH_LazyWorkflow_Part2_V8_v2.3.js), 2026-10-11.
+% Star image naming and MLDenoise model path updated for v2.4.8, 2026-11-02.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 2}
@@ -269,8 +270,8 @@
 
       Removes the stars. Options: \s {ML Version}, \s {Generate Star Image},
       \s {Unscreen Stars} and \s {Tile Overlap}. With Generate Star Image, a
-      star-only image named \c stars is created and the starless image is
-      brought to front. If StarXTerminator isn't installed, this step is
+      star-only image named \c stars is created (\c stars1, ... if that
+      name is taken) and the starless image is brought to front. If StarXTerminator isn't installed, this step is
       skipped; select StarNet2 instead if you use it.
    }
 
@@ -280,8 +281,8 @@
       (Large, Standard or Small), and in three groups \s {2x upsample} and
       \s {Protect highlights}; \s {Linear data} and \s {Restore clipped
       pixels}; \s {Starmask} and \s {Unscreen stars}. With Starmask, a
-      star-only image named \c stars is created and the starless image is
-      brought to front. Install StarNet2 from its PixInsight repository,
+      star-only image named \c stars is created (\c stars1, ... if that
+      name is taken) and the starless image is brought to front. Install StarNet2 from its PixInsight repository,
       \xref {https://pixinsight.starnetastro.com/} {https://pixinsight.starnetastro.com/}.
    }
 
@@ -290,7 +291,8 @@
       Off by default. An alternative to NXT: opens MLDenoise with the model
       file (\c .xmlm) selected in the dialog. Other settings use MLDenoise's
       own defaults; adjust them in the tool, then drag the instance triangle
-      onto the image.
+      onto the image. The model path is kept on this computer (also by
+      \s {Reset Settings}) and is not stored in process icons.
    }
 
    \subsection { \label step_nxt Step 11 --- NXT (NoiseXTerminator) } {

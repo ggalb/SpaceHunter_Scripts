@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.6<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.7<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.6
+// Space Hunter Lazy Workflow Part 1 v2.7.7
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -112,6 +112,13 @@
 //       are logged as step 5. Unused leftovers removed (SCRIPT_DIR,
 //       STAR_CSV_FILE, DATE-OBS/EQUINOX reading); the old plate-solve
 //       helper's path setting is removed from PI's settings.
+// v2.7.7: Security review fixes. The separation-profile folder is no
+//       longer stored in process icons (a path on this computer). Values
+//       from saved settings or an icon are checked: wrong type or outside
+//       the dialog's range -> default (e.g. 0 MGC previews). Save profile
+//       asks before replacing a file when .txt was added to the name.
+//       Reset Settings saves the dialog's state at once, so workflow steps
+//       and profile folder are kept even after Cancel.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -321,7 +328,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.6"
+#define SCRIPT_VERSION "v2.7.7"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -412,6 +419,9 @@ var MGC_SCALE_MODES = ["standard", "auto", "both"];
 var MGC_SCALE_MODE_LABELS = ["Standard (1.0)", "Automatic", "Both (compare)"];
 var MGC_LOW_CORRELATION = 0.75;
 var MGC_AUTO_SUFFIX = "_autoSF";
+
+// MARS filters offered for MGC (dialog order)
+var MGC_FILTERS = ["L", "R", "G", "B", "Ha", "OIII", "SII", "IR"];
 
 function mgcScaleModeIndex(mode)
 {
@@ -522,7 +532,8 @@ var WorkflowParameters = {
       Parameters.set("enableSeparation", this.enableSeparation);
       Parameters.set("sepGreenFactor",   this.sepGreenFactor);
       Parameters.set("sepBlueFactor",    this.sepBlueFactor);
-      Parameters.set("sepProfileFolder", this.sepProfileFolder);
+      // The profile folder is a path on this computer: it stays in the
+      // user's own settings and is not put into process icons.
       Parameters.set("sepProfileName",   this.sepProfileName);
 
       Parameters.set("generateSPFCGraphs", this.generateSPFCGraphs);
@@ -746,8 +757,8 @@ var WorkflowParameters = {
          this.sepGreenFactor = Parameters.getReal("sepGreenFactor");
       if (Parameters.has("sepBlueFactor"))
          this.sepBlueFactor = Parameters.getReal("sepBlueFactor");
-      if (Parameters.has("sepProfileFolder"))
-         this.sepProfileFolder = Parameters.getString("sepProfileFolder");
+      // sepProfileFolder: icons from v2.7.6 and older may hold it; the
+      // folder saved on this computer is used instead.
       if (Parameters.has("sepProfileName"))
          this.sepProfileName = Parameters.getString("sepProfileName");
 
@@ -778,6 +789,39 @@ var WorkflowParameters = {
          this.mgcBlueFilter = Parameters.getString("mgcBlueFilter");
       if (Parameters.has("mgcScaleMode"))
          this.mgcScaleMode = Parameters.getString("mgcScaleMode");
+   },
+
+   // -----------------------------------------------------------
+   // Check values from saved settings or a process icon: a value of the
+   // wrong type or outside the dialog's range gets its default.
+   // -----------------------------------------------------------
+   validate: function()
+   {
+      for (var k in WP_DEFAULTS)
+         if (typeof this[k] !== typeof WP_DEFAULTS[k] ||
+             (typeof this[k] === "number" && !isFinite(this[k])))
+            this[k] = WP_DEFAULTS[k];
+
+      var positive = ["nbRedWavelength", "nbRedBandwidth", "nbGreenWavelength",
+                      "nbGreenBandwidth", "nbBlueWavelength", "nbBlueBandwidth"];
+      for (var i = 0; i < positive.length; i++)
+         if (!(this[positive[i]] > 0))
+            this[positive[i]] = WP_DEFAULTS[positive[i]];
+      if (!(this.sepGreenFactor >= 0 && this.sepGreenFactor <= 1))
+         this.sepGreenFactor = WP_DEFAULTS.sepGreenFactor;
+      if (!(this.sepBlueFactor >= 0 && this.sepBlueFactor <= 1))
+         this.sepBlueFactor = WP_DEFAULTS.sepBlueFactor;
+      if ([1, 2, 3, 4].indexOf(this.numPreviews) < 0)
+         this.numPreviews = WP_DEFAULTS.numPreviews;
+      for (var i = 0; i < 4; i++)
+         if (GRADIENT_SCALE_VALUES.indexOf(this.getGradientScale(i)) < 0)
+            this.setGradientScale(i, DEFAULT_GRADIENT_SCALES[i]);
+      var mgcFilters = ["mgcGrayFilter", "mgcRedFilter", "mgcGreenFilter", "mgcBlueFilter"];
+      for (var i = 0; i < mgcFilters.length; i++)
+         if (MGC_FILTERS.indexOf(this[mgcFilters[i]]) < 0)
+            this[mgcFilters[i]] = WP_DEFAULTS[mgcFilters[i]];
+      if (MGC_SCALE_MODES.indexOf(this.mgcScaleMode) < 0)
+         this.mgcScaleMode = WP_DEFAULTS.mgcScaleMode;
    },
 
    // -----------------------------------------------------------
@@ -868,6 +912,17 @@ var WorkflowParameters = {
       return 4; // default to 768
    }
 };
+
+// The defaults above, before saved settings or an icon change them
+// (used by validate()).
+var WP_DEFAULTS = (function()
+{
+   var d = {};
+   for (var k in WorkflowParameters)
+      if (typeof WorkflowParameters[k] !== "function")
+         d[k] = WorkflowParameters[k];
+   return d;
+})();
 
 // ============================================================
 // XSPD PARSERS
@@ -1786,7 +1841,16 @@ constructor()
          return;
       var path = d.filePath;
       if ( File.extractExtension( path ).toLowerCase() !== ".txt" )
+      {
+         // The dialog asked about the name as typed, not with .txt added.
          path += ".txt";
+         if ( File.exists( path ) &&
+              (new MessageBox( "<p>" + File.extractName( path ) + ".txt already exists.</p>" +
+                               "<p>Replace it?</p>",
+                               "Save separation profile", StdIcon.Warning,
+                               StdButton.Yes, StdButton.No )).execute() !== StdButton.Yes )
+            return;
+      }
       try {
          writeSeparationProfile( path, WorkflowParameters.sepGreenFactor,
                                        WorkflowParameters.sepBlueFactor );
@@ -2118,8 +2182,6 @@ constructor()
    this.mgcScaleMode_Sizer.addStretch();
 
    // MGC Filter selection
-   var MGC_FILTERS = ["L", "R", "G", "B", "Ha", "OIII", "SII", "IR"];
-
    function mgcFilterIndex(val) {
       var idx = MGC_FILTERS.indexOf(val);
       return idx >= 0 ? idx : 0;
@@ -2550,6 +2612,9 @@ constructor()
       dlg.mgcGreen_ComboBox.currentItem = mgcFilterIndex( "OIII" );
       dlg.mgcBlue_ComboBox.currentItem = mgcFilterIndex( "OIII" );
       dlg.adjustToContents();
+      // Save the dialog's state at once, so the workflow steps and the
+      // profile folder are kept even if the user then clicks Cancel.
+      WorkflowParameters.saveUserPrefs();
    };
    // OK button
    this.ok_Button = new PushButton( this );
@@ -5157,8 +5222,14 @@ function main()
       }
       WorkflowParameters.loadUserPrefs();
       if (Parameters.isViewTarget || Parameters.isGlobalTarget) {
-         WorkflowParameters.load();
+         try {
+            WorkflowParameters.load();
+         } catch (e) {
+            console.warningln("⚠  Some process icon values could not be read (" +
+                              shErrorText(e) + ") - saved settings used for them.");
+         }
       }
+      WorkflowParameters.validate();
       WorkflowParameters.resolveFilterSelection();
 
       // Step 0: Equipment & workflow selection dialog
