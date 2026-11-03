@@ -136,8 +136,10 @@
                              their defaults. Workflow steps are not changed. }
    }
 
-   All workflow and equipment settings are saved when you run the script and
-   come back the next time you open it.
+   Workflow and equipment settings are saved as you change them in the
+   dialog, so they are kept even if you click \s {Cancel} (for example to
+   look something up first), and come back the next time you open the
+   script. \s {Reset Settings} clears the saved equipment settings at once.
 }
 
 \subsection { \label license License } {

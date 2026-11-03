@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.6<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.7<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.6
+// Space Hunter Lazy Workflow Part 2 v2.4.7
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -128,6 +128,8 @@
 //       download. "MLDenoise/NXT opened" only when opened. Adaptive Auto
 //       STF stays on with SPCC. Console banner lists all steps. Requires
 //       PixInsight 1.9.6.
+// v2.4.7: Author's email address removed from the AutoColor port credit
+//       (contact via GitHub). Comment only.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -150,7 +152,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.6"
+#define SCRIPT_VERSION "v2.4.7"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -3675,8 +3677,7 @@ function runSPCC()
 // V8 PORT NOTICE
 // ----------------------------------------------------------------------------
 // Ported to PixInsight 1.9.4 V8 JavaScript engine by Georg Albrecht
-// (ggalbch@gmail.com) with additional packaging by Peter Proulx
-// (peterproulx@gmail.com)
+// with additional packaging by Peter Proulx (peterproulx@gmail.com)
 // July 2026. Original script copyright remains with Hartmut V. Bornemann.
 // No rights to the original work are claimed or implied.
 //

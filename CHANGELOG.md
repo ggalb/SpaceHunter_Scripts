@@ -22,7 +22,7 @@ Newest release first. Each script's source file also has a detailed change log i
 - The MARS folder you pick is remembered; Reset Settings forgets it.
 - Reset Defaults no longer changes the gradient scales (Reset Settings does).
 
-**Part 2 (v2.4.6):**
+**Part 2 (v2.4.7):**
 
 - New optional MAS stretch preview: a MultiscaleAdaptiveStretch copy after BXT full, with the background measured in the Background preview.
 - StarNet2 section for the current StarNet2: stride Large / Standard / Small and all six options.
