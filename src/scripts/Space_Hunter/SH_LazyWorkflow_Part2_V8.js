@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.11<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.12<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.11
+// Space Hunter Lazy Workflow Part 2 v2.4.12
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -146,6 +146,7 @@
 //       Dust map: no second try when the server answered with an HTTP
 //       error; System.msleep. Pre-check tooltip: previews are replaced by
 //       the Background preview.
+// v2.4.12: Banner strokes as double lines.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -168,7 +169,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.11"
+#define SCRIPT_VERSION "v2.4.12"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -4565,7 +4566,8 @@ function runStarNet2()
 }
 
 // Space Hunter banner for the Process Console, deep orange at the top to
-// pale blue at the bottom, bold (24-bit ANSI colour codes).
+// pale blue at the bottom, bold (24-bit ANSI colour codes). Every "_"
+// stroke is printed as U+2017 DOUBLE LOW LINE.
 function shBanner()
 {
    var art = [
@@ -4583,7 +4585,8 @@ function shBanner()
       var t = i / (art.length - 1), rgb = [];
       for (var k = 0; k < 3; k++)
          rgb.push(Math.round(c0[k] + (c1[k] - c0[k]) * t));
-      console.writeln("\x1b[1;38;2;" + rgb.join(";") + "m" + art[i] + "\x1b[0m");
+      console.writeln("\x1b[1;38;2;" + rgb.join(";") + "m" +
+                      art[i].split("_").join("\u2017") + "\x1b[0m");   // double strokes
    }
 }
 

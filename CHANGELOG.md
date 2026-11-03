@@ -12,13 +12,13 @@ Newest release first. Each script's source file also has a detailed change log i
 - No external programs: plate solving runs entirely in PixInsight (ImageSolver with its blind solver).
 - Steps already applied to the image are skipped on a second run, following History Explorer; a warning appears only when every selected step is already applied.
 - One step numbering in dialogs, console and manuals.
-- Space Hunter banner (bold, orange to pale blue) in the console at the start of Part 1, Part 2 and +Previews.
+- Space Hunter banner (bold, double strokes, orange to pale blue) in the console at the start of Part 1, Part 2 and +Previews.
 - Manuals: new screenshots for PixInsight 1.9.6; ImageSolver's online catalogue documented.
 - Manuals: "Files, Programs and Internet Access" lists the re-run marks, the FITS HISTORY lines, deleted previews, ImageSolver's own settings and star lists, and the third-party tools.
 - Process icons no longer store folder or file paths from your computer.
 - Damaged or out-of-range saved settings (for example in an edited process icon) fall back to their defaults.
 
-**Part 1 (v2.7.9):**
+**Part 1 (v2.7.10):**
 
 - Images without coordinates are solved by ImageSolver's blind solver (needs the Gaia astrometric index file).
 - MGC scale factors: Standard, Automatic or Both (paired previews per scale).
@@ -28,7 +28,7 @@ Newest release first. Each script's source file also has a detailed change log i
 - Reset Settings keeps the workflow steps and the profile folder, also when you click Cancel afterwards.
 - Save profile asks before replacing an existing profile file.
 
-**Part 2 (v2.4.11):**
+**Part 2 (v2.4.12):**
 
 - New optional MAS stretch preview: a MultiscaleAdaptiveStretch copy after BXT full, with the background measured in the Background preview.
 - StarNet2 section for the current StarNet2: stride Large / Standard / Small and all six options.
@@ -40,7 +40,7 @@ Newest release first. Each script's source file also has a detailed change log i
 - Filter list also groups `_R/_G/_B` and `Red/Green/Blue` names (e.g. SvBony DNB).
 - In narrowband mode the console shows the wavelengths instead of the unused filter.
 
-**+Previews (v2.2.5):** Space Hunter banner in the console.
+**+Previews (v2.2.7):** Space Hunter banner and title frame in the console.
 
 **NamePreviews (v2.1.1), KillPreviews (v2.0.2):** unchanged.
 
