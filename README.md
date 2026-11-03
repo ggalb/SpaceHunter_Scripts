@@ -17,6 +17,10 @@ dialog. Saved settings are kept when you update.
 
 What changed in each release: see [CHANGELOG.md](CHANGELOG.md).
 
+This branch (`main`) holds only what PixInsight installs: `updates.xri` and the current package.
+The source files, manual sources and release tools are on branch
+[`dev`](https://github.com/ggalb/SpaceHunter_Scripts/tree/dev).
+
 ---
 
 ## Prerequisites

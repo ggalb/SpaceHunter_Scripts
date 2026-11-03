@@ -1,0 +1,13 @@
+# Release notes for the next package: one line = one <p> in updates.xri.
+# Lines starting with # are ignored. Plain text; & < > are escaped by
+# make_release.py. Style: flat changelog, one short line per change.
+# DRAFT for Georg's review (2026-11-03).
+Changelog (requires PixInsight 1.9.6):
+Part 1 v2.7.10, Part 2 v2.4.12, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.
+No external programs: plate solving runs entirely in PixInsight (ImageSolver, blind solve for images without coordinates).
+Steps already applied to the image are skipped on a second run, following History Explorer.
+Part 1: MGC scale factors Standard, Automatic or Both; improved background model and GC result choosers.
+Part 2: optional MultiscaleAdaptiveStretch preview copy; StarNet2 options for the current StarNet2; MLDenoise before NoiseXTerminator.
+Damaged or out-of-range saved settings fall back to their defaults; process icons store no paths from your computer.
+Manuals list every file, image property, setting and internet connection the scripts use.
+Full changelog: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/CHANGELOG.md
