@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.7<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.8<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.7
+// Space Hunter Lazy Workflow Part 1 v2.7.8
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -119,6 +119,7 @@
 //       asks before replacing a file when .txt was added to the name.
 //       Reset Settings saves the dialog's state at once, so workflow steps
 //       and profile folder are kept even after Cancel.
+// v2.7.8: Space Hunter banner (orange to pale blue) in the console.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -328,7 +329,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.7"
+#define SCRIPT_VERSION "v2.7.8"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -5188,6 +5189,29 @@ function chooseGCResult(win, modelIds)
 // MAIN: Execute master workflow
 // ============================================================
 
+// Space Hunter banner for the Process Console, deep orange at the top to
+// pale blue at the bottom (24-bit ANSI colour codes).
+function shBanner()
+{
+   var art = [
+      "   _____                       __  __            __",
+      "  / ___/____  ____ _________  / / / /_  ______  / /____  _____",
+      "  \\__ \\/ __ \\/ __ `/ ___/ _ \\/ /_/ / / / / __ \\/ __/ _ \\/ ___/",
+      " ___/ / /_/ / /_/ / /__/  __/ __  / /_/ / / / / /_/  __/ /",
+      "/____/ .___/\\__,_/\\___/\\___/_/ /_/\\__,_/_/ /_/\\__/\\___/_/",
+      "    /_/"
+   ];
+   var c0 = [215, 85, 10], c1 = [175, 210, 255];
+   console.writeln("");
+   for (var i = 0; i < art.length; i++)
+   {
+      var t = i / (art.length - 1), rgb = [];
+      for (var k = 0; k < 3; k++)
+         rgb.push(Math.round(c0[k] + (c1[k] - c0[k]) * t));
+      console.writeln("\x1b[38;2;" + rgb.join(";") + "m" + art[i] + "\x1b[0m");
+   }
+}
+
 function main()
 {
    console.show();
@@ -5199,6 +5223,7 @@ function main()
    // Start timer
    let startTime = new Date();
 
+   shBanner();
    console.writeln("\n" + "=".repeat(80));
    console.writeln("SPACE HUNTER WORKFLOW SCRIPT PART 1 " + SCRIPT_VERSION);
    console.writeln("Image Solve \u2192 SPFC \u2192 Previews \u2192 MGC \u2192 GC \u2192 cDBE");

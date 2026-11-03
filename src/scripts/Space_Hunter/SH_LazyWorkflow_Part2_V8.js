@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.8<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.9<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.8
+// Space Hunter Lazy Workflow Part 2 v2.4.9
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -138,6 +138,7 @@
 //       deletes its file also when the transfer throws; server text is
 //       shown raw in the console. The SXT / StarNet2 star image is the
 //       window the tool opened (an older one left open was renamed).
+// v2.4.9: Space Hunter banner (orange to pale blue) in the console.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -160,7 +161,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.8"
+#define SCRIPT_VERSION "v2.4.9"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -4527,6 +4528,29 @@ function runStarNet2()
    return true;
 }
 
+// Space Hunter banner for the Process Console, deep orange at the top to
+// pale blue at the bottom (24-bit ANSI colour codes).
+function shBanner()
+{
+   var art = [
+      "   _____                       __  __            __",
+      "  / ___/____  ____ _________  / / / /_  ______  / /____  _____",
+      "  \\__ \\/ __ \\/ __ `/ ___/ _ \\/ /_/ / / / / __ \\/ __/ _ \\/ ___/",
+      " ___/ / /_/ / /_/ / /__/  __/ __  / /_/ / / / / /_/  __/ /",
+      "/____/ .___/\\__,_/\\___/\\___/_/ /_/\\__,_/_/ /_/\\__/\\___/_/",
+      "    /_/"
+   ];
+   var c0 = [215, 85, 10], c1 = [175, 210, 255];
+   console.writeln("");
+   for (var i = 0; i < art.length; i++)
+   {
+      var t = i / (art.length - 1), rgb = [];
+      for (var k = 0; k < 3; k++)
+         rgb.push(Math.round(c0[k] + (c1[k] - c0[k]) * t));
+      console.writeln("\x1b[38;2;" + rgb.join(";") + "m" + art[i] + "\x1b[0m");
+   }
+}
+
 function main()
 {
    console.show();
@@ -4537,6 +4561,7 @@ function main()
 
    let startTime = new Date();
 
+   shBanner();
    console.writeln("\n" + "=".repeat(80));
    console.writeln(SCRIPT_NAME + " " + SCRIPT_VERSION);
    console.writeln("BXT Correct \u2192 Background \u2192 SPCC / AutoColor \u2192 Adaptive Auto STF \u2192 BXT Full \u2192 MAS preview \u2192 SXT / StarNet2 \u2192 MLDenoise / NXT");
