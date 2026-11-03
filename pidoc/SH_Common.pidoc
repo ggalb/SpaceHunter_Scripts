@@ -9,6 +9,8 @@
 % Part 2 v2.3.8, 2026-10-23 (CPD program rules: document external programs,
 % network connections and file locations). ASTAP removed for Part 1 v2.6.0,
 % 2026-10-30 (CPD rule 5.8): blind solving by ImageSolver 6.6.0.
+% Checked against Part 1 v2.7.6 / Part 2 v2.4.6, 2026-11-02 (release review):
+% ImageSolver's online catalogs, MARS folder, no SXT->StarNet2 fallback.
 % ----------------------------------------------------------------------------
 
 \subsection { \label requirements Requirements } {
@@ -36,6 +38,9 @@
         Software Distribution), set as \e {Astrometric Index File} in
         \m {Process > Astrometry > Gaia} preferences. ImageSolver's blind
         solver needs it. }
+      { Recommended: the local Gaia DR3 star catalogue (XPSD files), set in
+        the same Gaia preferences. Without it, ImageSolver uses an online
+        catalogue (see \lref access {Files, Programs and Internet Access}). }
    }
 
    \s {Part 2}
@@ -59,11 +64,12 @@
    }
 
    \note {
-      If the scripts can't find the MARS database the first time
-      they run, they ask you to locate it. The path is saved for later runs.
-      If BlurXTerminator or NoiseXTerminator isn't installed, that step is
-      skipped. If StarXTerminator isn't installed, Part 2 uses StarNet2
-      instead.
+      If Part 1 can't find the MARS database, it asks you for its folder.
+      That folder is saved and searched first on later runs; \e {Reset
+      Settings} forgets it. If a tool that Part 2 calls (BlurXTerminator,
+      StarXTerminator, StarNet2, NoiseXTerminator, MLDenoise) isn't
+      installed, that step is skipped with a warning in the console. Select
+      StarNet2 instead of StarXTerminator yourself if you use it.
    }
 
    If you combine two DNB filters (Ha/OIII and SII/OIII) into a Hubble-palette
@@ -77,12 +83,23 @@
 
    \list[spaced] {
       { \s {Settings:} workflow and equipment settings, and the MARS
-        path, are stored in PixInsight's own settings (\e {Reset
-        Settings} clears them). }
+        folder you picked, are stored in PixInsight's own settings
+        (\e {Reset Settings} in Part 1 clears them). }
+      { \s {Re-run marks:} each step leaves a small mark (an XISF property)
+        on the image, so a second run can skip steps that are still
+        applied. The marks are saved only in XISF files. }
       { \s {Part 1, ImageSolver:} uses PixInsight's own ImageSolver, which
         writes temporary star lists (\c {stars*.csv}) to the system temporary
         folder. Its blind solver reads the astrometric index file set in
         the Gaia preferences. The scripts start no external programs. }
+      { \s {Part 1, ImageSolver star catalogue (internet):} ImageSolver
+        uses the local Gaia star catalogue (XPSD) when it is installed. If
+        it isn't, or for very bright limit magnitudes (5 or less), ImageSolver
+        downloads the stars it needs from an online catalogue (Bright Stars,
+        TYCHO-2 or Gaia DR2) through the VizieR service set in ImageSolver's
+        preferences. It sends the image's centre coordinates and search
+        radius. This is ImageSolver's own behaviour; install the local Gaia
+        catalogue to solve offline. }
       { \s {Part 1, MARS:} the script looks for \c .xmars files in the
         PixInsight folders and in common \c Astro folders, reading only. }
       { \s {Part 1, separation profiles:} profiles are \c .txt files in the
@@ -92,8 +109,10 @@
         image's centre coordinates and field size to the NASA/IPAC IRSA dust
         service over https and downloads the dust map from that service only
         to the system temporary folder. The files are deleted afterwards,
-        also when a download fails. No other data is sent,
-        and no other part of the scripts uses the internet. }
+        also when a download fails. No other data is sent. If the first
+        attempt fails, the script tries once more. Apart from this and
+        ImageSolver's online catalogue (above), the scripts don't use the
+        internet. }
    }
 }
 

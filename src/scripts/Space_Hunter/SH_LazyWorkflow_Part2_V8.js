@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.5<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.6<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.5
+// Space Hunter Lazy Workflow Part 2 v2.4.6
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -87,7 +87,7 @@
 //       NXT line corrected, STF/MLDenoise credited, requirements updated
 //       (PixInsight 1.9.5, AutoColor built in, MLDenoise, dust-map internet),
 //       Part list moved before the change log (same layout as Part 1).
-// v2.4.1: Optional "MAS stretch preview" (off by default): after BXT full a
+// v2.4.0/v2.4.1: Optional "MAS stretch preview" (off by default): after BXT full a
 //       copy of the image (<image>_MAS_preview) is stretched with
 //       MultiscaleAdaptiveStretch (PixInsight 1.9.6, default settings) and
 //       minimised, for a glimpse of the stretched result. The main image
@@ -119,13 +119,22 @@
 //       10 MLDenoise, 11 NXT. Header title line showed v2.3.12. Dialog and
 //       menu info texts list the steps in run order, incl. MAS preview.
 //       Text only.
+// v2.4.6: Review fixes. BXT Correct is marked right after it ran, so an
+//       Abort during the run can't leave it unmarked (it ran twice).
+//       AutoColor: failed BN/CC stop the script; marked after
+//       BackgroundNeutralization, so undoing only CC can't neutralize
+//       twice. SPCC pre-check asks the window for its astrometric solution
+//       (properties survive an undone solve). Abort stops the dust map
+//       download. "MLDenoise/NXT opened" only when opened. Adaptive Auto
+//       STF stays on with SPCC. Console banner lists all steps. Requires
+//       PixInsight 1.9.6.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
 // - Windows machine
-// - PixInsight 1.9.5 or later
+// - PixInsight 1.9.6 or later (the package needs it; MAS preview too)
 // - OSC Camera Image
 // - Image pre-cropped, solved and background extraction applied
 // - BlurXTerminator, StarXTerminator and NoiseXTerminator needed for full process
@@ -134,14 +143,14 @@
 // - MLDenoise and its .xmlm model file, for licensed PixInsight users (optional)
 // - Internet access only for the dust map check in the background pre-check
 
-CoreApplication.ensureMinimumVersion(1, 9, 5);
+CoreApplication.ensureMinimumVersion(1, 9, 6);
 
 // ============================================================
 // SCRIPT IDENTITY
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.5"
+#define SCRIPT_VERSION "v2.4.6"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -1467,6 +1476,7 @@ var SpaceHunterDialog2 = class extends Dialog
    {
       WorkflowParameters.enableAutoSTF = sectionbar.checkBox.checked;
       dlg.autoSTF_Control.enabled = WorkflowParameters.enableAutoSTF;
+      dlg.updateDependencies();   // SPCC keeps it on, as with Find Background
       WorkflowParameters.saveUserPrefs();
    };
    this.autoSTF_Section.onToggleSection = toggleSectionHandler;
@@ -2511,6 +2521,9 @@ function runBXT_CorrectOnly()
             throw new Error("Script cancelled by user.");
         throw new Error("BlurXTerminator execution failed.");
     }
+    // Mark before the abort check: BXT is applied now, so an Abort clicked
+    // during the run must not leave it unmarked (it would run twice).
+    shMarkDone(view, "SpaceHunter:BXTCorrectDone");
 
     CoreApplication.processEvents();
     if (console.abortRequested)
@@ -2668,6 +2681,8 @@ function bgDownloadToFile(url, path)
    try {
       bgDownloadOnce(url, path);
    } catch (e) {
+      if (shIsCancel(e))
+         throw e;
       console.warningln("Dust map download failed (" + shErrorText(e) + ") - retrying once.");
       if (typeof msleep === "function")
          msleep(BG_RETRY_DELAY_MS);
@@ -2692,9 +2707,14 @@ function bgDownloadOnce(url, path)
    };
    // Called repeatedly during the transfer, also while no data arrives;
    // returning false aborts it.
-   var t0 = Date.now(), timedOut = false;
+   var t0 = Date.now(), timedOut = false, aborted = false;
    transfer.onTransferProgress = function(dlTotal, dlCurrent, ulTotal, ulCurrent)
    {
+      if (console.abortRequested)
+      {
+         aborted = true;
+         return false;
+      }
       if (Date.now() - t0 > BG_DOWNLOAD_TIMEOUT_S * 1000)
       {
          timedOut = true;
@@ -2705,7 +2725,9 @@ function bgDownloadOnce(url, path)
    var ok = transfer.download();
    f.close();
    var error = null;
-   if (timedOut)
+   if (aborted)
+      error = "Script cancelled by user.";
+   else if (timedOut)
       error = "The dust map service (NASA/IPAC IRSA) did not answer within " +
               BG_DOWNLOAD_TIMEOUT_S + " s. Try again later.";
    else if (!ok)
@@ -3165,6 +3187,11 @@ var BgPrecheckDialog = class extends Dialog
             (reason === "" ? "" : "  (off by default: " + reason + ")");
          this.adjustToContents();
       } catch (e) {
+         if (shIsCancel(e)) {
+            console.writeln("Dust map query stopped (Abort).");
+            this.cancel();
+            return;
+         }
          text = "Dust map query failed: " + e.message +
                 "\n\nYou can still Continue; the background finder does not need it.";
          console.warningln("Dust map query failed: " + e.message);
@@ -3649,7 +3676,7 @@ function runSPCC()
 // ----------------------------------------------------------------------------
 // Ported to PixInsight 1.9.4 V8 JavaScript engine by Georg Albrecht
 // (ggalbch@gmail.com) with additional packaging by Peter Proulx
-// (peterproulx@gmail.com), Masters of PixInsight (www.mastersofpixinsight.com)
+// (peterproulx@gmail.com)
 // July 2026. Original script copyright remains with Hartmut V. Bornemann.
 // No rights to the original work are claimed or implied.
 //
@@ -3737,6 +3764,9 @@ function runAutoColor()
    console.writeln( format("Sigma:          %.8f", sigma) );
 
    ac_bgNeutralization( view, target, nSigma );
+   // Marked after BackgroundNeutralization, not after ColorCalibration:
+   // undoing only the CC step must not make the next run neutralize twice.
+   shMarkDone( view, "SpaceHunter:AutoColorDone" );
    ac_calibration( view, channelR, channelG, channelB, target + nSigma );
 
    console.writeln( format("White balance correction factors:") );
@@ -3974,7 +4004,12 @@ function ac_bgNeutralization( view, target, nSigma )
    P.roiY1                     = 0;
    P.mode                      = BackgroundNeutralization.TargetBackground;
    P.targetBackground          = target;
-   P.executeOn( view );
+   if ( !P.executeOn( view ) )
+   {
+      if ( console.abortRequested )
+         throw new Error( "Script cancelled by user." );
+      throw new Error( "AutoColor: BackgroundNeutralization failed." );
+   }
 }
 
 function ac_calibration( view, r, g, b, target )
@@ -4005,7 +4040,12 @@ function ac_calibration( view, r, g, b, target )
    P.backgroundROIY1               = 0;
    P.outputWhiteReferenceMask      = false;
    P.outputBackgroundReferenceMask = false;
-   P.executeOn( view );
+   if ( !P.executeOn( view ) )
+   {
+      if ( console.abortRequested )
+         throw new Error( "Script cancelled by user." );
+      throw new Error( "AutoColor: ColorCalibration failed." );
+   }
 }
 
 // ============================================================
@@ -4435,7 +4475,7 @@ function main()
 
    console.writeln("\n" + "=".repeat(80));
    console.writeln(SCRIPT_NAME + " " + SCRIPT_VERSION);
-   console.writeln("BXT Correct \u2192 Background \u2192 SPCC \u2192 Adaptive Auto STF \u2192 BXT Full \u2192 SXT");
+   console.writeln("BXT Correct \u2192 Background \u2192 SPCC / AutoColor \u2192 Adaptive Auto STF \u2192 BXT Full \u2192 MAS preview \u2192 SXT / StarNet2 \u2192 MLDenoise / NXT");
    console.writeln("=".repeat(80) + "\n");
 
    try {
@@ -4464,21 +4504,19 @@ function main()
       // Pre-flight: astrometric solution check (required for SPCC)
       if (WorkflowParameters.enableSPCC) {
          var win = ImageWindow.activeWindow;
+         // Ask the window, as Part 1 does: the AstrometricSolution:*
+         // properties stay on the view when the solve is undone in History
+         // Explorer, while the window's solution (the one SPCC uses) is gone.
+         // The properties are only a fallback if the window can't be asked.
          var hasAstrometry = false;
          try {
-            // The modern ImageSolver engine (used by Part 1 and standalone
-            // ImageSolver 6.5.0) writes the STANDARD "AstrometricSolution:*"
-            // property namespace; older solutions used legacy
-            // "PCL:AstrometricSolution:*". Accept either.
-            var v = win.mainView;
-            if (v.hasProperty("AstrometricSolution:CreatorModule") ||
-                v.hasProperty("PCL:AstrometricSolution:CreatorModule"))
-               hasAstrometry = true;
-         } catch (e) {}
-         // v2.3: also accept PixInsight's own check, in case the solution is valid but the
-         // CreatorModule property is missing (e.g. after some processes or cloning)
-         if (!hasAstrometry) {
-            try { if (win.hasAstrometricSolution) hasAstrometry = true; } catch (e) {}
+            hasAstrometry = win.hasAstrometricSolution;
+         } catch (e) {
+            try {
+               var v = win.mainView;
+               hasAstrometry = v.hasProperty("AstrometricSolution:CreatorModule") ||
+                               v.hasProperty("PCL:AstrometricSolution:CreatorModule");
+            } catch (e2) {}
          }
          if (!hasAstrometry) {
             throw new Error("No astrometric solution found. Please run Part 1 (ImageSolver) before running SPCC.");
@@ -4528,8 +4566,8 @@ function main()
       if (WorkflowParameters.enableBXTCorrect) {
          if (done.enableBXTCorrect)
             shLogSkip("BlurXTerminator (Correct Only)");
-         else if (runBXT_CorrectOnly())
-            shMarkDone(view, "SpaceHunter:BXTCorrectDone");
+         else
+            runBXT_CorrectOnly();   // marks itself, right after BXT ran
       } else {
          console.writeln("BXT Correct Only is DISABLED - skipping\n");
       }
@@ -4559,8 +4597,8 @@ function main()
       if (WorkflowParameters.enableAutoColor) {
          if (done.enableAutoColor)
             shLogSkip("AutoColor");
-         else if (runAutoColor())
-            shMarkDone(view, "SpaceHunter:AutoColorDone");
+         else
+            runAutoColor();   // marks itself, after BackgroundNeutralization
       } else {
          console.writeln("AutoColor is DISABLED - skipping\n");
       }
@@ -4622,8 +4660,8 @@ function main()
             if ( WorkflowParameters.mldModelPath )
                mld.modelPath = WorkflowParameters.mldModelPath;
             mld.launch();
+            console.writeln("\u2714 MLDenoise opened.\n");
          }
-         console.writeln("\u2714 MLDenoise opened.\n");
       } else {
          console.writeln("MLDenoise is DISABLED - skipping\n");
       }
@@ -4639,8 +4677,8 @@ function main()
             nxt.ml_version = WorkflowParameters.nxtMlVersion;
             nxt.overlap = WorkflowParameters.nxtTileOverlap;
             nxt.launch();
+            console.writeln("\u2714 NoiseXTerminator opened.\n");
          }
-         console.writeln("\u2714 NoiseXTerminator opened.\n");
       } else {
          console.writeln("NoiseXTerminator is DISABLED - skipping\n");
       }

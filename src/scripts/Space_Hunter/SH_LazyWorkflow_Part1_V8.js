@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.5<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.6<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.5
+// Space Hunter Lazy Workflow Part 1 v2.7.6
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -58,42 +58,12 @@
 //       instead of SH_Workflow_Guide.pdf.
 // v2.5.2: Documentation button passes the menu name "SH Lazy Workflow Part 1"
 //       (PI looks up doc/scripts/SH Lazy Workflow Part 1/SH Lazy Workflow Part 1.html).
-// v2.5.3: ASTAP is started directly (ExternalProcess with an argument list)
-//       instead of through a generated run_astap.bat and cmd.exe. Old
-//       .wcs/.ini results are deleted before each solve.
-// v2.5.4: Targeted ASTAP solve passes the right units: -ra in hours (was
-//       degrees) and -spd = Dec + 90 (was 90 - Dec, i.e. mirrored Dec), so
-//       ASTAP now starts at the image's real position instead of widening
-//       its search until it is effectively blind.
-// v2.5.5: ASTAP time limit (targeted 2 min, blind 5 min): ASTAP is stopped
-//       and Part 1 reports it instead of PixInsight waiting forever. Console
-//       shows ASTAP's run time and a "still running" line every 30 s.
-// v2.5.6: Review fixes. RA/Dec parsing: OBJCTRA = hours, RA keyword = degrees
-//       (was: any value <= 24 taken as hours), the sign of decimal Dec is kept
-//       (was dropped), d/m/s and degree-sign formats read in full. Blind mode
-//       only when RA/Dec are missing (a missing FOCALLEN no longer forces it).
-//       ASTAP run: Abort stops ASTAP and the script, 100 ms pause in the wait
-//       loop (no busy core), ASTAP never left running, a failed start and
-//       ASTAP's exit codes are reported, old results that cannot be deleted
-//       stop the solve, temp files removed after failures too, blind limit
-//       10 min, no fixed 2 s wait.
-// v2.5.7: Abort button switched on while waiting for ASTAP (console.abortEnabled,
-//       as PI's ImageSolver does); in v2.5.6 it was greyed out there.
-// v2.5.8: Deep-review fixes. Abort button on for the whole run (MGC pauses,
-//       model/GC panels). A PI process stopped with Abort counts as cancel:
-//       no more 'ERROR: undefined', and an aborted SPFC/MGC no longer falls
-//       back to GC. temp_astap window closed even if the export fails. White
-//       reference saved by name (as in Part 2), invalid index falls back.
-// v2.5.9: Settings saved once on OK (Deselect All / Reset Defaults are kept).
-//       Preview log shows the name PI actually gave.
-// v2.5.10: Abort during ImageSolver counts as cancel (was reported as a
-//       failed solve with 'plate-solve manually').
-// v2.5.11: Narrowband 'Wavelength (nm)' header sized from the font (was cut
-//       to 'Wavelengt' at higher display scaling).
-// v2.5.12: Menu icon from PixInsight's standard icon folder
-//       (@script_icons_dir = rsc/icons/script/SHLazyWorkflowPart1/).
-// v2.5.13: File dialogs read .filePath instead of the deprecated .fileName
-//       (no console warning when locating ASTAP or saving a profile).
+// v2.5.3 - v2.5.13: Fixes to the external plate-solve helper of that time
+//       (removed in v2.6.0), RA/Dec keyword parsing (OBJCTRA = hours, RA =
+//       degrees, sign of Dec kept), Abort handling for the whole run (an
+//       aborted PI process counts as cancel), settings saved once on OK,
+//       white reference saved by name, narrowband header width, menu icon
+//       from the standard icon folder, .filePath in file dialogs.
 // v2.5.14: Header text only: Part 7 (cDBE) moved back into the Part list,
 //       Ha/OIII separation listed as a step, PixelMath/STF credited,
 //       requirement PixInsight 1.9.5 (matches ensureMinimumVersion).
@@ -134,6 +104,14 @@
 // v2.7.5: One step numbering in the header, console and manual (Step 1
 //       solve, 2a Ha/OIII separation, 2b SPFC, 3 Previews, 4 MGC, 4b model
 //       chooser, 5 GC, 5b GC chooser, 6 DBE). Text only.
+// v2.7.6: Review fixes. The MARS folder picked by the user is remembered
+//       and scanned first (it was asked again on every run); Reset Settings
+//       forgets it. Reset Defaults no longer resets the gradient scales
+//       (Reset Settings does, as tooltip and manual say). Abort in the
+//       model/GC panels restores the normal display stretch. GC previews
+//       are logged as step 5. Unused leftovers removed (SCRIPT_DIR,
+//       STAR_CSV_FILE, DATE-OBS/EQUINOX reading); the old plate-solve
+//       helper's path setting is removed from PI's settings.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -178,7 +156,6 @@ CoreApplication.ensureMinimumVersion( 1, 9, 6 );
 /* beautify ignore:start */
 #define USE_SOLVER_LIBRARY true
 #define SETTINGS_MODULE     "SOLVER"
-#define STAR_CSV_FILE       File.systemTempDirectory + "/stars.csv"
 #include "../ImageSolver/ImageSolver.js"
 /* beautify ignore:end */
 
@@ -217,7 +194,8 @@ function shPrintIndexHelp()
 // MARS DATABASE - Auto-detect .xmars files
 // ============================================================
 
-var SETTINGS_KEY_MARS = "SpaceHunter/MARSFiles";
+var SETTINGS_KEY_MARS = "SpaceHunter/MARSFiles";      // old file list, no longer used
+var SETTINGS_KEY_MARS_DIR = "SpaceHunter/MARSFolder"; // folder the user picked
 var SETTINGS_KEY_USERPREFS = "SpaceHunter/UserPrefs";
 
 // Scan result for this run, so the folders are searched once, not once per preview.
@@ -236,7 +214,15 @@ function resolveMARSFilesScan()
    // Always re-scan for .xmars files instead of trusting cached paths.
    // MARS database files may change between PI updates (e.g. DR1 → DR2),
    // so we scan every time to pick up new releases automatically.
-   try { Settings.remove(SETTINGS_KEY_MARS); } catch (e) {}
+   // Only the folder the user picked is remembered; it is scanned first.
+   try { Settings.remove(SETTINGS_KEY_MARS); } catch (e) {}   // old file list
+   try { Settings.remove("SpaceHunter/ASTAPPath"); } catch (e) {}   // pre-v2.6.0 setting
+   let userDir = null;
+   try {
+      let saved = Settings.read(SETTINGS_KEY_MARS_DIR, DataType.String);
+      if (Settings.lastReadOK && saved && File.directoryExists(saved))
+         userDir = saved;
+   } catch (e) {}
 
    // Search common locations for .xmars files
    let searchDirs = [
@@ -246,6 +232,9 @@ function resolveMARSFilesScan()
       File.homeDirectory + "/AppData/Local/PixInsight",
       File.homeDirectory + "/AppData/Roaming/Pleiades"
    ];
+
+   if (userDir)
+      searchDirs.unshift(userDir);
 
    // Also check all drive letters under common ASTRO directories
    let drives = ["C:", "D:", "E:", "F:"];
@@ -285,8 +274,6 @@ function resolveMARSFilesScan()
       console.writeln("  MARS file found: " + foundFiles[i]);
 
    if (foundFiles.length > 0) {
-      // Save for next time
-      Settings.write(SETTINGS_KEY_MARS, DataType.String, JSON.stringify(foundFiles));
       let result = [];
       for (let i = 0; i < foundFiles.length; i++)
          result.push([true, foundFiles[i]]);
@@ -313,7 +300,9 @@ function resolveMARSFilesScan()
       }
 
       if (userFiles.length > 0) {
-         Settings.write(SETTINGS_KEY_MARS, DataType.String, JSON.stringify(userFiles));
+         // Remember the folder (not the files), so new MARS releases in it
+         // are found too. Reset Settings forgets it.
+         Settings.write(SETTINGS_KEY_MARS_DIR, DataType.String, marsDir);
          let result = [];
          for (let i = 0; i < userFiles.length; i++)
             result.push([true, userFiles[i]]);
@@ -332,8 +321,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.5"
-var SCRIPT_DIR = File.extractDrive(#__FILE__) + File.extractDirectory(#__FILE__);
+#define SCRIPT_VERSION "v2.7.6"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -701,6 +689,7 @@ var WorkflowParameters = {
       try {
          Settings.remove(SETTINGS_KEY_USERPREFS);
       } catch (e) {}
+      try { Settings.remove(SETTINGS_KEY_MARS_DIR); } catch (e) {}
    },
    // -----------------------------------------------------------
    // Load parameters from PixInsight Parameters store
@@ -1149,7 +1138,10 @@ function buildDropdownLists()
 //   2. SPFC section (White Ref, Camera, Filter dropdowns inside)
 //   3. Previews section (number of previews dropdown inside)
 //   4. MGC section (4 gradient scale dropdowns inside, greyed by count)
-// Bottom bar: New Instance + OK + Cancel
+//   5. GradientCorrection section
+//   6. DynamicBackgroundExtraction section
+// Bottom bar: New Instance, User Guide, Deselect All, Reset Defaults,
+// Reset Settings, OK, Cancel
 // ============================================================
 
 var SpaceHunterDialog = class extends Dialog {
@@ -2477,10 +2469,8 @@ constructor()
       WorkflowParameters.enablePreviews = true;
       WorkflowParameters.enableMGC = true;
       WorkflowParameters.numPreviews = 4;
-      WorkflowParameters.gradientScale0 = 768;
-      WorkflowParameters.gradientScale1 = 1024;
-      WorkflowParameters.gradientScale2 = 2048;
-      WorkflowParameters.gradientScale3 = 3072;
+      // Gradient scales are equipment settings: Reset Settings (gear)
+      // resets them, as the tooltip and the manual say.
 
       dlg.imageSolve_Section.checkBox.checked = true;
       dlg.imageSolve_Control.enabled = true;
@@ -2499,9 +2489,6 @@ constructor()
       dlg.dbe_Section.checkBox.checked = false;
       dlg.dbe_Control.enabled = false;
       dlg.numPreviews_ComboBox.currentItem = 3;
-      for (var i = 0; i < 4; i++)
-         dlg.gradientScaleCombo[i].currentItem = WorkflowParameters.gradientScaleToComboIndex(
-            WorkflowParameters.getGradientScale(i));
       dlg.updateGradientScaleStates();
       // Alternative workflows back to collapsed (the toggle saves the state)
       if ( dlg.gc_Section.isExpanded() )
@@ -2735,9 +2722,7 @@ function checkRequiredKeywords() {
         ra: { exists: false, value: "" },
         dec: { exists: false, value: "" },
         xpixsz: { exists: false, value: "" },
-        focallen: { exists: false, value: "" },
-        dateobs: { exists: false, value: "" },
-        equinox: { exists: false, value: "" }
+        focallen: { exists: false, value: "" }
     };
 
     for (let i = 0; i < keywords.length; i++) {
@@ -2769,14 +2754,6 @@ function checkRequiredKeywords() {
         if (name == "FOCALLEN") {
             found.focallen.exists = true;
             found.focallen.value = value;
-        }
-        if (name == "DATE-OBS") {
-            found.dateobs.exists = true;
-            found.dateobs.value = value;
-        }
-        if (name == "EQUINOX") {
-            found.equinox.exists = true;
-            found.equinox.value = value;
         }
     }
 
@@ -3405,14 +3382,15 @@ function runSPFC()
 // MGC runs on previews the script did not create.
 var shMgcPlan = null;
 
-function createPreviews(prefix, count)
+function createPreviews(prefix, count, step)
 {
    if (prefix === undefined) prefix = "BM_";
+   if (step === undefined) step = "3";
 
    var numPreviews = (count !== undefined) ? count : WorkflowParameters.numPreviews;
 
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("STEP 3: Creating " + numPreviews + " Preview(s)");
+   console.writeln("STEP " + step + ": Creating " + numPreviews + " Preview(s)");
    console.writeln("=".repeat(80) + "\n");
 
    var pvStartTime = Date.now();
@@ -4752,6 +4730,8 @@ function chooseBackgroundModel(win)
       if (console.abortRequested)
       {
          dlg.hide();
+         if (dlg.modelStretch_CheckBox.checked)
+            dlg.setModelStretch(false);
          console.writeln("Background model selection cancelled - image left unchanged.\n");
          return;
       }
@@ -5106,6 +5086,8 @@ function chooseGCResult(win, modelIds)
       if (console.abortRequested)
       {
          dlg.hide();
+         if (dlg.showModels_CheckBox.checked)
+            dlg.setShowModels(false);
          console.writeln("GC result selection cancelled - image left unchanged.\n");
          return;
       }
@@ -5297,7 +5279,7 @@ function main()
             console.writeln("MGC FALLBACK: Running GradientCorrection on GC_ and GC_1");
             console.writeln("=".repeat(80) + "\n");
          }
-         createPreviews("GC_", GC_PRESETS.length);
+         createPreviews("GC_", GC_PRESETS.length, "5");
          let win = gcWin;
          try {
             gcModelIds = runGCOnPreviews();

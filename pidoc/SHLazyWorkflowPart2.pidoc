@@ -270,8 +270,8 @@
       Removes the stars. Options: \s {ML Version}, \s {Generate Star Image},
       \s {Unscreen Stars} and \s {Tile Overlap}. With Generate Star Image, a
       star-only image named \c stars is created and the starless image is
-      brought to front. If StarXTerminator isn't installed, the script uses
-      StarNet2.
+      brought to front. If StarXTerminator isn't installed, this step is
+      skipped; select StarNet2 instead if you use it.
    }
 
    \subsection { \label step_starnet Step 9 --- StarNet2 } {
@@ -310,7 +310,8 @@
          console, and only the remaining steps run. To redo a step, move back
          before it in History Explorer first. Only when every selected step
          is already applied does a warning ask whether to run them again. The
-         marks are kept when you save and reopen the image.
+         marks are kept when you save the image as XISF and reopen it (other
+         formats, such as FITS, don't keep them).
       }
    }
 }

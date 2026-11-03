@@ -449,6 +449,10 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
 
       If you undo the image history back to the start, the astrometric
       solution is lost and the next run solves the image again.
+
+      These checks use marks the script stores in the image. They are kept
+      when you save the image as XISF and reopen it; other formats, such as
+      FITS, don't keep them.
    }
 }
 
