@@ -26,12 +26,24 @@ Third-Party Component License
 AutoColor.js
 Copyright (c) 2016 Hartmut V. Bornemann
 
-This software includes AutoColor.js by Hartmut V. Bornemann, integrated into Space Hunter Lazy
-Workflow Part 2 with the explicit written permission of the author (March 10, 2026).
+This software includes AutoColor.js 1.1.2 by Hartmut V. Bornemann, integrated into Space Hunter
+Lazy Workflow Part 2 with the explicit written permission of the author.
+
+Permission history:
+- 2026-03-10  Written permission to integrate AutoColor.js into Lazy Workflow Part 2.
+- 2026-07-08  Author informed of the port to the PixInsight V8 JavaScript engine; no objection.
+- 2026-11-05  Author confirmed distribution in packages signed under the Certified PixInsight
+              Developer (CPD) identity of Georg Albrecht, through the public update repository
+              https://github.com/ggalb/SpaceHunter_Scripts.
 
 Permission was granted subject to the following conditions:
 - The original copyright headers must remain intact in the source code.
 - The author's name must remain intact in the source code.
+
+The original header of AutoColor.js is reproduced verbatim in the source code of Lazy Workflow
+Part 2, followed by a V8 port notice (Georg Albrecht, with packaging by Peter Proulx, Masters of
+PixInsight) and a notice listing every change made for the integration. The author's comments
+inside the code are kept. The calibration algorithm is unchanged.
 
 AutoColor.js is NOT covered by the MIT License that governs this software.
 It may not be redistributed, modified, or used in other projects without obtaining separate written
@@ -50,21 +62,19 @@ from the PixInsight project, developed by Pleiades Astrophoto and its contributo
 
 Part 1 — Lazy Workflow Part 1
 
-ASTAP plate solving uses the ASTAP command-line interface (https://www.hnsky.org/astap.htm)
-by Han Kleijn, licensed under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).
-ASTAP is not included and must be separately installed. ASTAP integration approach inspired by
-BlindSolver2000 by Franklin Marek (www.setiastro.com), licensed under CC BY-NC 4.0
-(http://creativecommons.org/licenses/by-nc/4.0/).
-
-ImageSolver by (C) 2012-2024 Andrés del Pozo / (C) 2019-2024 Juan Conejero (PTeam).
+Plate solving uses PixInsight's own ImageSolver script, (C) 2012-2024 Andrés del Pozo /
+(C) 2019-2024 Juan Conejero (PTeam), including its blind solver for images without coordinates.
+Part 1 includes ImageSolver from the PixInsight installation; it is not distributed with this
+software. No external programs are launched.
 
 Standard PixInsight processes called by this script: SpectroPhotometricFluxCalibration,
 MultiscaleGradientCorrection, GradientCorrection, and DynamicBackgroundExtraction.
 
 Part 2 — Lazy Workflow Part 2
 
-Adaptive Auto STF algorithm based on PixInsight's standard Screen Transfer Function
-methodology by Juan Conejero / Pleiades Astrophoto.
+Auto Display Stretch (linked/unlinked) sets PixInsight's ScreenTransferFunction with the AutoSTF
+method by Juan Conejero / Pleiades Astrophoto; the script adds the automatic linked/unlinked choice
+and sky statistics from the background preview.
 
 Background finder concept inspired by FindBackground by Gerrit Erdt and Franklin Marek
 (SetiAstro), licensed under CC BY-NC 4.0 (http://creativecommons.org/licenses/by-nc/4.0/). Our
@@ -72,6 +82,28 @@ implementation is independently written with a different algorithm and scoring a
 
 Standard PixInsight processes called by this script: SpectrophotometricColorCalibration (SPCC),
 BackgroundNeutralization, ColorCalibration.
+
+-------------------------------------------------------------------------------
+Files, Programs and Internet Access
+-------------------------------------------------------------------------------
+
+- External programs: none. Both scripts run entirely inside PixInsight.
+- Internet, Part 1: only through PixInsight's ImageSolver. If the local Gaia star catalogue is not
+  installed (or for limit magnitudes of 5 or less), ImageSolver downloads catalogue stars from the
+  VizieR service set in its preferences, sending the image's centre coordinates and search radius.
+- Internet, Part 2: only when "Check dust map" is clicked in the background pre-check. The image's
+  centre coordinates and field size are sent over https to the NASA/IPAC IRSA Galactic Dust
+  Reddening and Extinction service (https://irsa.ipac.caltech.edu/applications/DUST/); the dust
+  map (SFD map, Schlegel, Finkbeiner & Davis 1998) is downloaded to the system temporary folder
+  and deleted afterwards.
+- Files outside the PixInsight installation: settings are kept in PixInsight's own settings.
+  ImageSolver writes star lists (stars*.csv) to the system temporary folder. Part 1 searches the
+  PixInsight folders, common Astro folders and a folder the user picks for the MARS database
+  (.xmars, read only), and reads/writes separation profiles (.txt) only in a folder the user
+  chooses. Re-run marks are stored as XISF properties in the image; Part 1 adds FITS HISTORY lines
+  starting with "SH:" when a gradient model is applied.
+
+Details: "Files, Programs and Internet Access" in the user guides of Part 1 and Part 2.
 
 -------------------------------------------------------------------------------
 Commercial Tools
@@ -82,6 +114,10 @@ The following tools are not included and must be separately installed and licens
 BlurXTerminator by Russell Croman (https://www.rc-astro.com/software/bxt/)
 StarXTerminator by Russell Croman (https://www.rc-astro.com/software/sxt/)
 NoiseXTerminator by Russell Croman (https://www.rc-astro.com/software/nxt/)
+
+Optional, also installed separately: StarNet2 by Nikita Misiura (https://www.starnetastro.com/),
+MLDenoise (licensed PixInsight users). Whether these tools connect to the internet themselves is
+up to them.
 
 -------------------------------------------------------------------------------
 

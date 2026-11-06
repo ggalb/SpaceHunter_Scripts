@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.13<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.19<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.13
+// Space Hunter Lazy Workflow Part 2 v2.4.19
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -152,12 +152,38 @@
 //       say it sets PixInsight's ScreenTransferFunction with the AutoSTF
 //       method. Dust map: header values and every map value are checked
 //       (finite, plausible range) before the map is used.
+// v2.4.14: AutoColor: Hartmut V. Bornemann's original AutoColor.js 1.1.2
+//       header reproduced verbatim, with V8 port notice, integration notice
+//       and permission history; his comments inside the code (incl. the
+//       DAOPHOT MMM credit) restored. No change in behaviour.
+// v2.4.15: Files found on every OS: filter/white-reference databases via
+//       CoreApplication.srcDirPath (PixInsight's library folder), the user
+//       filter file via CoreApplication.configDirPath; old fixed Windows
+//       paths only as fallback. Filter merge: the library file wins (as in
+//       SPCC), the user file only adds filters the library lacks; duplicates
+//       that differ only in case are dropped. AutoColor: progress line and
+//       console refresh before each channel's sky estimate (no more silent
+//       wait); calculation unchanged.
+// v2.4.16: History checks no longer stop at a script step in the history
+//       (Script entries have no processId()). Re-run marks get a session
+//       twin (not saved with the file) holding the id of the marked step: in
+//       the session the mark counts only while that step is still active at
+//       its position (same fix as Part 1 v2.7.17).
+// v2.4.17: Warning (Yes/No, No = default) when SPCC's filter mode does not
+//       match the mode Part 1's SPFC used on this image (narrowband or
+//       dual/multi-band vs. broadband), read from SpaceHunter:SPFCMode
+//       (Part 1 v2.7.18+). Images without it: no check.
+// v2.4.18: AutoColor permission history: Hartmut V. Bornemann confirmed
+//       distribution in CPD-signed packages on 2026-11-05. Comment only.
+// v2.4.19: "All selected steps are already applied" defaults to No (the
+//       safe answer); closing the box with X now counts as No.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
-// - Windows machine
+// - Windows (file paths are found through PixInsight's API since
+//   Part 1 v2.7.12 / Part 2 v2.4.15; macOS/Linux not tested)
 // - PixInsight 1.9.6 or later (the package needs it; MAS preview too)
 // - OSC Camera Image
 // - Image pre-cropped, solved and background extraction applied
@@ -174,7 +200,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.13"
+#define SCRIPT_VERSION "v2.4.19"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -184,37 +210,59 @@ var SETTINGS_KEY_USERPREFS = "SpaceHunter2/UserPrefs";
 // FILE PATHS - Auto-detect (user-independent)
 // ============================================================
 
-var customFilterPath = File.homeDirectory + "/AppData/Roaming/Pleiades/filters-001-pxi.xspd";
+// PixInsight's own folders, found on every OS through the PJSR API (as PI's
+// own scripts do: CCDASTRO uses srcDirPath + "/../library/filters.xspd",
+// WBPP uses configDirPath for its per-user files):
+//   <PixInsight>/library   = the folder next to CoreApplication.srcDirPath
+//   per-user settings      = CoreApplication.configDirPath
+//                            (Windows: %APPDATA%/Pleiades)
+// The old fixed Windows paths are kept only as a last fallback.
+function shParentDir(path)
+{
+   var p = path;
+   while (p.length > 1 && p.charAt(p.length - 1) == "/")
+      p = p.substring(0, p.length - 1);
+   var k = p.lastIndexOf("/");
+   return (k > 0) ? p.substring(0, k) : p;
+}
+
+function shFirstExisting(paths)
+{
+   for (var i = 0; i < paths.length; i++)
+      if (paths[i] && File.exists(paths[i]))
+         return paths[i];
+   return null;
+}
+
+var PI_LIBRARY_DIR = shParentDir(CoreApplication.srcDirPath) + "/library";
+var PI_CONFIG_DIR  = CoreApplication.configDirPath;
 
 var libraryPaths = [
+   PI_LIBRARY_DIR + "/filters.xspd",
    "C:/Program Files/PixInsight/library/filters.xspd",
    "C:/Program Files (x86)/PixInsight/library/filters.xspd",
    "D:/Program Files/PixInsight/library/filters.xspd"
 ];
 
 var whiteRefPaths = [
+   PI_LIBRARY_DIR + "/white-references.xspd",
    "C:/Program Files/PixInsight/library/white-references.xspd",
    "C:/Program Files (x86)/PixInsight/library/white-references.xspd",
    "D:/Program Files/PixInsight/library/white-references.xspd"
 ];
 
-var FILTERS_XSPD_PATH = null;
-for (var i = 0; i < libraryPaths.length; i++) {
-   if (File.exists(libraryPaths[i])) {
-      FILTERS_XSPD_PATH = libraryPaths[i];
-      break;
-   }
-}
+// Per-user filter file (filters-NNN-pxi.xspd, NNN = PixInsight instance).
+// SPCC itself reads only the library file; this one is merged for the
+// filters the library does not have (see parseFiltersXSPD).
+var customFilterPaths = [
+   PI_CONFIG_DIR + "/filters-" + format("%03i", CoreApplication.instance) + "-pxi.xspd",
+   PI_CONFIG_DIR + "/filters-001-pxi.xspd",
+   File.homeDirectory + "/AppData/Roaming/Pleiades/filters-001-pxi.xspd"
+];
 
-var FILTERS_CUSTOM_PATH = File.exists(customFilterPath) ? customFilterPath : null;
-
-var WHITEREF_XSPD_PATH = null;
-for (var i = 0; i < whiteRefPaths.length; i++) {
-   if (File.exists(whiteRefPaths[i])) {
-      WHITEREF_XSPD_PATH = whiteRefPaths[i];
-      break;
-   }
-}
+var FILTERS_XSPD_PATH   = shFirstExisting(libraryPaths);
+var FILTERS_CUSTOM_PATH = shFirstExisting(customFilterPaths);
+var WHITEREF_XSPD_PATH  = shFirstExisting(whiteRefPaths);
 
 // ============================================================
 // DATABASE STORAGE
@@ -739,23 +787,35 @@ var WP_DEFAULTS = (function()
 // XSPD PARSERS (identical to Part 1)
 // ============================================================
 
-function parseXSPDIntoFilterDB(filePath)
+function parseXSPDIntoFilterDB(filePath, extrasOnly)
 {
    var xml = File.readTextFile(filePath);
    console.writeln("  File size: " + xml.length + " bytes");
 
    var re = /<Filter\s+name="([^"]*)"\s+channel="([^"]*)"\s+(?:default="[^"]*"\s+)?(?:reference="[^"]*"\s+)?data="([^"]*)"\s*\/>/g;
    var match;
-   var count = 0;
+   var result = { parsed: 0, added: 0 };
+
+   // extrasOnly (the per-user file): add only filters the database does not
+   // have yet. Compared without case, so "Optolong L-eNhance" does not
+   // appear next to the library's "OPTOLONG L-eNhance".
+   var known = {};
+   if (extrasOnly)
+      for (var k in filterDB)
+         known[k.toLowerCase()] = true;
 
    while ((match = re.exec(xml)) !== null) {
       var name = match[1];
       var channel = match[2];
       var data = match[3].replace(/\r?\n/g, '');
-      filterDB[name + "|" + channel] = data;
-      count++;
+      var key = name + "|" + channel;
+      result.parsed++;
+      if (extrasOnly && known[key.toLowerCase()])
+         continue;
+      filterDB[key] = data;
+      result.added++;
    }
-   return count;
+   return result;
 }
 
 function parseFiltersXSPD()
@@ -766,20 +826,21 @@ function parseFiltersXSPD()
 
    var totalCount = 0;
 
-   // Load standard library filters first
+   // The library file is the reference, as in SPCC: it always wins.
    console.writeln("Reading standard filter database: " + FILTERS_XSPD_PATH);
-   var count = parseXSPDIntoFilterDB(FILTERS_XSPD_PATH);
-   console.writeln("  Parsed " + count + " standard filter entries");
-   totalCount += count;
+   var r = parseXSPDIntoFilterDB(FILTERS_XSPD_PATH, false);
+   console.writeln("  Parsed " + r.parsed + " standard filter entries");
+   totalCount += r.added;
 
-   // Load custom filters second — duplicates overwrite standard entries
+   // The per-user file only adds filters the library does not have.
    if (FILTERS_CUSTOM_PATH !== null) {
-      console.writeln("Reading custom filter database: " + FILTERS_CUSTOM_PATH);
-      count = parseXSPDIntoFilterDB(FILTERS_CUSTOM_PATH);
-      console.writeln("  Parsed " + count + " custom filter entries (merged, duplicates overwritten)");
-      totalCount += count;
+      console.writeln("Reading user filter file: " + FILTERS_CUSTOM_PATH);
+      r = parseXSPDIntoFilterDB(FILTERS_CUSTOM_PATH, true);
+      console.writeln("  Parsed " + r.parsed + " entries, " + r.added +
+                      " extra filter(s) added (filters in both files use the library curve, as SPCC does)");
+      totalCount += r.added;
    } else {
-      console.writeln("  No custom filter database found — using standard library only.");
+      console.writeln("  No user filter file found — using standard library only.");
    }
 
    console.writeln("  Total unique filter entries in database: " + Object.keys(filterDB).length);
@@ -2280,7 +2341,24 @@ var SpaceHunterDialog2 = class extends Dialog
    this.ok_Button = new PushButton( this );
    this.ok_Button.text = "OK";
    this.ok_Button.icon = this.scaledResource( ":/icons/ok.png" );
-   this.ok_Button.onClick = function() { dlg.ok(); };
+   this.ok_Button.onClick = function()
+   {
+      var mismatch = shSpfcSpccMismatch();
+      if (mismatch.length > 0)
+      {
+         var msg = new MessageBox(
+            "<p><b>SPCC and Part 1's SPFC do not use the same filter mode.</b></p><p>" + mismatch + "</p>" +
+            "<p>SPCC's color calibration should use the filters the image was taken with. " +
+            "Check which side is wrong: SPCC here, or SPFC in Part 1.</p>" +
+            "<p>Run anyway?</p>",
+            "Warning: SPFC / SPCC filter mismatch",
+            StdIcon.Warning, StdButton.No, StdButton.Yes);   // No first = default
+         if (msg.execute() !== StdButton.Yes)
+            return;   // back to the dialog
+         console.warningln("⚠  Run despite filter mismatch: " + mismatch.replace(/<[^>]*>/g, ""));
+      }
+      dlg.ok();
+   };
 
    this.cancel_Button = new PushButton( this );
    this.cancel_Button.text = "Cancel";
@@ -2450,17 +2528,51 @@ function selectEquipment()
 // step is still active. view.processing still lists undone steps; a reopened
 // file starts with an empty list, and then the stored mark is the only
 // evidence. Storable: saved with the file.
+// Since v2.4.16 a session twin (id + "Session", NOT Storable, so it is gone
+// in a reopened file) holds the process id of the marked step; with it the
+// mark counts only while that step is still active at its position.
 function shMarkDone(view, id)
 {
    try { view.setPropertyValue(id, view.historyIndex, PropertyType.Int32,
                                PropertyAttribute.Storable | PropertyAttribute.Permanent); } catch(e) {}
+   try {
+      var n = view.historyIndex;
+      var pc = view.processing;
+      var stepId = (n > 0 && n <= pc.length) ? shProcId(pc[n - 1]) : "";
+      view.setPropertyValue(id + "Session", stepId, PropertyType.String,
+                            PropertyAttribute.Permanent);
+   } catch(e) {}
 }
 function shHasProperty(view, id)
 {
    try { return view.hasProperty(id); } catch(e) { return false; }
 }
-// No check of which process sits at the mark's position: on a reopened file
-// new steps can fill that position, and the step would then run twice.
+// Process id of a history item; a script step is a Script object without
+// processId().
+function shProcId(p)
+{
+   try { return p.processId(); } catch(e) {}
+   return "Script";
+}
+// true/false when the session twin decides; null = no twin.
+function shSessionMark(view, id, pos)
+{
+   if (!shHasProperty(view, id + "Session"))
+      return null;
+   try {
+      if (pos < 1 || pos > view.historyIndex)
+         return false;                   // its step was undone
+      var stepId = view.propertyValue(id + "Session");
+      var pc = view.processing;
+      if (stepId && pos <= pc.length && shProcId(pc[pos - 1]) != stepId)
+         return false;                   // its step was replaced
+      return true;
+   } catch(e) {}
+   return null;
+}
+// Without the twin (reopened file) there is no check of which process sits at
+// the mark's position: new steps can fill that position, and the step would
+// then run twice.
 function shHasMark(view, id)
 {
    if (!shHasProperty(view, id))
@@ -2469,11 +2581,47 @@ function shHasMark(view, id)
       var pos = view.propertyValue(id);
       if (typeof pos != "number")
          return true;                    // boolean mark from v2.4.1 and older
+      var s = shSessionMark(view, id, pos);
+      if (s !== null)
+         return s;
       if (pos > view.processing.length)
          return true;                    // from an earlier session (reopened file)
       return pos <= view.historyIndex;   // false = its step was undone
    } catch(e) {}
    return true;
+}
+
+// SPCC's filter mode against the mode Part 1's SPFC stored on the active
+// image (SpaceHunter:SPFCMode, Part 1 v2.7.18+). Narrowband and pre-combined
+// dual/multi-band sets both count as line light. "" = no mismatch / no data.
+function shSpfcSpccMismatch()
+{
+   var W = WorkflowParameters;
+   if (!W.enableSPCC)
+      return "";
+   var win = ImageWindow.activeWindow;
+   if (win.isNull)
+      return "";
+   var view = win.mainView;
+   if (!shHasProperty(view, "SpaceHunter:SPFCMode") || !shHasMark(view, "SpaceHunter:SPFCDone"))
+      return "";
+   if (shHasMark(view, "SpaceHunter:SPCCDone"))
+      return "";                         // SPCC is skipped anyway
+   var p1 = "";
+   try { p1 = String(view.propertyValue("SpaceHunter:SPFCMode")); } catch(e) { return ""; }
+   var p1Line = p1.indexOf("broadband") != 0;
+   var flt = filterList[W.selectedFilterIdx];
+   var pre = flt && flt.type == "precombined";
+   var p2Line = W.enableNarrowband || pre;
+   if (p1Line == p2Line)
+      return "";
+   var p1Text = (p1 == "narrowband") ? "<b>narrowband</b> mode"
+              : (p1Line ? "the <b>dual/multi-band</b> filter set \"" + p1.replace(/^precombined: /, "") + "\""
+                        : "the <b>broadband</b> filter set \"" + p1.replace(/^broadband: /, "") + "\"");
+   var p2Text = W.enableNarrowband ? "<b>narrowband</b> mode"
+              : (pre ? "the <b>dual/multi-band</b> filter set \"" + flt.label + "\""
+                     : "the <b>broadband</b> filter set \"" + (flt ? flt.label : "?") + "\"");
+   return "Part 1 ran SPFC in " + p1Text + ", but SPCC is set to " + p2Text + ".";
 }
 
 // Steps that change the image. Each is skipped while it is still applied;
@@ -2502,7 +2650,7 @@ function shToolActive(view, processId)
       var pc = view.processing;
       var active = view.historyIndex;
       for (var i = 0; i < pc.length && i < active; i++)
-         if (pc[i].processId() == processId)
+         if (shProcId(pc[i]) == processId)
             return true;
    } catch (e) {}
    return false;
@@ -3757,30 +3905,84 @@ function runSPCC()
 
 // ============================================================
 // STEP 4: AutoColor - Background Neutralization + Color Calibration
-//
-// Based on AutoColor.js
-// Copyright Hartmut V. Bornemann, 2016
-// Image calibration by background evaluation and calculation of
-// mean intensities over background of each channel, using
-// BackgroundNeutralization and ColorCalibration processes.
-// Integrated into Space Hunter Lazy Workflow with permission.
-// Original copyright headers and author name preserved as required.
-// ----------------------------------------------------------------------------
-// V8 PORT NOTICE
-// ----------------------------------------------------------------------------
-// Ported to PixInsight 1.9.4 V8 JavaScript engine by Georg Albrecht
-// with additional packaging by Peter Proulx (peterproulx@gmail.com)
-// July 2026. Original script copyright remains with Hartmut V. Bornemann.
-// No rights to the original work are claimed or implied.
-//
-// V8 changes: added #engine v8 directive and version guard; replaced the
-// single .prototype. enum reference (BackgroundNeutralization.prototype.
-// TargetBackground -> BackgroundNeutralization.TargetBackground). Performance
-// optimization by Georg Albrecht: uses Float64Array instead of a plain JS
-// array for sky samples, giving faster sort and numeric operations on large
-// images. No dialogs, with() statements, or legacy prototype patterns present.
-// ----------------------------------------------------------------------------
+// [1] Original header of AutoColor.js 1.1.2, reproduced verbatim,
+//     followed by [2] V8 port notice and [3] integration notice.
 // ============================================================
+/*
+AutoColor.js: Automatic ColorCalibration
+================================================================================
+
+Automatischer Weißabgleich und Hintergrund-Neutralisierung
+AutoColor ersetzt die Prozesse BackgroundNeutralization und ColorCalibration.
+Aus dem kombinierten RGB wird ein kalibriertes RGB, mit dem die weitere
+Bearbeitung erfolgen kann (Schmalband, Delinearisierung, Luminanz, ...).
+
+Automatic BackgroundNeutralization and ColorCalibration
+
+AutoColor substitutes the BackgroundNeutralization and ColorCalibration
+processes in a single step. The channel combined RGB becomes a calibrated image
+ready for further processing (narrowband, delinearization, luminance, ...).
+================================================================================
+
+ *
+ *    Copyright Hartmut V. Bornemann, 2016
+ *
+ * Image calibration is performed by background evaluation and calculation of
+ * mean intensities over background of each channel.
+ * These values are used by PixInsight standard processes
+ * BackgroundNeutralizaion and ImageCalibration, which
+ * perform the adjustment of background and colors as usual.
+ * In addition, all values are written to the Process Console for manual
+ * adjustments, if neccessary.
+ *
+ * History
+ * 01.11.2016 Iterations set to 100
+ *
+ * ----------------------------------------------------------------------------
+ * [2] V8 PORT NOTICE
+ * ----------------------------------------------------------------------------
+ * Ported to PixInsight 1.9.4 V8 JavaScript engine by Georg Albrecht
+ * (ggalbch@gmail.com) with additional packaging by Peter Proulx
+ * (peterproulx@gmail.com), Masters of PixInsight (www.mastersofpixinsight.com)
+ * July 2026. Original script copyright remains with Hartmut V. Bornemann.
+ * No rights to the original work are claimed or implied.
+ *
+ * V8 changes: added #engine v8 directive and version guard; replaced the
+ * single .prototype. enum reference. Sky samples are read into a Float64Array
+ * and sorted numerically (Georg Albrecht): faster on large images, and
+ * required under V8, where the original comparator (a > b) does not sort
+ * reliably.
+ * ----------------------------------------------------------------------------
+ * [3] INTEGRATION INTO SPACE HUNTER LAZY WORKFLOW PART 2
+ * ----------------------------------------------------------------------------
+ * Integrated as functions runAutoColor() and ac_*() (no dialog, no
+ * #feature-id). Further changes from AutoColor.js 1.1.2:
+ * - works on the main view of the active image window;
+ * - leaves the image unchanged (step skipped, warning) when the sky estimate
+ *   fails or a channel has no signal above the background;
+ * - a non-RGB image stops with an error instead of a console message;
+ * - stops the workflow if BackgroundNeutralization or ColorCalibration fails;
+ * - frees the measuring copy of the image after use;
+ * - marks the image after BackgroundNeutralization, so a re-run of Part 2
+ *   does not apply AutoColor twice;
+ * - console output reformatted.
+ * The calibration algorithm is unchanged: DAOPHOT MMM sky estimate, 10%
+ * border crop, 100 iterations, channel factors, and all
+ * BackgroundNeutralization / ColorCalibration settings.
+ *
+ * Permission of the author, Hartmut V. Bornemann (hvb356@hotmail.de):
+ *   2026-03-10  written permission to integrate AutoColor.js into Lazy
+ *               Workflow Part 2, original header and author name intact
+ *   2026-07-08  informed of the V8 port, no objection
+ *   2026-11-05  confirmed distribution in packages signed under the
+ *               Certified PixInsight Developer identity of Georg Albrecht
+ *
+ * This code is NOT covered by the MIT License of Space Hunter. It may not be
+ * copied, redistributed, modified or used in other projects without separate
+ * written permission from the author. Space Hunter contact:
+ * https://github.com/ggalb/SpaceHunter_Scripts
+ * ----------------------------------------------------------------------------
+ */
 
 function runAutoColor()
 {
@@ -3821,6 +4023,11 @@ function runAutoColor()
    for ( var channel = 0; channel < 3; channel++ )
    {
       subImage.selectedChannel = channel;
+      // Progress line (SH addition): the sky estimate sorts every pixel of
+      // the channel and takes several seconds on large images.
+      console.writeln( "  Estimating sky background (" + strRGB[channel] + ") ..." );
+      console.flush();
+      CoreApplication.processEvents();
       S[channel] = ac_ImageBackgroundMean( subImage, AC_ITERATIONS, 1 );
       I[channel] = subImage.mean() - S[channel];
       console.writeln( format("  %c  Intensity: %.8f   Background: %.8f",
@@ -3872,20 +4079,33 @@ function runAutoColor()
 
 function ac_ImageBackgroundMean( img, mxiter, readnoise )
 {
+   // This is a translation from DAOPHOT sub MMM
+   //
+   // INPUTS:
+   //       img - Image, is unaltered by this program.
+   // OUTPUTS
+   // skymod    - Scalar giving estimated mode of the sky values
+   // SIGMA     - Scalar giving standard deviation of the peak in the sky
+   //             histogram.  If for some reason it is impossible to derive
+   //             skymod, then SIGMA = -1.0
+   // SKEW      - Scalar giving skewness of the peak in the sky histogram
+
    if ( mxiter == 0 ) mxiter = 50;
    var minsky = 20;
    var sky = new Float64Array( img.width * img.height );
    img.getSamples( sky );
 
    var nsky  = sky.length;
-   var nlast = nsky - 1;
-   sky.sort();
-
+   var nlast = nsky - 1;        // Subscript of last pixel in SKY array
+   sky.sort();                  // Sort SKY in ascending values (numeric: Float64Array, V8)
+   // Median of all sky values
    var skymid  = 0.5 * sky[ac_Int((nsky-1)/2)] + 0.5 * sky[ac_Int(nsky/2)];
    var defSky  = skymid;
    var cut     = Math.min( skymid - sky[0], sky[nsky-1] - skymid );
    var cut2    = skymid + cut;
    var cut1    = skymid - cut;
+
+   // Select the pixels between Cut1 and Cut2
 
    var j1 = -1;
    var j2 = 0;
@@ -3917,20 +4137,24 @@ function ac_ImageBackgroundMean( img, mxiter, readnoise )
    var good  = j2 - j1 + 1;
    var delta = new Array(good);
    for ( var i = 0; i < good; i++ )
-      delta[i] = sky[j1 + i] - skymid;
+      delta[i] = sky[j1 + i] - skymid; //Subtract median to improve arithmetic accuracy
 
    var sum    = ac_total(delta);
    var sumsq  = ac_totalSqrd(delta);
+   // Highest value accepted at upper end of vector
    var maximm = j2;
+   // Highest value reject at lower end of vector
    var minimm = j1 - 1;
-
+   // Compute mean and sigma (from the first pass).
    var skymed = 0.5 * sky[ac_Int((minimm+maximm+1)/2)] +
-                0.5 * sky[ac_Int((minimm+maximm)/2) + 1];
-   var skymn  = sum / (maximm - minimm);
-   var sigma  = Math.sqrt( sumsq/(maximm-minimm) - Math.pow(skymn, 2) );
-   skymn      = skymn + skymid;
+                0.5 * sky[ac_Int((minimm+maximm)/2) + 1];   // median
+   var skymn  = sum / (maximm - minimm);                     // mean
+   var sigma  = Math.sqrt( sumsq/(maximm-minimm) - Math.pow(skymn, 2) ); // sigma
+   skymn      = skymn + skymid; // Add median which was subtracted off earlier
+   // If mean is less than the mode, then the contamination is slight, and the
+   //    mean value is what we really want.
    var skymod = (skymed < skymn) ? 3.0*skymed - 2.0*skymn : skymn;
-
+   // Rejection and recomputation loop:
    var clamp = 1;
    var old   = 0;
    var niter = 0;
@@ -3951,16 +4175,20 @@ function ac_ImageBackgroundMean( img, mxiter, readnoise )
          return -1;
       }
 
+      // Compute Chauvenet rejection criterion
       var r  = Math.log10( maximm - minimm );
       r      = Math.max( 2.0, (-0.1042*r + 1.1695)*r + 0.8895 );
+      // Compute rejection limits (symmetric about the current mode)
       var cut = r * sigma + 0.5 * Math.abs(skymn - skymod);
       cut1   = skymod - cut;
       cut2   = skymod + cut;
 
+      // Recompute mean and sigma by adding and/or subtracting sky values
+      // at both ends of the interval of acceptable values.
       var redo   = false;
       var newmin = minimm;
-      var tst_min = sky[newmin+1] >= cut1;
-      var done    = (newmin == -1) & tst_min;
+      var tst_min = sky[newmin+1] >= cut1; // Is minimm+1 above current CUT?
+      var done    = (newmin == -1) & tst_min;   // Are we at first pixel of SKY?
       if ( !done ) done = (sky[Math.max(newmin, 0)] < cut1) & tst_min;
       if ( !done )
       {
@@ -3982,12 +4210,12 @@ function ac_ImageBackgroundMean( img, mxiter, readnoise )
       }
 
       var newmax  = maximm;
-      var tst_max = sky[maximm] <= cut2;
-      done = (maximm == nlast) && tst_max;
+      var tst_max = sky[maximm] <= cut2;  // Is current maximum below upper cut?
+      done = (maximm == nlast) && tst_max; // Are we at last pixel of SKY array?
       if ( !done ) done = tst_max && (sky[Math.min((maximm+1), nlast)] > cut2);
       if ( !done )
       {
-         istep = -1 + 2 * ac_boolToInt(tst_max);
+         istep = -1 + 2 * ac_boolToInt(tst_max); // Increment up or down?
          while ( !done )
          {
             newmax = newmax + istep;
@@ -4004,6 +4232,7 @@ function ac_ImageBackgroundMean( img, mxiter, readnoise )
          maximm = newmax;
       }
 
+      // Compute mean and sigma (from this pass).
       nsky = maximm - minimm;
       if ( nsky < minsky )
       {
@@ -4014,12 +4243,22 @@ function ac_ImageBackgroundMean( img, mxiter, readnoise )
       skymn  = sum / nsky;
       sigma  = Math.sqrt( Math.max(sumsq/nsky - Math.pow(skymn, 2), 0) );
       skymn  = skymn + skymid;
-
+      /*
+            Determine a more robust median by averaging the central 20% of pixels.
+            Estimate the median using the mean of the central 20 percent of sky
+            values.   Be careful to include a perfectly symmetric sample of pixels about
+            the median, whether the total number is even or odd within the acceptance
+            interval
+      */
       var center = (minimm + 1 + maximm) / 2.0;
       var side   = Math.round( 0.2 * (maximm - minimm) ) / 2.0 + 0.25;
       var J      = Math.round( center - side );
       var K      = Math.round( center + side );
-
+      /*
+         In case  the data has a large number of of the same (quantized)
+         intensity, expand the range until both limiting values differ from the
+         central value by at least 0.25 times the read noise.
+      */
       if ( readnoise > 0 )
       {
          var L = Math.round( center - 0.25 );
@@ -4034,12 +4273,17 @@ function ac_ImageBackgroundMean( img, mxiter, readnoise )
 
       skymed = ac_total( ac_SkySub(sky, J, K, 0) ) / (K - J + 1);
 
+      /*
+         If the mean is less than the median, then the problem of contamination
+         is slight, and the mean is what we really want.
+      */
+
       var dmod;
       if ( skymed < skymn )
          dmod = 3.0*skymed - 2.0*skymn - skymod;
       else
          dmod = skymn - skymod;
-
+      // prevent oscillations by clamping down if sky adjustments are changing sign
       if ( dmod * old < 0 ) clamp = 0.5 * clamp;
       skymod = skymod + clamp * dmod;
       old    = dmod;
@@ -4047,11 +4291,18 @@ function ac_ImageBackgroundMean( img, mxiter, readnoise )
       if ( !redo ) break;
    }
 
+   // for later use:
+   // skew = (skymn - skymod) / Math.max(1.0, sigma);
+   // nsky = maximm - minimm;
+
    return skymod;
 }
 
 function ac_SkySub( values, startIndex, endIndex, reduction )
 {
+   //
+   // copy a subarray and subtract a constant value
+   //
    var v = new Array( endIndex - startIndex + 1 );
    for ( var i = 0; i <= v.length - 1; i++ )
       v[i] = values[i + startIndex] - reduction;
@@ -4702,9 +4953,9 @@ function main()
             "<p>Run them again anyway?</p>",
             "Warning: Script Already Applied",
             StdIcon.Warning,
-            StdButton.Yes, StdButton.No
+            StdButton.No, StdButton.Yes   // No first = default
          );
-         if (msg.execute() === StdButton.No)
+         if (msg.execute() !== StdButton.Yes)
             throw new Error("Script cancelled by user.");
          done = {};
          bgDone = false;

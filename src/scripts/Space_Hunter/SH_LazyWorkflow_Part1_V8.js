@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.11<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.21<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.11
+// Space Hunter Lazy Workflow Part 1 v2.7.21
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -124,12 +124,69 @@
 // v2.7.10: Banner strokes as double lines.
 // v2.7.11: GC model windows: "Auto Display Stretch" (PixInsight STF with the
 //       AutoSTF method) instead of "Auto Display Stretch".
+// v2.7.12: Files found on every OS: filter/white-reference databases via
+//       CoreApplication.srcDirPath (PixInsight's library folder), the user
+//       filter file via CoreApplication.configDirPath, MARS files first from
+//       MGC's own configured database files; old fixed Windows paths only
+//       as fallback. Filter merge: the library file wins (as in SPCC), the
+//       user file only adds filters the library lacks; duplicates that
+//       differ only in case are dropped.
+// v2.7.13: Warning on OK when SPFC and MGC filters don't match (narrowband
+//       SPFC with MGC on L/R/G/B, or the opposite); the user decides which
+//       side to change. Automatic scale factors rejected by MGC (outside
+//       0.1-10) no longer stop MGC: Both mode skips and removes only that
+//       _autoSF preview, Auto mode retries it with 1.0; GC fallback only when
+//       no preview succeeds. Filter grouping: " Red/Green/Blue" and "_R/_G/_B"
+//       name patterns (OPTOLONG L-Pro, SvBony DNB).
+// v2.7.14: Filter mismatch check: a pre-combined RGB set (sensor x dual/
+//       multi-band filter) counts as line light like narrowband mode, so it
+//       matches MGC Ha/OIII/SII (no false warning) and warns with MGC
+//       L/R/G/B. Warning box: No is the default button; the console note is
+//       written only when the user runs anyway.
+// v2.7.15: SPFC is no longer wrongly skipped after Ha/OIII separation ran
+//       on an image whose SPFC was undone in History Explorer (the new
+//       separation step replaced the undone SPFC step, so SPFC's old mark
+//       and properties looked current). Separation in this run = SPFC runs.
+// v2.7.16: SPFC check: with no SPFC step in this session's history, our mark
+//       decides (position within this session = its step is gone = not
+//       applied); SPFC's own properties only for SPFC run outside the script.
+//       Fixes SPFC (and separation) wrongly skipped after History Explorer
+//       jumps. MGC: after the first rejected automatic run the other
+//       automatic runs are not tried again (Both: skipped, Auto: 1.0 at once).
+// v2.7.17: History checks no longer stop at a script step in the history
+//       (a Script entry has no processId(); the error ended the search, so
+//       an SPFC step after it was never seen). Re-run marks get a session
+//       twin (not saved with the file) holding the id of the marked step: in
+//       the session the mark counts only while that step is still active at
+//       its position. Fixes separation and SPFC skipped after going back to
+//       <Initial State> when later runs had replaced the history.
+// v2.7.18: Filter mismatch confirmed with Yes: MGC does not try automatic
+//       scale factors at all (tested 2026-11-06: narrowband SPFC against
+//       broadband MARS gave R factor 12.3, rejected; the failed try cost
+//       ~4 min). Auto: 1.0 at once; Both: the _autoSF previews are removed.
+//       SPFC stores its mode on the image (SpaceHunter:SPFCMode, saved with
+//       the file) so Part 2 can warn when SPCC uses the other mode.
+// v2.7.19: Fix (v2.7.16+): Auto mode was taken for Both mode once a run had
+//       switched to 1.0, so the next preview was removed instead of run with
+//       1.0 (tested 2026-11-06: only 2048 of 2048/3072 ran). The mode is now
+//       fixed before the loop. After a removed preview the last finished
+//       model is shown again (the image itself was shown instead).
+//       A preview that runs with 1.0 instead of automatic factors loses its
+//       _autoSF suffix (BM_2048_autoSF -> BM_2048), so the name tells the
+//       truth in the tabs and in the model list.
+// v2.7.20: The rename from v2.7.19 never happened: previewById() returns
+//       null (not a null View) for a free name, and the .isNull test threw.
+//       A failed rename is now reported in the console.
+// v2.7.21: Risky questions default to No (the safe answer): "gradient
+//       correction already applied" and "profile already exists - replace?".
+//       Closing the box with X now counts as No (it continued before).
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
-// - Windows machine
+// - Windows (file paths are found through PixInsight's API since
+//   Part 1 v2.7.12 / Part 2 v2.4.15; macOS/Linux not tested)
 // - PixInsight 1.9.6 or later
 // - MARS database installed
 // - Gaia DR3 database; for images without RA/Dec or image scale also the
@@ -221,6 +278,34 @@ function resolveMARSFiles()
    return MARS_FILES_CACHE;
 }
 
+// The MARS database files configured in MGC's preferences, as paths of
+// existing files ([] if none, or if this MGC has no such command).
+function shMGCDefaultMARSFiles()
+{
+   let out = [];
+   try {
+      if (typeof MultiscaleGradientCorrection == "undefined")
+         return out;
+      let M = new MultiscaleGradientCorrection;
+      if (M.command === undefined || M.marsDatabaseFiles === undefined)
+         return out;
+      M.command = "set-default-database-files";
+      M.executeGlobal();
+      let rows = M.marsDatabaseFiles;
+      for (let i = 0; i < rows.length; i++) {
+         let row = rows[i];
+         let enabled = true, path = row;
+         if (row instanceof Array) {
+            if (row.length >= 2) { enabled = (row[0] !== false); path = row[1]; }
+            else path = row[0];
+         }
+         if (enabled && typeof path == "string" && path.length > 0 && File.exists(path))
+            out.push(path);
+      }
+   } catch (e) {}
+   return out;
+}
+
 function resolveMARSFilesScan()
 {
    // Always re-scan for .xmars files instead of trusting cached paths.
@@ -236,8 +321,26 @@ function resolveMARSFilesScan()
          userDir = saved;
    } catch (e) {}
 
-   // Search common locations for .xmars files
+   // 1. The MARS files configured in MultiscaleGradientCorrection itself
+   //    (as PI's AstrometricRegistration script asks MGC for them).
+   //    Works on every OS. A folder picked in this script comes first.
+   if (!userDir) {
+      let mgcFiles = shMGCDefaultMARSFiles();
+      if (mgcFiles.length > 0) {
+         let result = [];
+         for (let i = 0; i < mgcFiles.length; i++) {
+            console.writeln("  MARS file (MGC preferences): " + mgcFiles[i]);
+            result.push([true, mgcFiles[i]]);
+         }
+         console.writeln("MARS database: " + mgcFiles.length + " file(s) from MGC preferences");
+         return result;
+      }
+   }
+
+   // 2. Search PixInsight's own folders, then common locations
    let searchDirs = [
+      PI_LIBRARY_DIR,
+      PI_CONFIG_DIR,
       "C:/Program Files/PixInsight/library",
       "C:/Program Files (x86)/PixInsight/library",
       "D:/Program Files/PixInsight/library",
@@ -333,7 +436,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.11"
+#define SCRIPT_VERSION "v2.7.21"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -342,41 +445,59 @@ var DOC_NAME = "SH Lazy Workflow Part 1";
 // FILE PATHS - Auto-detect (user-independent)
 // ============================================================
 
-// Custom filter database (in user's AppData)
-var customFilterPath = File.homeDirectory + "/AppData/Roaming/Pleiades/filters-001-pxi.xspd";
+// PixInsight's own folders, found on every OS through the PJSR API (as PI's
+// own scripts do: CCDASTRO uses srcDirPath + "/../library/filters.xspd",
+// WBPP uses configDirPath for its per-user files):
+//   <PixInsight>/library   = the folder next to CoreApplication.srcDirPath
+//   per-user settings      = CoreApplication.configDirPath
+//                            (Windows: %APPDATA%/Pleiades)
+// The old fixed Windows paths are kept only as a last fallback.
+function shParentDir(path)
+{
+   var p = path;
+   while (p.length > 1 && p.charAt(p.length - 1) == "/")
+      p = p.substring(0, p.length - 1);
+   var k = p.lastIndexOf("/");
+   return (k > 0) ? p.substring(0, k) : p;
+}
 
-// Standard library locations (try common installation paths)
+function shFirstExisting(paths)
+{
+   for (var i = 0; i < paths.length; i++)
+      if (paths[i] && File.exists(paths[i]))
+         return paths[i];
+   return null;
+}
+
+var PI_LIBRARY_DIR = shParentDir(CoreApplication.srcDirPath) + "/library";
+var PI_CONFIG_DIR  = CoreApplication.configDirPath;
+
 var libraryPaths = [
+   PI_LIBRARY_DIR + "/filters.xspd",
    "C:/Program Files/PixInsight/library/filters.xspd",
    "C:/Program Files (x86)/PixInsight/library/filters.xspd",
    "D:/Program Files/PixInsight/library/filters.xspd"
 ];
 
 var whiteRefPaths = [
+   PI_LIBRARY_DIR + "/white-references.xspd",
    "C:/Program Files/PixInsight/library/white-references.xspd",
    "C:/Program Files (x86)/PixInsight/library/white-references.xspd",
    "D:/Program Files/PixInsight/library/white-references.xspd"
 ];
 
-// Determine filter database paths - both will be loaded and merged
-var FILTERS_XSPD_PATH = null;
-for (var i = 0; i < libraryPaths.length; i++) {
-   if (File.exists(libraryPaths[i])) {
-      FILTERS_XSPD_PATH = libraryPaths[i];
-      break;
-   }
-}
+// Per-user filter file (filters-NNN-pxi.xspd, NNN = PixInsight instance).
+// SPCC itself reads only the library file; this one is merged for the
+// filters the library does not have (see parseFiltersXSPD).
+var customFilterPaths = [
+   PI_CONFIG_DIR + "/filters-" + format("%03i", CoreApplication.instance) + "-pxi.xspd",
+   PI_CONFIG_DIR + "/filters-001-pxi.xspd",
+   File.homeDirectory + "/AppData/Roaming/Pleiades/filters-001-pxi.xspd"
+];
 
-var FILTERS_CUSTOM_PATH = File.exists(customFilterPath) ? customFilterPath : null;
-
-// Determine white reference database location
-var WHITEREF_XSPD_PATH = null;
-for (var i = 0; i < whiteRefPaths.length; i++) {
-   if (File.exists(whiteRefPaths[i])) {
-      WHITEREF_XSPD_PATH = whiteRefPaths[i];
-      break;
-   }
-}
+var FILTERS_XSPD_PATH   = shFirstExisting(libraryPaths);
+var FILTERS_CUSTOM_PATH = shFirstExisting(customFilterPaths);
+var WHITEREF_XSPD_PATH  = shFirstExisting(whiteRefPaths);
 
 // ============================================================
 // DATABASE STORAGE
@@ -933,23 +1054,35 @@ var WP_DEFAULTS = (function()
 // XSPD PARSERS
 // ============================================================
 
-function parseXSPDIntoFilterDB(filePath)
+function parseXSPDIntoFilterDB(filePath, extrasOnly)
 {
    var xml = File.readTextFile(filePath);
    console.writeln("  File size: " + xml.length + " bytes");
 
    var re = /<Filter\s+name="([^"]*)"\s+channel="([^"]*)"\s+(?:default="[^"]*"\s+)?(?:reference="[^"]*"\s+)?data="([^"]*)"\s*\/>/g;
    var match;
-   var count = 0;
+   var result = { parsed: 0, added: 0 };
+
+   // extrasOnly (the per-user file): add only filters the database does not
+   // have yet. Compared without case, so "Optolong L-eNhance" does not
+   // appear next to the library's "OPTOLONG L-eNhance".
+   var known = {};
+   if (extrasOnly)
+      for (var k in filterDB)
+         known[k.toLowerCase()] = true;
 
    while ((match = re.exec(xml)) !== null) {
       var name = match[1];
       var channel = match[2];
       var data = match[3].replace(/\r?\n/g, '');
-      filterDB[name + "|" + channel] = data;
-      count++;
+      var key = name + "|" + channel;
+      result.parsed++;
+      if (extrasOnly && known[key.toLowerCase()])
+         continue;
+      filterDB[key] = data;
+      result.added++;
    }
-   return count;
+   return result;
 }
 
 function parseFiltersXSPD()
@@ -960,20 +1093,21 @@ function parseFiltersXSPD()
 
    var totalCount = 0;
 
-   // Load standard library filters first
+   // The library file is the reference, as in SPCC: it always wins.
    console.writeln("Reading standard filter database: " + FILTERS_XSPD_PATH);
-   var count = parseXSPDIntoFilterDB(FILTERS_XSPD_PATH);
-   console.writeln("  Parsed " + count + " standard filter entries");
-   totalCount += count;
+   var r = parseXSPDIntoFilterDB(FILTERS_XSPD_PATH, false);
+   console.writeln("  Parsed " + r.parsed + " standard filter entries");
+   totalCount += r.added;
 
-   // Load custom filters second — duplicates overwrite standard entries
+   // The per-user file only adds filters the library does not have.
    if (FILTERS_CUSTOM_PATH !== null) {
-      console.writeln("Reading custom filter database: " + FILTERS_CUSTOM_PATH);
-      count = parseXSPDIntoFilterDB(FILTERS_CUSTOM_PATH);
-      console.writeln("  Parsed " + count + " custom filter entries (merged, duplicates overwritten)");
-      totalCount += count;
+      console.writeln("Reading user filter file: " + FILTERS_CUSTOM_PATH);
+      r = parseXSPDIntoFilterDB(FILTERS_CUSTOM_PATH, true);
+      console.writeln("  Parsed " + r.parsed + " entries, " + r.added +
+                      " extra filter(s) added (filters in both files use the library curve, as SPCC does)");
+      totalCount += r.added;
    } else {
-      console.writeln("  No custom filter database found — using standard library only.");
+      console.writeln("  No user filter file found — using standard library only.");
    }
 
    console.writeln("  Total unique filter entries in database: " + Object.keys(filterDB).length);
@@ -1132,6 +1266,19 @@ function buildDropdownLists()
          // Johnson edge case: "V" instead of "G"
          if (!gEntries[gName] && gEntries[rName.replace(/ R$/, " V")])
             gName = rName.replace(/ R$/, " V");
+      }
+      // Pattern 6: " Red" / " Green" / " Blue" (e.g. "OPTOLONG L-Pro Red")
+      else if (rName.match(/ Red$/)) {
+         gName = rName.replace(/ Red$/, " Green");
+         bName = rName.replace(/ Red$/, " Blue");
+         // Own label: "Optolong L-Pro R/G/B" (Pattern 5) is a different curve set
+         groupLabel = rName.replace(/ Red$/, " (Red/Green/Blue)");
+      }
+      // Pattern 7: "_R" suffix (e.g. "SvBony_DNB_R")
+      else if (rName.match(/_R$/)) {
+         gName = rName.replace(/_R$/, "_G");
+         bName = rName.replace(/_R$/, "_B");
+         groupLabel = rName.replace(/_R$/, "").replace(/_/g, " ");
       }
       else {
          console.writeln("  WARNING: Cannot group R entry: " + rName);
@@ -1853,7 +2000,7 @@ constructor()
               (new MessageBox( "<p>" + File.extractName( path ) + ".txt already exists.</p>" +
                                "<p>Replace it?</p>",
                                "Save separation profile", StdIcon.Warning,
-                               StdButton.Yes, StdButton.No )).execute() !== StdButton.Yes )
+                               StdButton.No, StdButton.Yes )).execute() !== StdButton.Yes )   // No first = default
             return;
       }
       try {
@@ -2627,6 +2774,22 @@ constructor()
    this.ok_Button.icon = this.scaledResource( ":/icons/ok.png" );
    this.ok_Button.onClick = function()
    {
+      var mismatch = shSpfcMgcMismatch();
+      if (mismatch.length > 0)
+      {
+         var msg = new MessageBox(
+            "<p><b>SPFC and MGC filters do not match.</b></p><p>" + mismatch + "</p>" +
+            "<p>MGC compares the calibrated image with MARS data of the filters it is given. " +
+            "If they do not match (narrowband vs. broadband), the automatic scale factors are " +
+            "far off and MGC may reject them. Check which side needs changing: SPFC " +
+            "\"Narrowband filters mode\" or MGC \"Filter selection\".</p>" +
+            "<p>Run anyway?</p>",
+            "Warning: SPFC / MGC filter mismatch",
+            StdIcon.Warning, StdButton.No, StdButton.Yes);   // No first = default
+         if (msg.execute() !== StdButton.Yes)
+            return;   // back to the dialog
+         console.warningln("⚠  Run despite filter mismatch: " + mismatch.replace(/<[^>]*>/g, ""));
+      }
       dlg.ok();
    };
 
@@ -2861,12 +3024,44 @@ function shHasSolution(view) {
 // counts while its step is still active. view.processing still lists undone
 // steps; a reopened file starts with an empty list (verified 2026-11-01),
 // and then the stored mark is the only evidence. Storable: saved with the file.
+// Since v2.7.17 a session twin (id + "Session", NOT Storable, so it is gone
+// in a reopened file) holds the process id of the marked step. With the twin
+// the mark counts only while that step is still active at its position; a
+// step undone and then replaced by other steps no longer passes.
 function shMarkDone(view, id) {
     try { view.setPropertyValue(id, view.historyIndex, PropertyType.Int32,
                                 PropertyAttribute.Storable | PropertyAttribute.Permanent); } catch (e) {}
+    try {
+        var n = view.historyIndex;
+        var pc = view.processing;
+        var stepId = (n > 0 && n <= pc.length) ? shProcId(pc[n - 1]) : "";
+        view.setPropertyValue(id + "Session", stepId, PropertyType.String,
+                              PropertyAttribute.Permanent);
+    } catch (e) {}
 }
 function shHasProperty(view, id) {
     try { return view.hasProperty(id); } catch (e) { return false; }
+}
+// Process id of a history item; a script step (e.g. ImageSolver run from this
+// script) is a Script object without processId().
+function shProcId(p) {
+    try { return p.processId(); } catch (e) {}
+    return "Script";
+}
+// true/false when the session twin decides; null = no twin.
+function shSessionMark(view, id, pos) {
+    if (!shHasProperty(view, id + "Session"))
+        return null;
+    try {
+        if (pos < 1 || pos > view.historyIndex)
+            return false;                   // its step was undone
+        var stepId = view.propertyValue(id + "Session");
+        var pc = view.processing;
+        if (stepId && pos <= pc.length && shProcId(pc[pos - 1]) != stepId)
+            return false;                   // its step was replaced
+        return true;
+    } catch (e) {}
+    return null;
 }
 function shHasMark(view, id) {
     if (!shHasProperty(view, id))
@@ -2875,6 +3070,9 @@ function shHasMark(view, id) {
         var pos = view.propertyValue(id);
         if (typeof pos != "number")
             return true;                    // boolean mark from v2.7.1 and older
+        var s = shSessionMark(view, id, pos);
+        if (s !== null)
+            return s;
         if (pos > view.processing.length)
             return true;                    // from an earlier session (reopened file)
         return pos <= view.historyIndex;    // false = its step was undone
@@ -2891,7 +3089,7 @@ function shStepState(view, processId) {
         var pc = view.processing;
         var active = view.historyIndex;
         for (var i = 0; i < pc.length; i++)
-            if (pc[i].processId() == processId) {
+            if (shProcId(pc[i]) == processId) {
                 if (i < active)
                     return "active";
                 state = "undone";
@@ -2907,7 +3105,39 @@ function shSpfcApplied(view) {
     var state = shStepState(view, "SpectrophotometricFluxCalibration");
     if (state != "none")
         return state == "active";
-    return shHasMark(view, "SpaceHunter:SPFCDone") || shHasProperty(view, "PCL:SPFC:Version");
+    // No SPFC step in this session's history. Our mark stores the history
+    // position after SPFC: a position within this session's history means
+    // SPFC ran in this session and its step is gone (undone, then replaced
+    // by a new step) - not applied, whatever the mark or SPFC's own
+    // properties say (properties don't follow History Explorer jumps).
+    // A position beyond it = earlier session (reopened file) = applied.
+    if (shHasProperty(view, "SpaceHunter:SPFCDone")) {
+        // Session twin present = SPFC ran in this session, and its step is
+        // not in the history any more.
+        if (shHasProperty(view, "SpaceHunter:SPFCDoneSession"))
+            return false;
+        try {
+            var pos = view.propertyValue("SpaceHunter:SPFCDone");
+            if (typeof pos == "number")
+                return pos > view.processing.length;
+        } catch (e) {}
+        return true;
+    }
+    // SPFC run outside this script: only its own properties tell.
+    return shHasProperty(view, "PCL:SPFC:Version");
+}
+
+// SPFC's filter mode, read by Part 2 to warn when SPCC uses the other mode.
+// "narrowband", "precombined: <set>" or "broadband: <set>". Storable: saved
+// with the file (documented with the other SpaceHunter:* properties).
+function shSetSpfcMode(view) {
+    var W = WorkflowParameters;
+    var set = filterList[W.selectedFilterIdx];
+    var mode = W.enableNarrowband ? "narrowband"
+             : ((set && set.type == "precombined") ? "precombined: " : "broadband: ") +
+               (set ? set.label : "?");
+    try { view.setPropertyValue("SpaceHunter:SPFCMode", mode, PropertyType.String,
+                                PropertyAttribute.Storable | PropertyAttribute.Permanent); } catch (e) {}
 }
 
 // Pin a known-good ImageSolver configuration for headless auto-solve, so the
@@ -3281,9 +3511,14 @@ function runSeparation()
    console.writeln("Median G: " + g0.toExponential(4) + " -> " + channelMedian(img, 1).toExponential(4));
    console.writeln("Median B: " + b0.toExponential(4) + " -> " + channelMedian(img, 2).toExponential(4));
    console.writeln("✔ Separation applied.\n");
+   return true;
 }
 
-function runSPFC()
+// afterSeparation: separation ran in this run, so SPFC cannot be applied yet
+// (separation refuses an image with SPFC). The history check would be wrong
+// then: after undoing SPFC in History Explorer, the separation step replaces
+// the undone SPFC step, and SPFC's old mark/properties look current again.
+function runSPFC(afterSeparation)
 {
    console.writeln("\n" + "=".repeat(80));
    console.writeln("STEP 2b: Running SPFC (Dynamic XSPD Version)");
@@ -3306,7 +3541,7 @@ function runSPFC()
    // Check if SPFC was already applied
    console.writeln("Checking processing history for SPFC...");
 
-   var spfcAlreadyApplied = shSpfcApplied(view);
+   var spfcAlreadyApplied = afterSeparation ? false : shSpfcApplied(view);
 
    if (spfcAlreadyApplied) {
       console.writeln("\u2714 SPFC already applied to this image");
@@ -3428,6 +3663,7 @@ function runSPFC()
    if (!P.executeOn(view))
       throw new Error("SPFC execution failed.");
    shMarkDone(view, "SpaceHunter:SPFCDone");
+   shSetSpfcMode(view);
 
    // The graph window can't be minimized from a script; put the image back in
    // front of it instead so it is out of the way but still available.
@@ -3706,6 +3942,39 @@ function mgcLogFactors(f)
          low.join("/") + ": the automatic factor there is uncertain - compare with the 1.0 model.");
 }
 
+// "" when SPFC and MGC use the same kind of filters, else a short (HTML)
+// description of the mismatch. Line light on the SPFC side = narrowband mode
+// OR a pre-combined RGB set (sensor x dual/multi-band nebula filter, e.g.
+// "Sony CMOS / Antlia-ALP-T": all pre-combined sets in PI's database are
+// such filters). It goes with MGC filter selection holding Ha/OIII/SII on
+// R/G/B; broadband RGB sets go with L/R/G/B. Test 2026-11-05: ALP-T
+// pre-combined + MGC Ha/OIII/OIII gave auto SF 1.04/1.67/1.48 (accepted).
+function shSpfcMgcMismatch()
+{
+   var W = WorkflowParameters;
+   if (!W.enableSPFC || !W.enableMGC)
+      return "";
+   var nb = { "Ha": true, "OIII": true, "SII": true };
+   var mgcNarrow = W.enableMGCFilters &&
+      (nb[W.mgcRedFilter] || nb[W.mgcGreenFilter] || nb[W.mgcBlueFilter]) ? true : false;
+   var mgcText = W.enableMGCFilters
+      ? (W.mgcRedFilter + "/" + W.mgcGreenFilter + "/" + W.mgcBlueFilter)
+      : "R/G/B (Filter selection unchecked)";
+   var set = filterList[W.selectedFilterIdx];
+   var precombined = set && set.type == "precombined";
+   var spfcLine = W.enableNarrowband || precombined;
+   var spfcText = W.enableNarrowband
+      ? "SPFC is in <b>narrowband</b> mode"
+      : (precombined
+         ? "SPFC uses the <b>dual/multi-band</b> filter set \"" + set.label + "\""
+         : "SPFC uses the <b>broadband</b> filter set \"" + (set ? set.label : "?") + "\"");
+   if (spfcLine && !mgcNarrow)
+      return spfcText + ", but MGC uses broadband MARS filters " + mgcText + ".";
+   if (!spfcLine && mgcNarrow)
+      return spfcText + ", but MGC uses narrowband MARS filters " + mgcText + ".";
+   return "";
+}
+
 function runMGC(view, gradientScale, previewName, autoScale)
 {
    console.writeln("\n" + "-".repeat(80));
@@ -3792,6 +4061,25 @@ function runMGCOnPreviews()
    if (runs.length == 0)
       throw new Error("This script requires " + numPreviews + " previews. Found only " + previews.length);
 
+   // ids kept apart: a skipped preview is deleted, its View must not be used after.
+   for (var i = 0; i < runs.length; i++)
+      runs[i].id = runs[i].preview.id;
+   var mgcSkipped = [];
+   var mgcDone = 0;
+   var lastDone = null;
+   var autoRejected = false;
+   // Both mode = automatic and 1.0 runs side by side. Fixed here: runs[i].auto
+   // is switched to false below, which must not turn Auto into Both.
+   var bothMode = runs.some(function(r) { return r.auto; }) &&
+                  runs.some(function(r) { return !r.auto; });
+   // The user confirmed a filter mismatch (OK -> Yes): automatic factors
+   // compare different bands and are rejected or meaningless - not tried.
+   var autoReason = "automatic factors already rejected";
+   if (shSpfcMgcMismatch().length > 0 && runs.some(function(r) { return r.auto; })) {
+      autoRejected = true;
+      autoReason = "filter mismatch, automatic factors not tried";
+      console.warningln("⚠  SPFC / MGC filter mismatch: automatic scale factors are not tried.\n");
+   }
    for (var i = 0; i < runs.length; i++)
    {
       var preview = runs[i].preview;
@@ -3801,7 +4089,49 @@ function runMGCOnPreviews()
       // Make the preview being processed the active tab, so the user follows along.
       showPreview(win, preview);
 
-      runMGC(preview, runs[i].scale, preview.id, runs[i].auto);
+      // MGC rejects automatic factors outside [0.1, 10] (e.g. narrowband
+      // SPFC against broadband MARS filters). Then: in Both mode skip only
+      // this _autoSF preview (its 1.0 partner still runs); in Auto mode
+      // retry this preview with 1.0. Any other failure stops MGC as before
+      // (GC fallback). The factors don't depend on the gradient scale, so
+      // after one rejection the other automatic runs are not tried again
+      // (each try costs the full MARS work, ~3 min on large images).
+      if (runs[i].auto && autoRejected) {
+         if (bothMode) {
+            console.warningln("   " + preview.id + " skipped and removed (" + autoReason + ").\n");
+            win.currentView = win.mainView;
+            win.deletePreview(preview);
+            mgcSkipped.push(runs[i].id);
+            continue;
+         }
+         console.warningln("   " + preview.id + ": scale factors 1.0 (" + autoReason + ").\n");
+         runs[i].auto = false;
+         runs[i].id = shDropAutoSuffix(win, preview);
+      }
+      try {
+         runMGC(preview, runs[i].scale, preview.id, runs[i].auto);
+      } catch (e) {
+         if (!shIsCancel(e) && runs[i].auto)
+            autoRejected = true;
+         if (shIsCancel(e) || !runs[i].auto)
+            throw e;
+         console.warningln("⚠  Automatic scale factors failed on " + preview.id +
+            " (see the MGC error above; MGC accepts factors from 0.1 to 10).");
+         console.warningln("   Check that SPFC mode and MGC filter selection match " +
+            "(narrowband vs. broadband).");
+         if (bothMode) {
+            console.warningln("   " + preview.id + " skipped and removed; its 1.0 preview still runs.\n");
+            win.currentView = win.mainView;
+            win.deletePreview(preview);
+            mgcSkipped.push(preview.id);
+            continue;
+         }
+         runs[i].id = shDropAutoSuffix(win, preview);
+         console.warningln("   Retrying " + preview.id + " with scale factors 1.0.\n");
+         runMGC(preview, runs[i].scale, preview.id, false);
+      }
+      mgcDone++;
+      lastDone = preview;
 
       // The preview now holds this scale's gradient model (showGradientModel);
       // bring it back to the front and hold it before moving on to the next scale.
@@ -3809,8 +4139,17 @@ function runMGCOnPreviews()
       pauseWithEvents(MGC_PREVIEW_PAUSE_MS);
    }
 
+   if (mgcDone == 0)
+      throw new Error("MultiscaleGradientCorrection failed on every preview");
+   // A removed preview leaves the image itself in front: show a model again.
+   if (mgcSkipped.length > 0 && lastDone != null)
+      showPreview(win, lastDone);
+
    console.writeln("\n" + "=".repeat(80));
-   console.writeln("ALL PREVIEWS PROCESSED SUCCESSFULLY");
+   if (mgcSkipped.length > 0)
+      console.warningln("PREVIEWS PROCESSED - skipped (" + autoReason + "): " + mgcSkipped.join(", "));
+   else
+      console.writeln("ALL PREVIEWS PROCESSED SUCCESSFULLY");
    console.writeln("=".repeat(80));
    var mgcElapsed = (Date.now() - mgcStartTime) / 1000;
    var mgcMin = Math.floor(mgcElapsed / 60);
@@ -3818,9 +4157,29 @@ function runMGCOnPreviews()
    console.writeln(mgcMin > 0 ? (mgcMin + "m " + mgcSec + "s") : (mgcSec + "s"));
    console.writeln("\nGradient scales applied:");
    for (var i = 0; i < runs.length; i++)
-      console.writeln("  " + runs[i].preview.id + ": " + runs[i].scale + ", " +
-         mgcFactorsText(shMgcFactors[runs[i].preview.id]));
+      if (mgcSkipped.indexOf(runs[i].id) < 0)
+         console.writeln("  " + runs[i].id + ": " + runs[i].scale + ", " +
+            mgcFactorsText(shMgcFactors[runs[i].id]));
    console.writeln("\n");
+}
+
+// Rename BM_<scale>_autoSF to BM_<scale> when it runs with 1.0 instead. Kept
+// as is when that name is taken. Returns the preview's id.
+function shDropAutoSuffix(win, preview)
+{
+   var id = preview.id;
+   var k = id.indexOf(MGC_AUTO_SUFFIX);
+   if (k < 0)
+      return id;
+   var newId = id.substring(0, k) + id.substring(k + MGC_AUTO_SUFFIX.length);
+   try {
+      var taken = win.previewById(newId);      // View, or null when free
+      if (taken == null || taken.isNull)
+         win.modifyPreview(preview, win.previewRect(preview), newId);
+   } catch (e) {
+      console.warningln("   (" + id + " could not be renamed to " + newId + ": " + e.message + ")");
+   }
+   return preview.id;
 }
 
 // MGC runs as [{preview, scale, auto}]. From createPreviews' plan when it
@@ -4266,7 +4625,7 @@ function bgmMgcInstanceOf(preview)
 {
    var pc = preview.processing;
    for (var i = pc.length - 1; i >= 0; --i)
-      if (pc[i].processId() == "MultiscaleGradientCorrection")
+      if (shProcId(pc[i]) == "MultiscaleGradientCorrection")
          return pc[i];
    return null;
 }
@@ -4854,7 +5213,7 @@ function gcInstanceOf(preview)
 {
    var pc = preview.processing;
    for (var i = pc.length - 1; i >= 0; --i)
-      if (pc[i].processId() == "GradientCorrection")
+      if (shProcId(pc[i]) == "GradientCorrection")
          return pc[i];
    return null;
 }
@@ -5278,8 +5637,8 @@ function main()
                "<p>To try another model, go back one step in History Explorer first.</p>" +
                "<p>Continue anyway?</p>",
                "Warning: Gradient Correction Already Applied",
-               StdIcon.Warning, StdButton.Yes, StdButton.No);
-            if (msg.execute() === StdButton.No)
+               StdIcon.Warning, StdButton.No, StdButton.Yes);   // No first = default
+            if (msg.execute() !== StdButton.Yes)
                throw new Error("Script cancelled by user.");
          }
       }
@@ -5315,10 +5674,11 @@ function main()
       if (WorkflowParameters.enableSPFC) {
       // Outside the SPFC try: a failed separation stops the script instead
       // of falling back to GC on a half-processed image.
+      var sepRan = false;
       if (WorkflowParameters.enableNarrowband && WorkflowParameters.enableSeparation)
-         runSeparation();
+         sepRan = runSeparation();
       try {
-      runSPFC();
+      runSPFC(sepRan);
 	} catch (spfcError) {
       if (shIsCancel(spfcError)) throw spfcError;
       console.warningln("\n\u26A0  SPFC failed: " + shErrorText(spfcError));
