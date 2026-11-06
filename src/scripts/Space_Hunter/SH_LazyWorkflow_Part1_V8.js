@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.21<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.22<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.21
+// Space Hunter Lazy Workflow Part 1 v2.7.22
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -180,6 +180,12 @@
 // v2.7.21: Risky questions default to No (the safe answer): "gradient
 //       correction already applied" and "profile already exists - replace?".
 //       Closing the box with X now counts as No (it continued before).
+// v2.7.22: Model panel: "Show corrected image (same stretch for all
+//       models)" - one reusable window SH_corrected_preview shows the image
+//       corrected with the selected model (original - model + median(model),
+//       the same math as Apply), recomputed when another model is picked;
+//       one stretch, computed once, for every model. Closed with the panel.
+//       Console: a renamed preview is shown as "BM_2048_autoSF -> BM_2048".
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -436,7 +442,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.21"
+#define SCRIPT_VERSION "v2.7.22"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -4104,9 +4110,10 @@ function runMGCOnPreviews()
             mgcSkipped.push(runs[i].id);
             continue;
          }
-         console.warningln("   " + preview.id + ": scale factors 1.0 (" + autoReason + ").\n");
+         var oldId = preview.id;
          runs[i].auto = false;
          runs[i].id = shDropAutoSuffix(win, preview);
+         console.warningln("   " + shRenameText(oldId, preview.id) + ": scale factors 1.0 (" + autoReason + ").\n");
       }
       try {
          runMGC(preview, runs[i].scale, preview.id, runs[i].auto);
@@ -4126,8 +4133,9 @@ function runMGCOnPreviews()
             mgcSkipped.push(preview.id);
             continue;
          }
+         var oldId = preview.id;
          runs[i].id = shDropAutoSuffix(win, preview);
-         console.warningln("   Retrying " + preview.id + " with scale factors 1.0.\n");
+         console.warningln("   Retrying " + shRenameText(oldId, preview.id) + " with scale factors 1.0.\n");
          runMGC(preview, runs[i].scale, preview.id, false);
       }
       mgcDone++;
@@ -4161,6 +4169,12 @@ function runMGCOnPreviews()
          console.writeln("  " + runs[i].id + ": " + runs[i].scale + ", " +
             mgcFactorsText(shMgcFactors[runs[i].id]));
    console.writeln("\n");
+}
+
+// "old -> new" when a preview was renamed, else just its name.
+function shRenameText(oldId, newId)
+{
+   return (oldId == newId) ? newId : oldId + " \u2192 " + newId;
 }
 
 // Rename BM_<scale>_autoSF to BM_<scale> when it runs with 1.0 instead. Kept
@@ -4766,6 +4780,10 @@ constructor(win, previews)
    this.selected = 0;
    this.lastSeenViewId = "";
    this.pendingScale = 0;       // set by "Run MGC", handled by the wait loop
+   this.pendingCorrected = false; // corrected view to (re)compute, handled by the wait loop
+   this.corrWin = null;         // the one SH_corrected_preview window
+   this.corrStf = null;         // its stretch, computed once, kept for every model
+   this.corrShownId = "";       // model shown in it
 
    this.windowTitle = "SH Lazy Workflow Part 1 - Choose background model";
 
@@ -4841,6 +4859,29 @@ constructor(win, previews)
       dlg.setModelStretch(checked);
    };
 
+   // Display only: the image corrected with the selected model, in one
+   // reusable window (GC shows its corrected images the same way).
+   this.corrected_CheckBox = new CheckBox(this);
+   this.corrected_CheckBox.text = "Show corrected image (same stretch for all models)";
+   this.corrected_CheckBox.checked = false;
+   this.corrected_CheckBox.toolTip = "<p>Display only - nothing is applied.</p>" +
+      "<p>Shows the image corrected with the selected model in a separate window " +
+      "(SH_corrected_preview): original - model + median(model), the same calculation " +
+      "Apply uses. Picking another model recomputes it (a few seconds on large images). " +
+      "One stretch is computed for the first model shown and kept for all others, so " +
+      "switching models compares like with like.</p>" +
+      "<p>The window is closed when the panel closes. It needs as much memory as the image.</p>";
+   this.corrected_CheckBox.onCheck = function(checked)
+   {
+      if (checked)
+         dlg.pendingCorrected = true;
+      else
+      {
+         dlg.closeCorrected();
+         dlg.win.bringToFront();
+      }
+   };
+
    this.cleanUp_CheckBox = new CheckBox(this);
    this.cleanUp_CheckBox.text = "Remove background model previews after applying";
    this.cleanUp_CheckBox.checked = true;
@@ -4873,6 +4914,7 @@ constructor(win, previews)
    this.sizer.add(this.info_Label);
    this.sizer.add(this.scale_GroupBox);
    this.sizer.add(this.modelStretch_CheckBox);
+   this.sizer.add(this.corrected_CheckBox);
    this.sizer.add(addScaleSizer);
    this.sizer.add(this.cleanUp_CheckBox);
    this.sizer.add(buttons);
@@ -5000,6 +5042,7 @@ BackgroundModelDialog.prototype.setBusy = function(busy)
    this.addScale_Button.enabled = !busy && this.addScaleValues.length > 0;
    this.cleanUp_CheckBox.enabled = !busy;
    this.modelStretch_CheckBox.enabled = !busy;
+   this.corrected_CheckBox.enabled = !busy;
    this.apply_Button.enabled = !busy;
    this.tool_Button.enabled = !busy;
    this.close_Button.enabled = !busy;
@@ -5113,6 +5156,9 @@ BackgroundModelDialog.prototype.select = function(idx, fromRadio)
    if (fromRadio && this.win.currentView.id != this.previews[idx].id)
       this.win.currentView = this.previews[idx];
    this.lastSeenViewId = this.win.currentView.id;
+   if (this.corrected_CheckBox && this.corrected_CheckBox.checked &&
+       this.corrShownId != this.previews[idx].id)
+      this.pendingCorrected = true;
 };
 
 // Called from the wait loop: follow the preview tab the user switches to.
@@ -5129,7 +5175,88 @@ BackgroundModelDialog.prototype.syncWithWindow = function()
       {
          this.selected = i;
          this.radios[i].checked = true;
+         if (this.corrected_CheckBox.checked && this.corrShownId != id)
+            this.pendingCorrected = true;
       }
+};
+
+// One AutoSTF-style stretch per channel (median - 2.8 * MADN, midtones to
+// 0.25), computed from one corrected image and then kept for all models.
+function bgmCorrectedStf(img)
+{
+   var stf = [];
+   for (var c = 0; c < 3; ++c)
+   {
+      img.selectedChannel = Math.min(c, img.numberOfChannels - 1);
+      var med = img.median();
+      var madn = 1.4826 * img.MAD(med);
+      var c0 = Math.max(0, med - 2.8 * madn);
+      stf.push([Math.mtf(0.25, med - c0), c0, 1, 0, 1]);
+   }
+   img.resetSelections();
+   stf.push([0.5, 0, 1, 0, 1]);
+   return stf;
+}
+
+// Image corrected with the selected model -> SH_corrected_preview. Same
+// result as bgmApply: original - model + median(model), truncated to [0,1].
+BackgroundModelDialog.prototype.showCorrected = function()
+{
+   var win = this.win;
+   var pv = this.previews[this.selected];
+   if (win.isNull || pv == null || pv.isNull)
+      return;
+   var t0 = Date.now();
+   var main = win.mainView.image;
+   var first = (this.corrWin == null || this.corrWin.isNull);
+   if (first)
+      this.corrWin = new ImageWindow(main.width, main.height, main.numberOfChannels,
+                                     32, true, main.isColor, "SH_corrected_preview");
+   var v = this.corrWin.mainView;
+   var mgc = bgmMgcInstanceOf(pv);
+   // 0xFFFFFFFF = UndoFlag_NoSwapFile: display only, no undo data needed.
+   v.beginProcess(0xFFFFFFFF);
+   var img = v.image;
+   if (mgc.showGradientModel)
+   {
+      var med = bgmChannelMedians(pv.image);
+      img.assign(main);
+      img.apply(pv.image, ImageOp.Sub);
+      for (var c = 0; c < img.numberOfChannels; ++c)
+      {
+         img.selectedChannel = c;
+         img.apply(med[c % med.length], ImageOp.Add);
+      }
+      img.resetSelections();
+      img.truncate(0, 1);
+   }
+   else
+      img.assign(pv.image);          // preview already holds the corrected image
+   v.endProcess();
+
+   if (this.corrStf == null)
+      this.corrStf = bgmCorrectedStf(img);
+   v.stf = this.corrStf;
+   this.corrShownId = pv.id;
+   if (first)
+   {
+      this.corrWin.show();
+      this.corrWin.zoomToOptimalFit();
+   }
+   this.corrWin.bringToFront();
+   this.bringToFront();
+   console.writeln("Corrected image with " + pv.id + " shown in " + v.id +
+      " (" + ((Date.now() - t0) / 1000).toFixed(1) + " s, display only).");
+   CoreApplication.processEvents();
+};
+
+BackgroundModelDialog.prototype.closeCorrected = function()
+{
+   if (this.corrWin != null && !this.corrWin.isNull)
+      this.corrWin.forceClose();
+   this.corrWin = null;
+   this.corrShownId = "";
+   this.pendingCorrected = false;
 };
 
 // Final MGC step: panel to pick and apply a background model. The script
@@ -5160,6 +5287,7 @@ function chooseBackgroundModel(win)
       if (console.abortRequested)
       {
          dlg.hide();
+         dlg.closeCorrected();
          if (dlg.modelStretch_CheckBox.checked)
             dlg.setModelStretch(false);
          console.writeln("Background model selection cancelled - image left unchanged.\n");
@@ -5172,10 +5300,22 @@ function chooseBackgroundModel(win)
          dlg.runAddedScale(s);
          continue;
       }
+      if (dlg.pendingCorrected)
+      {
+         dlg.pendingCorrected = false;
+         dlg.setBusy(true);
+         try { dlg.showCorrected(); }
+         catch (e) { console.warningln("\u26a0  Corrected view failed: " + shErrorText(e)); }
+         dlg.setBusy(false);
+         continue;
+      }
       dlg.syncWithWindow();
       CoreApplication.processEvents();
       System.msleep(50);
    }
+
+   // The corrected view is display only: closed before anything is applied.
+   dlg.closeCorrected();
 
    // Previews that stay (Close, or Apply without clean-up) get their normal
    // stretch back.
