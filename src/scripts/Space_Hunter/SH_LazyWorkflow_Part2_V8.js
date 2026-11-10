@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.19<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.24<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.19
+// Space Hunter Lazy Workflow Part 2 v2.4.24
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -177,13 +177,29 @@
 //       distribution in CPD-signed packages on 2026-11-05. Comment only.
 // v2.4.19: "All selected steps are already applied" defaults to No (the
 //       safe answer); closing the box with X now counts as No.
+// v2.4.20: Filter and white reference files: fixed Windows fallback paths
+//       removed. If a file is not in PixInsight's library folder, the user
+//       is asked once for it; the file is remembered (shared with Part 1).
+// v2.4.21: SPFC / SPCC warning tells narrowband mode and pre-combined sets
+//       apart (they gave different results, Georg 2026-11-09: SPFC in
+//       narrowband, SPCC with 'Sony CMOS / Antlia-ALP-T' gave no warning).
+//       Three modes now; pre-combined sets must also have the same name.
+// v2.4.22: Dual/multi-band sets also found by their curve (red passband 15 nm
+//       or less, same test as Part 1 v2.7.27): SvBony DNB and Vaonis
+//       VESPERA Dual Band no longer count as broadband.
+// v2.4.23: Only the red curve decides (same as Part 1 v2.7.28): tri-/quad-
+//       band and UHC-S sets count as broadband. Messages say 'dual-band'.
+// v2.4.24: Narrowband SPFC vs narrowband SPCC: wavelengths and bandwidths
+//       are compared (0.1 nm) when Part 1 v2.7.29+ stored them; e.g. Ha/OIII
+//       in Part 1 but SII/OIII left in Part 2 now warns. Older images (plain
+//       'narrowband') are compared by mode only, as before.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
-// - Windows (file paths are found through PixInsight's API since
-//   Part 1 v2.7.12 / Part 2 v2.4.15; macOS/Linux not tested)
+// - Windows, macOS or Linux (file paths come from PixInsight's API, no
+//   fixed folders since Part 1 v2.7.24 / Part 2 v2.4.20; tested on Windows)
 // - PixInsight 1.9.6 or later (the package needs it; MAS preview too)
 // - OSC Camera Image
 // - Image pre-cropped, solved and background extraction applied
@@ -200,7 +216,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.19"
+#define SCRIPT_VERSION "v2.4.24"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -216,7 +232,8 @@ var SETTINGS_KEY_USERPREFS = "SpaceHunter2/UserPrefs";
 //   <PixInsight>/library   = the folder next to CoreApplication.srcDirPath
 //   per-user settings      = CoreApplication.configDirPath
 //                            (Windows: %APPDATA%/Pleiades)
-// The old fixed Windows paths are kept only as a last fallback.
+// If a library file is not there, the user is asked once for it
+// (shLocateXSPD); the picked file is remembered for both scripts.
 function shParentDir(path)
 {
    var p = path;
@@ -234,21 +251,48 @@ function shFirstExisting(paths)
    return null;
 }
 
+var SETTINGS_KEY_FILTERS_XSPD  = "SpaceHunter/FiltersXSPDPath";   // shared by Part 1 and Part 2
+var SETTINGS_KEY_WHITEREF_XSPD = "SpaceHunter/WhiteRefXSPDPath";
+
+// Library file not found next to PixInsight's src folder: use the file the
+// user picked on an earlier run, else ask for it. Returns null on Cancel.
+function shLocateXSPD(found, settingsKey, fileName)
+{
+   if (found !== null)
+      return found;
+   try {
+      var saved = Settings.read(settingsKey, DataType.String);
+      if (Settings.lastReadOK && saved && File.exists(saved))
+         return saved;
+   } catch (e) {}
+   console.warningln(fileName + " not found in " + PI_LIBRARY_DIR + ". Asking user...");
+   var d = new OpenFileDialog;
+   d.caption = "Locate " + fileName + " (PixInsight library folder)";
+   d.filters = [ [ "Spectrum database (*.xspd)", "*.xspd" ], [ "All files", "*" ] ];
+   if (File.directoryExists(PI_LIBRARY_DIR))
+      d.initialPath = PI_LIBRARY_DIR;
+   if (!d.execute())
+      return null;
+   return d.filePath;
+}
+
+// Remember a picked file only after it was read successfully.
+function shRememberXSPD(settingsKey, path)
+{
+   if (path.indexOf(PI_LIBRARY_DIR + "/") === 0)
+      return;
+   try { Settings.write(settingsKey, DataType.String, path); } catch (e) {}
+}
+
 var PI_LIBRARY_DIR = shParentDir(CoreApplication.srcDirPath) + "/library";
 var PI_CONFIG_DIR  = CoreApplication.configDirPath;
 
 var libraryPaths = [
-   PI_LIBRARY_DIR + "/filters.xspd",
-   "C:/Program Files/PixInsight/library/filters.xspd",
-   "C:/Program Files (x86)/PixInsight/library/filters.xspd",
-   "D:/Program Files/PixInsight/library/filters.xspd"
+   PI_LIBRARY_DIR + "/filters.xspd"
 ];
 
 var whiteRefPaths = [
-   PI_LIBRARY_DIR + "/white-references.xspd",
-   "C:/Program Files/PixInsight/library/white-references.xspd",
-   "C:/Program Files (x86)/PixInsight/library/white-references.xspd",
-   "D:/Program Files/PixInsight/library/white-references.xspd"
+   PI_LIBRARY_DIR + "/white-references.xspd"
 ];
 
 // Per-user filter file (filters-NNN-pxi.xspd, NNN = PixInsight instance).
@@ -256,8 +300,7 @@ var whiteRefPaths = [
 // filters the library does not have (see parseFiltersXSPD).
 var customFilterPaths = [
    PI_CONFIG_DIR + "/filters-" + format("%03i", CoreApplication.instance) + "-pxi.xspd",
-   PI_CONFIG_DIR + "/filters-001-pxi.xspd",
-   File.homeDirectory + "/AppData/Roaming/Pleiades/filters-001-pxi.xspd"
+   PI_CONFIG_DIR + "/filters-001-pxi.xspd"
 ];
 
 var FILTERS_XSPD_PATH   = shFirstExisting(libraryPaths);
@@ -787,6 +830,31 @@ var WP_DEFAULTS = (function()
 // XSPD PARSERS (identical to Part 1)
 // ============================================================
 
+// true when a filter curve ("wavelength,value,..." pairs) passes 15 nm or less
+// at half its maximum: a dual-band line filter. Same test as Part 1 v2.7.27
+// (measured 2026-11-09: dual-band red curves 2-12 nm, narrowest broadband
+// 21 nm; tri-/quad-band and UHC-S sets, 26-40 nm, count as broadband).
+function shNarrowCurve(data)
+{
+   if (!data)
+      return false;
+   var v = String(data).split(/[\s,]+/);
+   var wl = [], tr = [], mx = 0;
+   for (var i = 0; i + 1 < v.length; i += 2) {
+      var w = parseFloat(v[i]), t = parseFloat(v[i + 1]);
+      if (isNaN(w) || isNaN(t)) continue;
+      wl.push(w); tr.push(t);
+      if (t > mx) mx = t;
+   }
+   if (wl.length < 2 || mx <= 0)
+      return false;
+   var width = 0;
+   for (var j = 0; j + 1 < wl.length; j++)
+      if (tr[j] >= 0.5 * mx && tr[j + 1] >= 0.5 * mx)
+         width += wl[j + 1] - wl[j];
+   return width <= 15;
+}
+
 function parseXSPDIntoFilterDB(filePath, extrasOnly)
 {
    var xml = File.readTextFile(filePath);
@@ -820,9 +888,9 @@ function parseXSPDIntoFilterDB(filePath, extrasOnly)
 
 function parseFiltersXSPD()
 {
-   if (FILTERS_XSPD_PATH === null) {
-      throw new Error("No filter database found! Checked all library locations.");
-   }
+   FILTERS_XSPD_PATH = shLocateXSPD(FILTERS_XSPD_PATH, SETTINGS_KEY_FILTERS_XSPD, "filters.xspd");
+   if (FILTERS_XSPD_PATH === null)
+      throw new Error("No filter database (filters.xspd) found in " + PI_LIBRARY_DIR + ".");
 
    var totalCount = 0;
 
@@ -847,14 +915,15 @@ function parseFiltersXSPD()
 
    if (totalCount === 0)
       throw new Error("No filter entries found in any XSPD file.");
+   shRememberXSPD(SETTINGS_KEY_FILTERS_XSPD, FILTERS_XSPD_PATH);
 }
 
 function parseWhiteRefXSPD()
 {
+   WHITEREF_XSPD_PATH = shLocateXSPD(WHITEREF_XSPD_PATH, SETTINGS_KEY_WHITEREF_XSPD, "white-references.xspd");
+   if (WHITEREF_XSPD_PATH === null)
+      throw new Error("White reference database (white-references.xspd) not found in " + PI_LIBRARY_DIR + ".");
    console.writeln("Reading white reference database: " + WHITEREF_XSPD_PATH);
-
-   if (!File.exists(WHITEREF_XSPD_PATH))
-      throw new Error("White reference database not found: " + WHITEREF_XSPD_PATH);
 
    var xml = File.readTextFile(WHITEREF_XSPD_PATH);
    console.writeln("  File size: " + xml.length + " bytes");
@@ -881,6 +950,7 @@ function parseWhiteRefXSPD()
 
    if (count === 0)
       throw new Error("No white reference entries found.");
+   shRememberXSPD(SETTINGS_KEY_WHITEREF_XSPD, WHITEREF_XSPD_PATH);
 
    if (defaultIdx >= 0) {
       WorkflowParameters.selectedWhiteRefIdx = defaultIdx;
@@ -1016,7 +1086,9 @@ function buildDropdownLists()
          continue;
       }
 
-      var type = (rName.indexOf(" / ") >= 0) ? "precombined" : "broadband";
+      // "precombined" = dual-band set, found by its red curve (v2.4.23, same
+      // as Part 1 v2.7.28). Tri-/quad-band and UHC-S sets count as broadband.
+      var type = shNarrowCurve(filterDB[rName + "|R"]) ? "precombined" : "broadband";
 
       filterList.push({
          label: groupLabel,
@@ -2347,7 +2419,7 @@ var SpaceHunterDialog2 = class extends Dialog
       if (mismatch.length > 0)
       {
          var msg = new MessageBox(
-            "<p><b>SPCC and Part 1's SPFC do not use the same filter mode.</b></p><p>" + mismatch + "</p>" +
+            "<p><b>SPCC and Part 1's SPFC do not use the same filters.</b></p><p>" + mismatch + "</p>" +
             "<p>SPCC's color calibration should use the filters the image was taken with. " +
             "Check which side is wrong: SPCC here, or SPFC in Part 1.</p>" +
             "<p>Run anyway?</p>",
@@ -2592,8 +2664,13 @@ function shHasMark(view, id)
 }
 
 // SPCC's filter mode against the mode Part 1's SPFC stored on the active
-// image (SpaceHunter:SPFCMode, Part 1 v2.7.18+). Narrowband and pre-combined
-// dual/multi-band sets both count as line light. "" = no mismatch / no data.
+// image (SpaceHunter:SPFCMode, Part 1 v2.7.18+). Since v2.4.21 three modes:
+// narrowband, pre-combined set, broadband set (v2.4.17-v2.4.20 counted
+// narrowband and pre-combined as the same; Georg 2026-11-09: SPFC/MGC/SPCC
+// results differ between the two). Pre-combined sets must also have the same
+// name (their labels are built alike in both scripts); broadband names are
+// not compared (Part 1 lists "X (Red/Green/Blue)", Part 2 "X" or only the
+// "X R/G/B" set). "" = no mismatch / no data.
 function shSpfcSpccMismatch()
 {
    var W = WorkflowParameters;
@@ -2609,19 +2686,50 @@ function shSpfcSpccMismatch()
       return "";                         // SPCC is skipped anyway
    var p1 = "";
    try { p1 = String(view.propertyValue("SpaceHunter:SPFCMode")); } catch(e) { return ""; }
-   var p1Line = p1.indexOf("broadband") != 0;
+   var p1Mode = (p1.indexOf("narrowband") == 0) ? "narrowband"
+              : (p1.indexOf("precombined: ") == 0 ? "precombined" : "broadband");
+   var p1Set = p1.replace(/^(precombined|broadband|narrowband): ?/, "");
    var flt = filterList[W.selectedFilterIdx];
-   var pre = flt && flt.type == "precombined";
-   var p2Line = W.enableNarrowband || pre;
-   if (p1Line == p2Line)
+   var p2Mode = W.enableNarrowband ? "narrowband"
+              : ((flt && flt.type == "precombined") ? "precombined" : "broadband");
+   var p2Set = flt ? flt.label : "?";
+
+   // Narrowband (v2.4.24): Part 1 v2.7.29+ stores R, G, B as wavelength/
+   // bandwidth in nm; compared within 0.1 nm. Plain "narrowband" (older
+   // images) has no values: the mode alone decides.
+   function nbText(v) {
+      return "R " + v[0] + "/" + v[1] + ", G " + v[2] + "/" + v[3] +
+             ", B " + v[4] + "/" + v[5] + " nm";
+   }
+   var p1Nb = null, p2Nb = null, nbDiffers = false;
+   if (p1Mode == "narrowband" && p2Mode == "narrowband") {
+      var nums = p1Set.match(/[0-9]+(\.[0-9]+)?/g);
+      if (nums && nums.length == 6) {
+         p1Nb = nums.map(function(x) { return parseFloat(x); });
+         p2Nb = [ W.nbRedWavelength, W.nbRedBandwidth, W.nbGreenWavelength,
+                  W.nbGreenBandwidth, W.nbBlueWavelength, W.nbBlueBandwidth ]
+                .map(function(x) { return Number(x); });
+         for (var i = 0; i < 6; i++)
+            if (Math.abs(p1Nb[i] - p2Nb[i]) > 0.1)
+               nbDiffers = true;
+      }
+   }
+   if (p1Mode == p2Mode && !nbDiffers && (p1Mode != "precombined" || p1Set == p2Set))
       return "";
-   var p1Text = (p1 == "narrowband") ? "<b>narrowband</b> mode"
-              : (p1Line ? "the <b>dual/multi-band</b> filter set \"" + p1.replace(/^precombined: /, "") + "\""
-                        : "the <b>broadband</b> filter set \"" + p1.replace(/^broadband: /, "") + "\"");
-   var p2Text = W.enableNarrowband ? "<b>narrowband</b> mode"
-              : (pre ? "the <b>dual/multi-band</b> filter set \"" + flt.label + "\""
-                     : "the <b>broadband</b> filter set \"" + (flt ? flt.label : "?") + "\"");
-   return "Part 1 ran SPFC in " + p1Text + ", but SPCC is set to " + p2Text + ".";
+   if (nbDiffers)
+      return "Part 1 ran SPFC in <b>narrowband</b> mode with " +
+             nbText(p1Nb.map(function(x) { return x.toFixed(2); })) +
+             ", but SPCC is set to " +
+             nbText(p2Nb.map(function(x) { return x.toFixed(2); })) +
+             " (wavelength/bandwidth).";
+   function modeText(mode, set) {
+      if (mode == "narrowband")
+         return "in <b>narrowband</b> mode";
+      return (mode == "precombined" ? "with the <b>dual-band</b> filter set \""
+                                    : "with the <b>broadband</b> filter set \"") + set + "\"";
+   }
+   return "Part 1 ran SPFC " + modeText(p1Mode, p1Set) +
+          ", but SPCC is set to run " + modeText(p2Mode, p2Set) + ".";
 }
 
 // Steps that change the image. Each is skipped while it is still applied;

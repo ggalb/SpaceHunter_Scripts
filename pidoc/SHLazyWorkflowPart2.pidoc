@@ -12,6 +12,7 @@
 % Written against script v2.3 (ScriptsTesting/Final Tests/SH_LazyWorkflow_Part2_V8_v2.3.js), 2026-10-11.
 % Star image naming and MLDenoise model path updated for v2.4.8, 2026-11-02.
 % Re-run check (MLDenoise / NXT / MAS) and dust retry updated for v2.4.11, 2026-11-03.
+% Dialog images retaken, SPFC / SPCC filter check for v2.4.24, 2026-11-09.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 2}
@@ -205,10 +206,48 @@
       \s {Generate graphs} lets SPCC show its graphs.
 
       For a dual-band filter, check \s {Narrowband filters mode} and enter
-      wavelength and bandwidth (nm), as in Part 1 (\figref part2_dialog).
+      wavelength and bandwidth (nm), as in Part 1 (\figref part2_dialog), or
+      choose the dual-band filter set you used in Part 1. Use the same choice
+      as SPFC in Part 1: the two give different results.
 
       SPCC needs the astrometric solution from Part 1. Without it, solve the
       image with ImageSolver first.
+
+      \subsection { \label spcc_mismatch Filter Check Against Part 1 } {
+
+         \figure[numbered: part2_mismatch] {
+            \figtag \s { SPFC / SPCC filter mismatch }
+            \imageselect[menupos:right, imageWidth:420px] {
+               images/Part2_Mismatch_1.png { Narrowband in Part 1, dual-band set in Part 2 }
+               images/Part2_Mismatch_2.png { Other narrowband wavelengths }
+            }
+         }
+
+         Part 1 stores the filters SPFC used on the image
+         (\c {SpaceHunter:SPFCMode}, see
+         \lref access {Files, Programs and Internet Access}). When you click
+         \s {OK}, Part 2 compares them with the SPCC settings and warns when
+         they differ:
+
+         \list[spaced] {
+            { another mode: narrowband, a dual-band filter set or a broadband
+              set; }
+            { another dual-band filter set, for example
+              \e {Sony CMOS / Antlia-ALP-T} in Part 1 and
+              \e {Sony CMOS / Opt. L-eXtreme} here; }
+            { other narrowband wavelengths or bandwidths (more than 0.1 nm
+              apart), for example Ha/OIII in Part 1 and SII/OIII left over
+              from an earlier image here. }
+         }
+
+         A set counts as dual-band when its red curve passes 15 nm or less;
+         tri- and quad-band sets and UHC-S count as broadband. Broadband set
+         names are not compared. \s No (the default) takes you back to the
+         dialog; \s Yes runs anyway. There is no check when SPCC was already
+         applied, or when the image has no Part 1 record (for example a
+         clone, a FITS file, or an image saved before Part 1 v2.7.18; images
+         from before Part 1 v2.7.29 are checked by mode only).
+      }
    }
 
    \subsection { \label step_autocolor Step 4 --- AutoColor } {

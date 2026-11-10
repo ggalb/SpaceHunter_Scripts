@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.22<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.29<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.22
+// Space Hunter Lazy Workflow Part 1 v2.7.29
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -186,13 +186,37 @@
 //       the same math as Apply), recomputed when another model is picked;
 //       one stretch, computed once, for every model. Closed with the panel.
 //       Console: a renamed preview is shown as "BM_2048_autoSF -> BM_2048".
+// v2.7.23: MARS search: fixed Windows folders (Program Files, AppData) and
+//       the C:-F: /Astro/PixInsight/MARS scan removed; MGC preferences,
+//       the picked folder and PixInsight's library/settings folders remain.
+// v2.7.24: Filter and white reference files: fixed Windows fallback paths
+//       removed. If a file is not in PixInsight's library folder, the user
+//       is asked once for it; the file is remembered (shared with Part 2).
+// v2.7.25: Index help texts (console, tooltip) name both Gaia index files:
+//       g17 (about 1.8 GB) and g19 (about 10.3 GB). Text only.
+// v2.7.26: OK button: a pre-combined SPFC set (e.g. 'Sony CMOS / Antlia-ALP-T')
+//       with MGC Ha/OIII/SII gets its own Yes/No note (No = default): it runs,
+//       but results differ from narrowband filters mode. Not a mismatch,
+//       automatic scale factors are still tried. Matches Part 2 v2.4.21.
+// v2.7.27: Dual/multi-band sets are also found by their curve: a red curve
+//       passing 15 nm or less (shNarrowCurve) counts like a 'sensor / filter'
+//       set. Adds SvBony DNB and Vaonis VESPERA Dual Band, which were treated
+//       as broadband (MGC Ha/OIII gave a false mismatch). Messages say
+//       'dual/multi-band' instead of 'pre-combined'.
+// v2.7.28: Only the red curve decides (15 nm or less = dual-band), not the
+//       'sensor / filter' name: tri-/quad-band and UHC-S sets are broadband
+//       filters (Georg 2026-11-09) and count as broadband again; L-eNhance
+//       (red = Ha only) stays dual-band. Messages say 'dual-band'.
+// v2.7.29: SpaceHunter:SPFCMode stores the narrowband values too:
+//       'narrowband: 656.30/3.00, 500.70/3.00, 500.70/3.00' (R, G, B as
+//       wavelength/bandwidth nm), so Part 2 v2.4.24 can compare them.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
 //
 // Requirements:
-// - Windows (file paths are found through PixInsight's API since
-//   Part 1 v2.7.12 / Part 2 v2.4.15; macOS/Linux not tested)
+// - Windows, macOS or Linux (file paths come from PixInsight's API, no
+//   fixed folders since Part 1 v2.7.24 / Part 2 v2.4.20; tested on Windows)
 // - PixInsight 1.9.6 or later
 // - MARS database installed
 // - Gaia DR3 database; for images without RA/Dec or image scale also the
@@ -259,8 +283,8 @@ function shAstrometricIndexPath()
 function shPrintIndexHelp()
 {
    console.writeln("  Blind solving needs an astrometric index file:");
-   console.writeln("    1. Download the Gaia astrometric index (gdr3-idx-1.0.0-g17.xpsd, about 1.8 GB)");
-   console.writeln("       from the PixInsight Software Distribution.");
+   console.writeln("    1. Download a Gaia astrometric index from the PixInsight Software Distribution:");
+   console.writeln("       gdr3-idx-1.0.0-g17.xpsd (about 1.8 GB) or gdr3-idx-1.0.0-g19.xpsd (about 10.3 GB).");
    console.writeln("    2. Process > Astrometry > Gaia, Preferences (wrench icon): 'Astrometric Index File'.");
    console.writeln("  Or add RA/Dec (OBJCTRA/OBJCTDEC) and image scale (XPIXSZ + FOCALLEN) to the image.");
 }
@@ -343,27 +367,11 @@ function resolveMARSFilesScan()
       }
    }
 
-   // 2. Search PixInsight's own folders, then common locations
-   let searchDirs = [
-      PI_LIBRARY_DIR,
-      PI_CONFIG_DIR,
-      "C:/Program Files/PixInsight/library",
-      "C:/Program Files (x86)/PixInsight/library",
-      "D:/Program Files/PixInsight/library",
-      File.homeDirectory + "/AppData/Local/PixInsight",
-      File.homeDirectory + "/AppData/Roaming/Pleiades"
-   ];
-
+   // 2. Search the folder picked in this script, then PixInsight's own
+   //    library and settings folders (portable on every OS).
+   let searchDirs = [ PI_LIBRARY_DIR, PI_CONFIG_DIR ];
    if (userDir)
       searchDirs.unshift(userDir);
-
-   // Also check all drive letters under common ASTRO directories
-   let drives = ["C:", "D:", "E:", "F:"];
-   for (let d = 0; d < drives.length; d++) {
-      searchDirs.push(drives[d] + "/Astro/PixInsight/MARS");
-      searchDirs.push(drives[d] + "/ASTRO/PixInsight/MARS");
-      searchDirs.push(drives[d] + "/PixInsight/MARS");
-   }
 
    let foundFiles = [];
 
@@ -442,7 +450,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.22"
+#define SCRIPT_VERSION "v2.7.29"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -457,7 +465,8 @@ var DOC_NAME = "SH Lazy Workflow Part 1";
 //   <PixInsight>/library   = the folder next to CoreApplication.srcDirPath
 //   per-user settings      = CoreApplication.configDirPath
 //                            (Windows: %APPDATA%/Pleiades)
-// The old fixed Windows paths are kept only as a last fallback.
+// If a library file is not there, the user is asked once for it
+// (shLocateXSPD); the picked file is remembered for both scripts.
 function shParentDir(path)
 {
    var p = path;
@@ -475,21 +484,48 @@ function shFirstExisting(paths)
    return null;
 }
 
+var SETTINGS_KEY_FILTERS_XSPD  = "SpaceHunter/FiltersXSPDPath";   // shared by Part 1 and Part 2
+var SETTINGS_KEY_WHITEREF_XSPD = "SpaceHunter/WhiteRefXSPDPath";
+
+// Library file not found next to PixInsight's src folder: use the file the
+// user picked on an earlier run, else ask for it. Returns null on Cancel.
+function shLocateXSPD(found, settingsKey, fileName)
+{
+   if (found !== null)
+      return found;
+   try {
+      var saved = Settings.read(settingsKey, DataType.String);
+      if (Settings.lastReadOK && saved && File.exists(saved))
+         return saved;
+   } catch (e) {}
+   console.warningln(fileName + " not found in " + PI_LIBRARY_DIR + ". Asking user...");
+   var d = new OpenFileDialog;
+   d.caption = "Locate " + fileName + " (PixInsight library folder)";
+   d.filters = [ [ "Spectrum database (*.xspd)", "*.xspd" ], [ "All files", "*" ] ];
+   if (File.directoryExists(PI_LIBRARY_DIR))
+      d.initialPath = PI_LIBRARY_DIR;
+   if (!d.execute())
+      return null;
+   return d.filePath;
+}
+
+// Remember a picked file only after it was read successfully.
+function shRememberXSPD(settingsKey, path)
+{
+   if (path.indexOf(PI_LIBRARY_DIR + "/") === 0)
+      return;
+   try { Settings.write(settingsKey, DataType.String, path); } catch (e) {}
+}
+
 var PI_LIBRARY_DIR = shParentDir(CoreApplication.srcDirPath) + "/library";
 var PI_CONFIG_DIR  = CoreApplication.configDirPath;
 
 var libraryPaths = [
-   PI_LIBRARY_DIR + "/filters.xspd",
-   "C:/Program Files/PixInsight/library/filters.xspd",
-   "C:/Program Files (x86)/PixInsight/library/filters.xspd",
-   "D:/Program Files/PixInsight/library/filters.xspd"
+   PI_LIBRARY_DIR + "/filters.xspd"
 ];
 
 var whiteRefPaths = [
-   PI_LIBRARY_DIR + "/white-references.xspd",
-   "C:/Program Files/PixInsight/library/white-references.xspd",
-   "C:/Program Files (x86)/PixInsight/library/white-references.xspd",
-   "D:/Program Files/PixInsight/library/white-references.xspd"
+   PI_LIBRARY_DIR + "/white-references.xspd"
 ];
 
 // Per-user filter file (filters-NNN-pxi.xspd, NNN = PixInsight instance).
@@ -497,8 +533,7 @@ var whiteRefPaths = [
 // filters the library does not have (see parseFiltersXSPD).
 var customFilterPaths = [
    PI_CONFIG_DIR + "/filters-" + format("%03i", CoreApplication.instance) + "-pxi.xspd",
-   PI_CONFIG_DIR + "/filters-001-pxi.xspd",
-   File.homeDirectory + "/AppData/Roaming/Pleiades/filters-001-pxi.xspd"
+   PI_CONFIG_DIR + "/filters-001-pxi.xspd"
 ];
 
 var FILTERS_XSPD_PATH   = shFirstExisting(libraryPaths);
@@ -1060,6 +1095,34 @@ var WP_DEFAULTS = (function()
 // XSPD PARSERS
 // ============================================================
 
+// true when a filter curve ("wavelength,value,..." pairs) passes 15 nm or less
+// at half its maximum: a dual-band line filter. Measured 2026-11-09 on all red
+// curves: dual-band sets 2-12 nm (SvBony DNB 7, Vaonis Dual Band 12), the
+// narrowest broadband curve 21 nm (Seestar LP), cameras 30 nm and more.
+// Tri-/quad-band and UHC-S curves (26-40 nm) are broadband filters (Georg
+// 2026-11-09) and stay so. L-eNhance (tri-band, red = Ha only, 6-8 nm)
+// counts as dual-band: its red channel is narrowband.
+function shNarrowCurve(data)
+{
+   if (!data)
+      return false;
+   var v = String(data).split(/[\s,]+/);
+   var wl = [], tr = [], mx = 0;
+   for (var i = 0; i + 1 < v.length; i += 2) {
+      var w = parseFloat(v[i]), t = parseFloat(v[i + 1]);
+      if (isNaN(w) || isNaN(t)) continue;
+      wl.push(w); tr.push(t);
+      if (t > mx) mx = t;
+   }
+   if (wl.length < 2 || mx <= 0)
+      return false;
+   var width = 0;
+   for (var j = 0; j + 1 < wl.length; j++)
+      if (tr[j] >= 0.5 * mx && tr[j + 1] >= 0.5 * mx)
+         width += wl[j + 1] - wl[j];
+   return width <= 15;
+}
+
 function parseXSPDIntoFilterDB(filePath, extrasOnly)
 {
    var xml = File.readTextFile(filePath);
@@ -1093,9 +1156,9 @@ function parseXSPDIntoFilterDB(filePath, extrasOnly)
 
 function parseFiltersXSPD()
 {
-   if (FILTERS_XSPD_PATH === null) {
-      throw new Error("No filter database found! Checked all library locations.");
-   }
+   FILTERS_XSPD_PATH = shLocateXSPD(FILTERS_XSPD_PATH, SETTINGS_KEY_FILTERS_XSPD, "filters.xspd");
+   if (FILTERS_XSPD_PATH === null)
+      throw new Error("No filter database (filters.xspd) found in " + PI_LIBRARY_DIR + ".");
 
    var totalCount = 0;
 
@@ -1120,14 +1183,15 @@ function parseFiltersXSPD()
 
    if (totalCount === 0)
       throw new Error("No filter entries found in any XSPD file.");
+   shRememberXSPD(SETTINGS_KEY_FILTERS_XSPD, FILTERS_XSPD_PATH);
 }
 
 function parseWhiteRefXSPD()
 {
+   WHITEREF_XSPD_PATH = shLocateXSPD(WHITEREF_XSPD_PATH, SETTINGS_KEY_WHITEREF_XSPD, "white-references.xspd");
+   if (WHITEREF_XSPD_PATH === null)
+      throw new Error("White reference database (white-references.xspd) not found in " + PI_LIBRARY_DIR + ".");
    console.writeln("Reading white reference database: " + WHITEREF_XSPD_PATH);
-
-   if (!File.exists(WHITEREF_XSPD_PATH))
-      throw new Error("White reference database not found: " + WHITEREF_XSPD_PATH);
 
    var xml = File.readTextFile(WHITEREF_XSPD_PATH);
    console.writeln("  File size: " + xml.length + " bytes");
@@ -1154,6 +1218,7 @@ function parseWhiteRefXSPD()
 
    if (count === 0)
       throw new Error("No white reference entries found.");
+   shRememberXSPD(SETTINGS_KEY_WHITEREF_XSPD, WHITEREF_XSPD_PATH);
 
    if (defaultIdx >= 0) {
       WorkflowParameters.selectedWhiteRefIdx = defaultIdx;
@@ -1301,7 +1366,10 @@ function buildDropdownLists()
          continue;
       }
 
-      var type = (rName.indexOf(" / ") >= 0) ? "precombined" : "broadband";
+      // "precombined" = dual-band set, found by its red curve (v2.7.28):
+      // pre-combined "sensor / filter" dual-band sets, SvBony DNB, Vaonis
+      // Dual Band. Tri-/quad-band and UHC-S sets count as broadband (Georg).
+      var type = shNarrowCurve(filterDB[rName + "|R"]) ? "precombined" : "broadband";
 
       filterList.push({
          label: groupLabel,
@@ -1574,8 +1642,8 @@ constructor()
    this.indexStatus_Label.text = indexPath.length > 0 ?
       "Astrometric index: " + File.extractNameAndExtension( indexPath ) :
       "<b>No astrometric index set</b> - blind solve not available";
-   this.indexStatus_Label.toolTip = "<p>Blind solving needs the Gaia astrometric index file " +
-      "(gdr3-idx-1.0.0-g17.xpsd, from the PixInsight Software Distribution), " +
+   this.indexStatus_Label.toolTip = "<p>Blind solving needs a Gaia astrometric index file " +
+      "(gdr3-idx-1.0.0-g17.xpsd or gdr3-idx-1.0.0-g19.xpsd, from the PixInsight Software Distribution), " +
       "set as Astrometric Index File in Process &gt; Astrometry &gt; Gaia, Preferences (wrench icon).<br/>" +
       "Images with RA/Dec and image scale (XPIXSZ + FOCALLEN) solve without it.</p>";
    this.indexStatus_Sizer = new HorizontalSizer;
@@ -2796,6 +2864,21 @@ constructor()
             return;   // back to the dialog
          console.warningln("⚠  Run despite filter mismatch: " + mismatch.replace(/<[^>]*>/g, ""));
       }
+      var note = shSpfcPrecombinedNote();
+      if (note.length > 0)
+      {
+         var nmsg = new MessageBox(
+            "<p><b>Dual-band filter set with narrowband MGC.</b></p><p>" + note + "</p>" +
+            "<p>This combination runs, but SPFC, MGC and later SPCC give different results " +
+            "than with SPFC \"Narrowband filters mode\" (the filter's wavelengths and " +
+            "bandwidths). Use the same choice in SPFC (Part 1) and SPCC (Part 2).</p>" +
+            "<p>Run with this filter set?</p>",
+            "Note: dual-band filter set",
+            StdIcon.Warning, StdButton.No, StdButton.Yes);   // No first = default
+         if (nmsg.execute() !== StdButton.Yes)
+            return;   // back to the dialog
+         console.warningln("⚠  Run with dual-band set and narrowband MGC: " + note.replace(/<[^>]*>/g, ""));
+      }
       dlg.ok();
    };
 
@@ -3134,12 +3217,18 @@ function shSpfcApplied(view) {
 }
 
 // SPFC's filter mode, read by Part 2 to warn when SPCC uses the other mode.
-// "narrowband", "precombined: <set>" or "broadband: <set>". Storable: saved
-// with the file (documented with the other SpaceHunter:* properties).
+// "narrowband: <R>, <G>, <B>" (each wavelength/bandwidth in nm, since
+// v2.7.29; plain "narrowband" before), "precombined: <set>" or
+// "broadband: <set>". Storable: saved with the file (documented with the
+// other SpaceHunter:* properties).
 function shSetSpfcMode(view) {
     var W = WorkflowParameters;
     var set = filterList[W.selectedFilterIdx];
-    var mode = W.enableNarrowband ? "narrowband"
+    function wb(w, b) { return Number(w).toFixed(2) + "/" + Number(b).toFixed(2); }
+    var mode = W.enableNarrowband
+             ? "narrowband: " + wb(W.nbRedWavelength, W.nbRedBandwidth) + ", " +
+                                wb(W.nbGreenWavelength, W.nbGreenBandwidth) + ", " +
+                                wb(W.nbBlueWavelength, W.nbBlueBandwidth)
              : ((set && set.type == "precombined") ? "precombined: " : "broadband: ") +
                (set ? set.label : "?");
     try { view.setPropertyValue("SpaceHunter:SPFCMode", mode, PropertyType.String,
@@ -3950,9 +4039,9 @@ function mgcLogFactors(f)
 
 // "" when SPFC and MGC use the same kind of filters, else a short (HTML)
 // description of the mismatch. Line light on the SPFC side = narrowband mode
-// OR a pre-combined RGB set (sensor x dual/multi-band nebula filter, e.g.
-// "Sony CMOS / Antlia-ALP-T": all pre-combined sets in PI's database are
-// such filters). It goes with MGC filter selection holding Ha/OIII/SII on
+// OR a dual-band RGB set (type "precombined", found by its narrow red curve,
+// e.g. "Sony CMOS / Antlia-ALP-T" or SvBony DNB; since v2.7.28 tri-/quad-band
+// and UHC-S sets count as broadband). It goes with MGC filter selection holding Ha/OIII/SII on
 // R/G/B; broadband RGB sets go with L/R/G/B. Test 2026-11-05: ALP-T
 // pre-combined + MGC Ha/OIII/OIII gave auto SF 1.04/1.67/1.48 (accepted).
 function shSpfcMgcMismatch()
@@ -3972,13 +4061,31 @@ function shSpfcMgcMismatch()
    var spfcText = W.enableNarrowband
       ? "SPFC is in <b>narrowband</b> mode"
       : (precombined
-         ? "SPFC uses the <b>dual/multi-band</b> filter set \"" + set.label + "\""
+         ? "SPFC uses the <b>dual-band</b> filter set \"" + set.label + "\""
          : "SPFC uses the <b>broadband</b> filter set \"" + (set ? set.label : "?") + "\"");
    if (spfcLine && !mgcNarrow)
       return spfcText + ", but MGC uses broadband MARS filters " + mgcText + ".";
    if (!spfcLine && mgcNarrow)
       return spfcText + ", but MGC uses narrowband MARS filters " + mgcText + ".";
    return "";
+}
+
+// v2.7.26: a pre-combined SPFC set with MGC Ha/OIII/SII is not a mismatch
+// (MGC has no pre-combined option, and its factors were accepted), but the
+// results differ from narrowband filters mode (Georg 2026-11-09; test
+// 2026-11-05: auto SF 1.04/1.67/1.48 with ALP-T pre-combined against ~1.08
+// on all channels with narrowband mode). "" = nothing to say.
+function shSpfcPrecombinedNote()
+{
+   var W = WorkflowParameters;
+   if (!W.enableSPFC || !W.enableMGC || W.enableNarrowband)
+      return "";
+   var set = filterList[W.selectedFilterIdx];
+   if (!set || set.type != "precombined" || shSpfcMgcMismatch().length > 0)
+      return "";
+   return "SPFC uses the <b>dual-band</b> filter set \"" + set.label + "\", and MGC uses " +
+          "narrowband MARS filters " + W.mgcRedFilter + "/" + W.mgcGreenFilter + "/" +
+          W.mgcBlueFilter + ".";
 }
 
 function runMGC(view, gradientScale, previewName, autoScale)

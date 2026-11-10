@@ -15,6 +15,9 @@
 % v2.4.8, 2026-11-02 (security review): mark names, HISTORY lines, previews
 % deleted, ImageSolver settings and star lists, local paths not in icons,
 % vendor tools.
+% Portable paths for Part 1 v2.7.24 / Part 2 v2.4.20, 2026-11-09: Windows,
+% macOS or Linux; MARS search without fixed folders; XSPD files picked once;
+% Session twins + SpaceHunter:SPFCMode listed (CPD: properties written).
 % ----------------------------------------------------------------------------
 
 \subsection { \label requirements Requirements } {
@@ -22,7 +25,8 @@
    \s {Both parts}
 
    \list[spaced] {
-      { Windows operating system. }
+      { Windows, macOS or Linux. The scripts take all file locations from
+        PixInsight itself; they have been tested on Windows. }
       { PixInsight 1.9.6 or later. }
       { An image from a \s {one-shot colour (OSC)} camera, captured with a
         broadband, light-pollution or single dual-narrowband (DNB) filter.
@@ -37,9 +41,9 @@
    \list[spaced] {
       { The MARS database (any drive). }
       { For images without coordinates or image scale in their FITS
-        keywords: the Gaia astrometric index file
-        (\c {gdr3-idx-1.0.0-g17.xpsd}, about 1.8 GB, from the PixInsight
-        Software Distribution), set as \e {Astrometric Index File} in
+        keywords: a Gaia astrometric index file from the PixInsight
+        Software Distribution, either \c {gdr3-idx-1.0.0-g17.xpsd} (about
+        1.8 GB) or \c {gdr3-idx-1.0.0-g19.xpsd} (about 10.3 GB), set as \e {Astrometric Index File} in
         \m {Process > Astrometry > Gaia} preferences. ImageSolver's blind
         solver needs it. }
       { Recommended: the local Gaia DR3 star catalogue (XPSD files), set in
@@ -70,7 +74,10 @@
    \note {
       If Part 1 can't find the MARS database, it asks you for its folder.
       That folder is saved and searched first on later runs; \e {Reset
-      Settings} forgets it. If a tool that Part 2 calls (BlurXTerminator,
+      Settings} forgets it. Both parts read SPCC's filter and white
+      reference files from PixInsight's library folder; if one of them isn't
+      there, the script asks you for it once and remembers it. If a tool
+      that Part 2 calls (BlurXTerminator,
       StarXTerminator, StarNet2, NoiseXTerminator, MLDenoise) isn't
       installed, that step is skipped with a warning in the console. Select
       StarNet2 instead of StarXTerminator yourself if you use it.
@@ -88,9 +95,11 @@
    \list[spaced] {
       { \s {Settings:} workflow and equipment settings, the MARS folder you
         picked and the separation-profile folder (Part 1), and the
-        MLDenoise model path (Part 2) are stored in PixInsight's own
-        settings on this computer. \e {Reset Settings} clears the equipment
-        settings and the MARS folder; the profile folder and the model path
+        MLDenoise model path (Part 2), and a filter or white reference file
+        you picked (both parts, only if PixInsight's library folder didn't
+        have it) are stored in PixInsight's own settings on this computer.
+        \e {Reset Settings} clears the equipment settings and the MARS
+        folder; the profile folder, the model path and picked filter files
         are kept. A process icon (\lref buttons {New Instance}) holds the
         workflow and equipment settings, but not these folder and file
         paths. }
@@ -103,7 +112,22 @@
         \c {SpaceHunter:AutoColorDone}, \c {SpaceHunter:BXTFullDone},
         \c {SpaceHunter:SXTDone}, \c {SpaceHunter:StarNet2Done},
         \c {SpaceHunter:BackgroundDone}. The marks are saved only in XISF
-        files. }
+        files. Each mark also gets a twin with \c Session added to its name
+        (for example \c {SpaceHunter:SPFCDoneSession}). It holds the name of
+        the marked process and lets the script check that this step is still
+        active in the history. The twins are never saved and are gone when
+        you reopen the file. }
+      { \s {SPFC filter mode:} after SPFC, Part 1 stores the filter mode it
+        used in \c {SpaceHunter:SPFCMode}:
+        \c {narrowband: &lt;R&gt;, &lt;G&gt;, &lt;B&gt;} (each as
+        wavelength/bandwidth in nm, for example
+        \c {narrowband: 656.30/3.00, 500.70/3.00, 500.70/3.00}),
+        \c {precombined: &lt;filter set&gt;} or \c {broadband: &lt;filter set&gt;}.
+        It is saved in XISF files. Part 2 only reads it, to warn you when
+        SPCC uses other filters: another mode (narrowband, a dual-band set
+        or a broadband set), another dual-band set, or other narrowband
+        wavelengths or bandwidths (more than 0.1 nm apart).
+        \c precombined marks a dual-band set. }
       { \s {FITS header:} when you apply an MGC background model or a GC
         result, Part 1 adds \c HISTORY lines starting with \c {SH:}. They
         name the preview and its gradient scale (MGC, with the scale
@@ -112,7 +136,9 @@
         existing previews before they create their own. The apply windows
         (steps 4b and 5b) remove their previews, and GC's model windows,
         after applying when that option is ticked. Part 2's background
-        finder removes the previews it made. }
+        finder removes the previews it made. \s {Show corrected image} in
+        step 4b opens one extra image window, \c {SH_corrected_preview},
+        which closes with the model window and is never saved. }
       { \s {Part 1, ImageSolver:} uses PixInsight's own ImageSolver. It
         starts from the settings you last saved in the ImageSolver script
         (for example the VizieR server and star detection). Part 1 sets only
@@ -130,8 +156,14 @@
         preferences. It sends the image's centre coordinates and search
         radius. This is ImageSolver's own behaviour; install the local Gaia
         catalogue to solve offline. }
-      { \s {Part 1, MARS:} the script looks for \c .xmars files in the
-        PixInsight folders and in common \c Astro folders, reading only. }
+      { \s {Filter and white reference databases:} both parts read
+        \c filters.xspd and \c white-references.xspd from PixInsight's
+        library folder, and your own filter file (\c {filters-*-pxi.xspd})
+        from PixInsight's settings folder, reading only. }
+      { \s {Part 1, MARS:} the script uses the \c .xmars files set in
+        MultiscaleGradientCorrection's preferences; otherwise it looks in the
+        folder you picked and in PixInsight's library and settings folders,
+        reading only. }
       { \s {Part 1, separation profiles:} profiles are \c .txt files in the
         folder you choose. They are only read for their two factors, never
         run, and written only when you save one (an existing file is

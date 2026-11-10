@@ -12,7 +12,9 @@
 % Written against script v2.5 (ScriptsTesting/Final Tests), 2026-10-11.
 % MGC scale factors, model panels and re-run notes updated for v2.7.4,
 % 2026-11-01. Profile folder / save prompt and GC previews for v2.7.7,
-% 2026-11-02.
+% 2026-11-02. Dialog images retaken, filter mismatch warning, corrected
+% view and _autoSF fallback for v2.7.25, dual-band note for v2.7.28,
+% 2026-11-09.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 1}
@@ -290,6 +292,44 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
       \lref step_spfc {narrowband filters mode} in SPFC and, ideally, the
       \lref separation {Ha/OIII separation} (\figref part1_dialog).
 
+      \subsection { \label mismatch Filter Mismatch Warning } {
+
+         \figure[numbered: mismatch] {
+            \figtag \s { SPFC / MGC filter check }
+            \imageselect[menupos:right, imageWidth:420px] {
+               images/Part1_Mismatch_1.png { Narrowband SPFC, broadband MGC }
+               images/Part1_Mismatch_3.png { Dual-band set in SPFC, broadband MGC }
+               images/Part1_Mismatch_2.png { Broadband SPFC, narrowband MGC }
+               images/Part1_Mismatch_4.png { Broadband set (L-Quad), narrowband MGC }
+               images/Part1_Note_DualBand.png { Note: dual-band set with narrowband MGC }
+            }
+         }
+
+         SPFC and MGC must work with the same kind of filters: narrowband
+         filters mode (or a pre-combined dual-band filter set) in SPFC goes
+         with MGC \s {Filter selection} Ha/OIII; a broadband RGB filter set
+         goes with L/R/G/B. If they don't match, MGC compares the image with
+         MARS data of other bands, and the automatic scale factors come out
+         far off (in tests a red factor of 12.3, which MGC rejects).
+
+         When you click \s {OK} with such a combination, a warning names both
+         sides. \s {No} (the default) takes you back to the dialog to correct
+         either side. \s {Yes} runs anyway, but MGC then doesn't try automatic
+         scale factors: \e Automatic runs with 1.0 at once, and with \e Both
+         the \c _autoSF previews are removed.
+
+         A dual-band filter set in SPFC with MGC Ha/OIII is not a mismatch.
+         The script counts a set as dual-band when its red curve passes
+         15 nm or less, for example \e {Sony CMOS / Antlia-ALP-T} or
+         \e {SvBony DNB}. Tri- and quad-band sets and UHC-S are broadband
+         filters and count as broadband. The combination runs, but SPFC,
+         MGC and SPCC give different results than with
+         \s {Narrowband filters mode}. Part 1 asks you to confirm this
+         combination (\s No is the default); automatic scale factors are
+         still tried. Use the same choice in SPFC and in Part 2's SPCC:
+         Part 2 warns when they differ.
+      }
+
       \subsection { \label gradient_scale Choosing Gradient Scales } {
 
          Start with 1024. With a 2&times; drizzled image, double it (2048):
@@ -341,12 +381,24 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
          clearly MGC could determine each factor. A factor with a correlation
          below 0.75 is marked &#9888; and is uncertain; compare it with the
          1.0 model.
+
+         If MGC rejects the automatic factors, the script doesn't try them
+         again for the other scales (they would be the same). With
+         \e Automatic, those previews run with 1.0 instead and lose their
+         \c _autoSF ending (\c BM_2048_autoSF becomes \c BM_2048), so the
+         name always tells which factors were used. With \e Both, the failed
+         \c _autoSF previews are removed and the 1.0 previews remain.
       }
 
       \subsection { \label choose_model Step 4b --- Choose Background Model } {
 
-         \center {
-            \image[width:420px] images/Part1_MGC.png
+         \figure[numbered: choose_model] {
+            \figtag \s { Choose background model }
+            \imageselect[menupos:right, imageWidth:520px] {
+               images/Part1_MGC.png { The window }
+               images/Part1_MGC_Stretch.png { Stronger model stretch }
+               images/Part1_MGC_Corrected.png { Show corrected image }
+            }
          }
 
          When all previews are done, the \s {Choose background model} window
@@ -368,6 +420,15 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
                               with PixInsight's AutoSTF on each preview
                               separately: it stretches every model
                               differently. }
+            { Show corrected image (same stretch for all models) } { Display
+                              only. Opens one window, \c {SH_corrected_preview},
+                              that shows the whole image corrected with the
+                              selected model, with the same calculation as
+                              \s {Apply}. Picking another model recomputes it
+                              (one to two seconds). One stretch is used for
+                              every model, so you can compare the results
+                              directly. The window closes with the model
+                              window and is never saved. }
             { Add scale / Run MGC } { If none of the models is good enough,
                               run MGC at another scale. It gets its own new
                               \c BM_ preview with the same settings and

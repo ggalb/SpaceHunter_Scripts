@@ -25,11 +25,11 @@ The source files, manual sources and release tools are on branch
 
 ## Prerequisites
 
-- Windows operating system (Windows 11 recommended)
+- Windows, macOS or Linux (file locations come from PixInsight itself; tested on Windows 11)
 - PixInsight 1.9.6 or later
 - PixInsight's MARS databases installed
 - For images without coordinates or image scale in their FITS keywords: the Gaia astrometric
-  index file (`gdr3-idx-1.0.0-g17.xpsd`), set in **Process → Astrometry → Gaia** preferences.
+  index file (`gdr3-idx-1.0.0-g17.xpsd`, about 1.8 GB, or `gdr3-idx-1.0.0-g19.xpsd`, about 10.3 GB), set in **Process → Astrometry → Gaia** preferences.
   ImageSolver's blind solver needs it.
 - Recommended: the local Gaia DR3 star catalogue (XPSD files). Without it, PixInsight's
   ImageSolver downloads the stars it needs from an online catalogue.
