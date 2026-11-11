@@ -73,8 +73,8 @@ def main():
     wt = os.path.relpath(WT, REPO).replace("\\", "/")
     print("""
 Staged in %s. Review, then on Georg's go:
-   git -C %s commit -m "Release %s (PI 1.9.6+)"
-   git -C %s tag -a release-%s -m "Release %s (PI 1.9.6+)"
+   git -C %s commit -m "Release %s (PI 1.9.6)"
+   git -C %s tag -a release-%s -m "Release %s (PI 1.9.6)"
    git push origin main --tags
    git push origin dev""" % (wt, wt, date, wt, date, date))
 

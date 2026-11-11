@@ -1,4 +1,4 @@
-"""Build a Space Hunter release for PixInsight 1.9.6+ into build/release-YYYYMMDD/.
+"""Build a Space Hunter release for PixInsight 1.9.6 into build/release-YYYYMMDD/.
 
 Usage (from the repo root, on branch dev):
     python -I tools/make_release.py YYYYMMDD[_HHMM] [--signed]
@@ -6,7 +6,7 @@ Usage (from the repo root, on branch dev):
 The release folder holds exactly what branch main gets (main = distribution
 only):
     SpaceHunter_Scripts_YYYYMMDD.zip   scripts, manuals, icons (+ .xsgn signatures)
-    updates.xri                        one package for PI 1.9.6+, notes from
+    updates.xri                        one package for PI 1.9.6, notes from
                                        tools/release_notes.txt
     README.md, LICENSE, CHANGELOG.md, .gitattributes   copied from dev
 
@@ -26,7 +26,10 @@ import xml.etree.ElementTree as ET
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P = "src/scripts/Space_Hunter/"
-PI_VERSIONS = "1.9.6:1.9.9"
+# Signed Part 1 includes ImageSolver, whose code is part of its signature
+# (tested 2026-11-11): one package per PixInsight version, re-signed when
+# ImageSolver changes.
+PI_VERSIONS = "1.9.6:1.9.6"
 NOTES = "tools/release_notes.txt"
 ROOT_FILES = ["README.md", "LICENSE", "CHANGELOG.md", ".gitattributes"]
 
@@ -122,7 +125,7 @@ def build_xri(name, sha, date, notes):
     desc = "\n".join("            <p>%s</p>" % esc(l) for l in notes)
     rem = ",\n            ".join(REMOVE)
     return XRI_HEAD + """
-   <!-- PixInsight 1.9.6 and later. Packages for 1.9.5 and earlier are withdrawn. -->
+   <!-- PixInsight %s only (signed Part 1 depends on its ImageSolver). Packages for 1.9.5 and earlier are withdrawn. -->
    <platform os="all" arch="noarch" version="%s">
       <package
          fileName="%s"
@@ -140,7 +143,7 @@ def build_xri(name, sha, date, notes):
    </platform>
 
 </xri>
-""" % (PI_VERSIONS, name, sha, date[:8], date, desc, rem)
+""" % (PI_VERSIONS, PI_VERSIONS, name, sha, date[:8], date, desc, rem)
 
 
 def main():

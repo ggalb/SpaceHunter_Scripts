@@ -9,9 +9,11 @@ Copyright © 2026 Georg G Albrecht. MIT License.
 
 | PixInsight | Scripts |
 |---|---|
-| 1.9.6 and later | Part 1 v2.7.11, Part 2 v2.4.13, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2 |
+| 1.9.6 | Part 1 v2.7.31, Part 2 v2.4.26, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2 (code-signed) |
 
-Older packages (for PixInsight 1.9.5 and earlier) have been withdrawn. Script file names carry
+Older packages (for PixInsight 1.9.5 and earlier) have been withdrawn. The scripts are code-signed;
+Part 1's signature depends on the ImageSolver of the PixInsight version it was signed with, so
+each new PixInsight version gets its own package soon after its release. Script file names carry
 no version number (e.g. `SH_LazyWorkflow_Part1_V8.js`); the version is shown in each script's
 dialog. Saved settings are kept when you update.
 
@@ -26,7 +28,7 @@ The source files, manual sources and release tools are on branch
 ## Prerequisites
 
 - Windows, macOS or Linux (file locations come from PixInsight itself; tested on Windows 11)
-- PixInsight 1.9.6 or later
+- PixInsight 1.9.6
 - PixInsight's MARS databases installed
 - For images without coordinates or image scale in their FITS keywords: the Gaia astrometric
   index file (`gdr3-idx-1.0.0-g17.xpsd`, about 1.8 GB, or `gdr3-idx-1.0.0-g19.xpsd`, about 10.3 GB), set in **Process → Astrometry → Gaia** preferences.

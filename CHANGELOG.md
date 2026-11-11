@@ -4,6 +4,46 @@ Newest release first. Each script's source file also has a detailed change log i
 
 ---
 
+## 11 November 2026 (V8, PixInsight 1.9.6, code-signed)
+
+**General:**
+
+- Compliance with the Certified PixInsight Developer Program (CPDP) Rules, version 1.0.2.
+- All scripts are code-signed by a Certified PixInsight Developer (GeorgAlbrecht-SpaceHunter).
+- This package is for PixInsight 1.9.6. Part 1's signature depends on PixInsight's ImageSolver, so each new PixInsight version gets its own package.
+- Windows, macOS and Linux: no fixed Windows paths. SPCC's filter and white reference files come from PixInsight's library folder; if one is missing, the script asks for it once and remembers it.
+- Filter lists: the library filter file wins, as in SPCC; your own filter file only adds filters the library lacks.
+- Re-run check: steps are no longer wrongly skipped or repeated after History Explorer jumps, after going back to <Initial State>, or in reopened files.
+- Risky questions ("already applied", "replace profile?") default to No; closing the box with X counts as No.
+- LICENSE: ASTAP text replaced (no external programs); AutoColor permission history added.
+- Manuals updated: filter warnings, corrected-image view, the SpaceHunter:SPFCMode property and the session marks.
+
+**Part 1 (v2.7.31):**
+
+- Warning on OK when SPFC and MGC filters don't match (narrowband vs. broadband). If you run anyway, MGC uses scale factor 1.0 instead of automatic factors.
+- Note on OK for a dual-band SPFC set with narrowband MGC (it runs, but results differ from narrowband filter mode).
+- Dual-band sets are found by their red curve (15 nm or less); tri-/quad-band and UHC-S sets count as broadband.
+- Automatic MGC scale factors rejected by MGC no longer stop MGC: Both mode skips only that preview, Auto mode uses 1.0. A preview run with 1.0 loses its _autoSF suffix.
+- Model panel: "Show corrected image" shows the image corrected with the selected model, with one stretch for all models.
+- MARS files: from MGC's preferences, the folder you picked and PixInsight's library and settings folders.
+- SPFC stores its filter mode on the image (SpaceHunter:SPFCMode) so Part 2 can check SPCC against it.
+- Blind solve stays on (greyed out) while SPFC is on.
+- The plate-solve check reads the same metadata as ImageSolver (also PIXSIZE and XISF properties).
+- GC result panel shows the model GC actually made for each preview.
+- SH: HISTORY lines of an undone gradient correction are replaced, not stacked.
+- Help texts name both Gaia index files (g17 and g19).
+
+**Part 2 (v2.4.26):**
+
+- Warning when SPCC's filter mode doesn't match the one SPFC used in Part 1 (narrowband, dual-band or broadband; narrowband wavelengths are compared too).
+- AutoColor: Hartmut V. Bornemann's original header and comments restored; progress shown for each channel.
+- Filter sets named " Red/Green/Blue" are listed as "X (Red/Green/Blue)", as in Part 1; saved selections are found again.
+- Background finder is no longer repeated on images without history.
+
+**+Previews (v2.2.7), NamePreviews (v2.1.1), KillPreviews (v2.0.2):** unchanged, now code-signed.
+
+---
+
 ## 3 November 2026, second update (V8, PixInsight 1.9.6+)
 
 **Part 1 (v2.7.11):** GC model windows: the display stretch is now called Auto Display Stretch (PixInsight's ScreenTransferFunction with the AutoSTF method).

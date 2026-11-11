@@ -2,8 +2,12 @@
 # Lines starting with # are ignored. Plain text; & < > are escaped by
 # make_release.py. Style: flat changelog, one short line per change.
 Changelog (requires PixInsight 1.9.6):
-Part 1 v2.7.11, Part 2 v2.4.13, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.
-Part 2 step 5 renamed Auto Display Stretch (linked/unlinked): it sets PixInsight's ScreenTransferFunction with the AutoSTF method and chooses linked or unlinked automatically.
-Part 1: the gradient model windows use the same Auto Display Stretch.
-Part 2: the downloaded dust map is checked value by value before use.
+Compliance with the Certified PixInsight Developer Program (CPDP) Rules, version 1.0.2.
+All scripts code-signed by a Certified PixInsight Developer (GeorgAlbrecht-SpaceHunter).
+Part 1 v2.7.31, Part 2 v2.4.26, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.
+Windows, macOS and Linux: no fixed Windows paths; missing filter files are asked for once.
+Part 1: warning when SPFC and MGC filters don't match; dual-band sets recognised by their curve.
+Part 1: "Show corrected image" in the MGC model panel.
+Part 2: warning when SPCC's filter mode doesn't match the one used by SPFC in Part 1.
+Re-run check: steps no longer wrongly skipped or repeated after History Explorer jumps or in reopened files.
 Full changelog: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/CHANGELOG.md
