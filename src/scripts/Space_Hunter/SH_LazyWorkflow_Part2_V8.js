@@ -1,7 +1,7 @@
 #engine v8
 #feature-id SHLazyWorkflowPart2 : Space_Hunter > SH Lazy Workflow Part 2
 #feature-icon  @script_icons_dir/SH_WorkFlow2.svg
-#feature-info Space Hunter Lazy Workflow Part 2 v2.4.24<br/>\
+#feature-info Space Hunter Lazy Workflow Part 2 v2.4.26<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 2 v2.4.24
+// Space Hunter Lazy Workflow Part 2 v2.4.26
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -193,6 +193,20 @@
 //       are compared (0.1 nm) when Part 1 v2.7.29+ stored them; e.g. Ha/OIII
 //       in Part 1 but SII/OIII left in Part 2 now warns. Older images (plain
 //       'narrowband') are compared by mode only, as before.
+// v2.4.25: Review fixes (Fable 5.2, 2026-11-09): a re-run mark without its
+//       session twin (reopened file) always counts as applied - new steps
+//       could make it look undone, so e.g. BXT Correct ran twice. A mark at
+//       history position 0 counts (Background finder on an image without
+//       history: it ran again and ignored the Exclude previews it had
+//       already deleted). validate() keeps only one of SXT/StarNet2,
+//       NXT/MLDenoise and Background+SPCC/AutoColor (old icons could hold
+//       both). " Red/Green/Blue" filter sets are all listed and labelled
+//       "<name> (Red/Green/Blue)", as in Part 1. Deselect All saves at once.
+//       Filter set names in the SPFC/SPCC message are escaped (the Part 1
+//       value is read from the image).
+// v2.4.26: Diff review fix (Fable 5.2, 2026-11-11): a saved " Red/Green/Blue"
+//       filter set from v2.4.25 or older (label "X", now "X (Red/Green/Blue)")
+//       is found again instead of silently falling back to the first filter.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -216,7 +230,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.24"
+#define SCRIPT_VERSION "v2.4.26"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -772,6 +786,8 @@ var WorkflowParameters = {
             if (cameraList[i].label.indexOf("Ideal") >= 0) { this.selectedCameraIdx = i; break; }
       }
       idx = shIndexBy(filterList, "label", this.selectedFilterLabel);
+      if (idx < 0 && this.selectedFilterLabel)   // saved by v2.4.25 or older
+         idx = shIndexBy(filterList, "label", this.selectedFilterLabel + " (Red/Green/Blue)");
       this.selectedFilterIdx = idx >= 0 ? idx : 0;
    },
 
@@ -812,6 +828,20 @@ var WorkflowParameters = {
          this.nxtMlVersion = WP_DEFAULTS.nxtMlVersion;
       if ([384, 256, 128].indexOf(this.sn2Stride) < 0)
          this.sn2Stride = WP_DEFAULTS.sn2Stride;
+      // Mutually exclusive steps: the dialog unticks the partner, but an old
+      // process icon merged with saved settings can hold both.
+      if (this.enableSXT && this.enableStarNet2) {
+         console.warningln("\u26A0  SXT and StarNet2 are alternatives - StarNet2 turned off.");
+         this.enableStarNet2 = false;
+      }
+      if (this.enableNXT && this.enableMLDenoise) {
+         console.warningln("\u26A0  NXT and MLDenoise are alternatives - MLDenoise turned off.");
+         this.enableMLDenoise = false;
+      }
+      if (this.enableAutoColor && (this.enableBackground || this.enableSPCC)) {
+         console.warningln("\u26A0  AutoColor replaces Background + SPCC - AutoColor turned off.");
+         this.enableAutoColor = false;
+      }
    }
 };
 
@@ -1064,15 +1094,11 @@ function buildDropdownLists()
          groupLabel = rName.replace(/_R$/, "").replace(/_/g, " ");
       }
       else if (rName.match(/ Red$/)) {
-         // Same filter often also listed as "... R/G/B": keep that one only
-         var shortR = rName.replace(/ Red$/, " R").toLowerCase();
-         var dup = false;
-         for (var k = 0; k < rEntries.length; k++)
-            if (rEntries[k] !== rName && rEntries[k].toLowerCase() === shortR) dup = true;
-         if (dup) continue;
+         // Own label, as in Part 1: "Optolong L-Pro R/G/B" (" R" set) is a
+         // different curve set and stays listed too (v2.4.25).
          gName = rName.replace(/ Red$/, " Green");
          bName = rName.replace(/ Red$/, " Blue");
-         groupLabel = rName.replace(/ Red$/, "");
+         groupLabel = rName.replace(/ Red$/, " (Red/Green/Blue)");
       }
       else {
          console.writeln("  Note: filter not listed (no R/G/B naming): " + rName);
@@ -2299,6 +2325,7 @@ var SpaceHunterDialog2 = class extends Dialog
       WorkflowParameters.enableMASPreview = false;
       dlg.mas_Section.checkBox.checked = false;
       dlg.mas_Control.enabled = false;
+      WorkflowParameters.saveUserPrefs();
    };
 
    // Reset Defaults button
@@ -2619,6 +2646,11 @@ function shHasProperty(view, id)
 {
    try { return view.hasProperty(id); } catch(e) { return false; }
 }
+// Text for rich-text message boxes: file names, filter labels and values
+// read from the image are shown as written (& < > would be read as markup).
+function shHtml(s) {
+   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 // Process id of a history item; a script step is a Script object without
 // processId().
 function shProcId(p)
@@ -2632,7 +2664,9 @@ function shSessionMark(view, id, pos)
    if (!shHasProperty(view, id + "Session"))
       return null;
    try {
-      if (pos < 1 || pos > view.historyIndex)
+      // pos 0 is valid: the Background finder adds no history step, so on
+      // an image without history its mark is 0 (v2.4.25).
+      if (pos < 0 || pos > view.historyIndex)
          return false;                   // its step was undone
       var stepId = view.propertyValue(id + "Session");
       var pc = view.processing;
@@ -2642,9 +2676,10 @@ function shSessionMark(view, id, pos)
    } catch(e) {}
    return null;
 }
-// Without the twin (reopened file) there is no check of which process sits at
-// the mark's position: new steps can fill that position, and the step would
-// then run twice.
+// Without the twin the mark was saved with the file in an earlier session
+// (since v2.4.16 every mark gets a twin, and twins are never saved), so its
+// step is in the image. Before v2.4.25 the mark's position was compared with
+// this session's history, and new steps could make it look undone.
 function shHasMark(view, id)
 {
    if (!shHasProperty(view, id))
@@ -2656,9 +2691,7 @@ function shHasMark(view, id)
       var s = shSessionMark(view, id, pos);
       if (s !== null)
          return s;
-      if (pos > view.processing.length)
-         return true;                    // from an earlier session (reopened file)
-      return pos <= view.historyIndex;   // false = its step was undone
+      return true;                       // earlier session (reopened file)
    } catch(e) {}
    return true;
 }
@@ -2669,8 +2702,8 @@ function shHasMark(view, id)
 // narrowband and pre-combined as the same; Georg 2026-11-09: SPFC/MGC/SPCC
 // results differ between the two). Pre-combined sets must also have the same
 // name (their labels are built alike in both scripts); broadband names are
-// not compared (Part 1 lists "X (Red/Green/Blue)", Part 2 "X" or only the
-// "X R/G/B" set). "" = no mismatch / no data.
+// not compared (until v2.4.25 Part 2 labelled " Red/Green/Blue" sets "X"
+// while Part 1 used "X (Red/Green/Blue)"). "" = no mismatch / no data.
 function shSpfcSpccMismatch()
 {
    var W = WorkflowParameters;
@@ -2726,7 +2759,7 @@ function shSpfcSpccMismatch()
       if (mode == "narrowband")
          return "in <b>narrowband</b> mode";
       return (mode == "precombined" ? "with the <b>dual-band</b> filter set \""
-                                    : "with the <b>broadband</b> filter set \"") + set + "\"";
+                                    : "with the <b>broadband</b> filter set \"") + shHtml(set) + "\"";
    }
    return "Part 1 ran SPFC " + modeText(p1Mode, p1Set) +
           ", but SPCC is set to run " + modeText(p2Mode, p2Set) + ".";

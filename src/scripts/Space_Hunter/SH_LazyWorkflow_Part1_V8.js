@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowPart1 : Space_Hunter > SH Lazy Workflow Part 1
 #feature-icon  @script_icons_dir/SH_WorkFlow1.svg
-#feature-info Space Hunter Lazy Workflow Part 1 v2.7.29<br/>\
+#feature-info Space Hunter Lazy Workflow Part 1 v2.7.31<br/>\
    <br/>\
    Automated Linear Image Processing workflow for OSC camera images.<br/>\
    <br/>\
@@ -17,7 +17,7 @@
    See LICENSE file for details: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE.
 
 // ============================================================
-// Space Hunter Lazy Workflow Part 1 v2.7.29
+// Space Hunter Lazy Workflow Part 1 v2.7.31
 //
 // Copyright (c) 2026 Georg G Albrecht. MIT License.
 // See LICENSE file for details.
@@ -210,6 +210,24 @@
 // v2.7.29: SpaceHunter:SPFCMode stores the narrowband values too:
 //       'narrowband: 656.30/3.00, 500.70/3.00, 500.70/3.00' (R, G, B as
 //       wavelength/bandwidth nm), so Part 2 v2.4.24 can compare them.
+// v2.7.30: Review fixes (Fable 5.2, 2026-11-09): a re-run mark without its
+//       session twin (reopened file) always counts as applied - new steps
+//       could make it look undone, so SPFC ran twice. Both mode: a skipped
+//       automatic preview is listed by its saved id (the preview is already
+//       deleted). validate() keeps only one of MGC/SPFC, GC and DBE (old
+//       icons could hold more). Deselect All and Reset Workflow save the
+//       steps at once, as every other change does. Blind solve stays on
+//       (greyed out) while SPFC is on; it was re-ticked silently on any
+//       click. The keyword check reads the same metadata as ImageSolver
+//       (also PIXSIZE and the XISF Observation/Instrument properties). The
+//       GC result panel shows the model window GC made for each preview,
+//       not the one with the expected name. SH: HISTORY lines of an undone
+//       gradient correction are replaced, not stacked. Names and labels in
+//       message boxes are escaped.
+// v2.7.31: Diff review fixes (Fable 5.2, 2026-11-11): an image without a
+//       SpaceHunter:GradientDone property (FITS/TIFF, older files) keeps its
+//       SH: HISTORY lines when a gradient model is applied (v2.7.30 dropped
+//       them). Console text says "metadata" instead of "FITS data/keywords".
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -450,7 +468,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.29"
+#define SCRIPT_VERSION "v2.7.31"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -989,6 +1007,22 @@ var WorkflowParameters = {
             this[mgcFilters[i]] = WP_DEFAULTS[mgcFilters[i]];
       if (MGC_SCALE_MODES.indexOf(this.mgcScaleMode) < 0)
          this.mgcScaleMode = WP_DEFAULTS.mgcScaleMode;
+      // SPFC needs ImageSolver and blind solve (the dialog locks them).
+      if (this.enableSPFC) {
+         this.enableImageSolve = true;
+         this.enableBlindSolve = true;
+      }
+      // Alternative workflows: the dialog unticks the others when one is
+      // ticked, but an old process icon merged with saved settings can hold
+      // more than one. MGC/SPFC wins, then GC, then DBE.
+      if ((this.enableMGC || this.enableSPFC) && (this.enableGC || this.enableDBE)) {
+         console.warningln("\u26A0  MGC/SPFC, GC and DBE are alternatives - GC and DBE turned off.");
+         this.enableGC = false;
+         this.enableDBE = false;
+      } else if (this.enableGC && this.enableDBE) {
+         console.warningln("\u26A0  GC and DBE are alternatives - DBE turned off.");
+         this.enableDBE = false;
+      }
    },
 
    // -----------------------------------------------------------
@@ -1513,13 +1547,15 @@ constructor()
             dlg.imageSolve_Section.checkBox.checked = true;
             dlg.imageSolve_Control.enabled = true;
          }
+         // SPFC needs a solved image: blind solve stays on (greyed out),
+         // used only when the image lacks coordinates or scale.
          WorkflowParameters.enableBlindSolve = true;
          dlg.blindSolve_CheckBox.checked = true;
-         dlg.blindSolve_CheckBox.enabled = true;
       }
 
       // Blind solve requires ImageSolve
-      dlg.blindSolve_CheckBox.enabled = WorkflowParameters.enableImageSolve;
+      dlg.blindSolve_CheckBox.enabled = WorkflowParameters.enableImageSolve &&
+                                        !WorkflowParameters.enableSPFC;
       if ( !WorkflowParameters.enableImageSolve )
       {
          WorkflowParameters.enableBlindSolve = false;
@@ -1581,7 +1617,8 @@ constructor()
          dlg.previews_Control.enabled = false;
       }
       // Blind solve requires ImageSolve
-      dlg.blindSolve_CheckBox.enabled = WorkflowParameters.enableImageSolve;
+      dlg.blindSolve_CheckBox.enabled = WorkflowParameters.enableImageSolve &&
+                                        !WorkflowParameters.enableSPFC;
       if ( !WorkflowParameters.enableImageSolve )
       {
          WorkflowParameters.enableBlindSolve = false;
@@ -1614,10 +1651,13 @@ constructor()
    this.blindSolve_CheckBox = new CheckBox( this );
    this.blindSolve_CheckBox.text = "Blind solve (if needed)";
    this.blindSolve_CheckBox.checked = WorkflowParameters.enableBlindSolve;
+   this.blindSolve_CheckBox.enabled = WorkflowParameters.enableImageSolve &&
+                                      !WorkflowParameters.enableSPFC;
    this.blindSolve_CheckBox.toolTip = "<p>Let ImageSolver find the position and scale from the stars alone " +
       "when the image has no RA/Dec or image scale, or when solving with them fails.<br/>" +
       "Needs the astrometric index file set in the Gaia process preferences.<br/>" +
-      "Requires ImageSolver to be enabled.</p>";
+      "Requires ImageSolver to be enabled. Always on while SPFC is ticked " +
+      "(SPFC needs a solved image).</p>";
    this.blindSolve_CheckBox.onCheck = function( checked )
    {
       WorkflowParameters.enableBlindSolve = checked;
@@ -2041,7 +2081,7 @@ constructor()
          dlg.sepGreen_Edit.text = prof.kG.toFixed(3);
          dlg.sepBlue_Edit.text  = prof.kB.toFixed(3);
       } catch ( e ) {
-         (new MessageBox( "<p><b>" + name + "</b></p><p>" + e.message + "</p>",
+         (new MessageBox( "<p><b>" + shHtml( name ) + "</b></p><p>" + shHtml( e.message ) + "</p>",
             "Profile not loaded", StdIcon.Warning, StdButton.Ok )).execute();
          WorkflowParameters.sepProfileName = "";
          dlg.sepProfile_ComboBox.currentItem = 0;
@@ -2071,7 +2111,7 @@ constructor()
          // The dialog asked about the name as typed, not with .txt added.
          path += ".txt";
          if ( File.exists( path ) &&
-              (new MessageBox( "<p>" + File.extractName( path ) + ".txt already exists.</p>" +
+              (new MessageBox( "<p>" + shHtml( File.extractName( path ) ) + ".txt already exists.</p>" +
                                "<p>Replace it?</p>",
                                "Save separation profile", StdIcon.Warning,
                                StdButton.No, StdButton.Yes )).execute() !== StdButton.Yes )   // No first = default
@@ -2081,7 +2121,7 @@ constructor()
          writeSeparationProfile( path, WorkflowParameters.sepGreenFactor,
                                        WorkflowParameters.sepBlueFactor );
       } catch ( e ) {
-         (new MessageBox( "<p>Could not save the profile:</p><p>" + e.message + "</p>",
+         (new MessageBox( "<p>Could not save the profile:</p><p>" + shHtml( e.message ) + "</p>",
             "Save failed", StdIcon.Error, StdButton.Ok )).execute();
          return;
       }
@@ -2740,6 +2780,7 @@ constructor()
       dlg.dbe_Section.checkBox.checked = false;
       dlg.dbe_Control.enabled = false;
       dlg.updateGradientScaleStates();
+      WorkflowParameters.saveUserPrefs();
    };
 
    // Reset Defaults button
@@ -2763,7 +2804,7 @@ constructor()
       dlg.imageSolve_Section.checkBox.checked = true;
       dlg.imageSolve_Control.enabled = true;
       dlg.blindSolve_CheckBox.checked = true;
-      dlg.blindSolve_CheckBox.enabled = true;
+      dlg.blindSolve_CheckBox.enabled = false;   // locked while SPFC is on
       dlg.spfc_Section.checkBox.checked = true;
       dlg.spfc_Control.enabled = true;
       dlg.previews_Section.checkBox.checked = true;
@@ -2783,6 +2824,7 @@ constructor()
          dlg.gc_Section.toggleSection();
       if ( dlg.dbe_Section.isExpanded() )
          dlg.dbe_Section.toggleSection();
+      WorkflowParameters.saveUserPrefs();
    }; 
    // Reset Settings button (red - clears persistent user preferences)
    this.resetSettingsButton = new ToolButton( this );
@@ -3069,7 +3111,7 @@ function checkRequiredKeywords() {
             found.dec.exists = true;
             found.dec.value = value;
         }
-        if (name == "XPIXSZ") {
+        if (name == "XPIXSZ" || name == "PIXSIZE") {
             found.xpixsz.exists = true;
             found.xpixsz.value = value;
         }
@@ -3078,6 +3120,24 @@ function checkRequiredKeywords() {
             found.focallen.value = value;
         }
     }
+
+    // XISF properties, which ImageSolver reads first (src/scripts/AdP/
+    // WCSmetadata.jsh, ImageMetadata.Read): an image can carry them
+    // without the FITS keywords.
+    let view = win.mainView;
+    let fromProperty = function(id, key) {
+        if (found[key].exists) return;
+        try {
+            if (view.hasProperty(id)) {
+                found[key].exists = true;
+                found[key].value = String(view.propertyValue(id));
+            }
+        } catch (e) {}
+    };
+    fromProperty("Observation:Center:RA", "ra");
+    fromProperty("Observation:Center:Dec", "dec");
+    fromProperty("Instrument:Telescope:FocalLength", "focallen");
+    fromProperty("Instrument:Sensor:XPixelSize", "xpixsz");
 
     return found;
 }
@@ -3131,6 +3191,11 @@ function shMarkDone(view, id) {
 function shHasProperty(view, id) {
     try { return view.hasProperty(id); } catch (e) { return false; }
 }
+// Text for rich-text message boxes: file names, filter labels and values
+// read from the image are shown as written (& < > would be read as markup).
+function shHtml(s) {
+   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 // Process id of a history item; a script step (e.g. ImageSolver run from this
 // script) is a Script object without processId().
 function shProcId(p) {
@@ -3142,7 +3207,7 @@ function shSessionMark(view, id, pos) {
     if (!shHasProperty(view, id + "Session"))
         return null;
     try {
-        if (pos < 1 || pos > view.historyIndex)
+        if (pos < 0 || pos > view.historyIndex)
             return false;                   // its step was undone
         var stepId = view.propertyValue(id + "Session");
         var pc = view.processing;
@@ -3162,9 +3227,12 @@ function shHasMark(view, id) {
         var s = shSessionMark(view, id, pos);
         if (s !== null)
             return s;
-        if (pos > view.processing.length)
-            return true;                    // from an earlier session (reopened file)
-        return pos <= view.historyIndex;    // false = its step was undone
+        // No twin: the mark was saved with the file in an earlier session
+        // (since v2.7.17 every mark gets a twin, and twins are never saved),
+        // so its step is in the image. Before v2.7.30 the mark's position
+        // was compared with this session's history, and new steps could
+        // make it look undone (step run twice).
+        return true;
     } catch (e) {}
     return true;
 }
@@ -3194,24 +3262,15 @@ function shSpfcApplied(view) {
     var state = shStepState(view, "SpectrophotometricFluxCalibration");
     if (state != "none")
         return state == "active";
-    // No SPFC step in this session's history. Our mark stores the history
-    // position after SPFC: a position within this session's history means
-    // SPFC ran in this session and its step is gone (undone, then replaced
-    // by a new step) - not applied, whatever the mark or SPFC's own
-    // properties say (properties don't follow History Explorer jumps).
-    // A position beyond it = earlier session (reopened file) = applied.
-    if (shHasProperty(view, "SpaceHunter:SPFCDone")) {
-        // Session twin present = SPFC ran in this session, and its step is
-        // not in the history any more.
-        if (shHasProperty(view, "SpaceHunter:SPFCDoneSession"))
-            return false;
-        try {
-            var pos = view.propertyValue("SpaceHunter:SPFCDone");
-            if (typeof pos == "number")
-                return pos > view.processing.length;
-        } catch (e) {}
-        return true;
-    }
+    // No SPFC step in this session's history. With the session twin, SPFC
+    // ran in this session and its step is gone (undone, then replaced by a
+    // new step) - not applied, whatever the mark or SPFC's own properties
+    // say (properties don't follow History Explorer jumps). Without the
+    // twin the mark was saved in an earlier session (reopened file) =
+    // applied (v2.7.30; before, its position was compared with this
+    // session's history, and new steps could make it look undone).
+    if (shHasProperty(view, "SpaceHunter:SPFCDone"))
+        return !shHasProperty(view, "SpaceHunter:SPFCDoneSession");
     // SPFC run outside this script: only its own properties tell.
     return shHasProperty(view, "PCL:SPFC:Version");
 }
@@ -3385,16 +3444,16 @@ function smartPlateSolve() {
 
     console.writeln("  \u2718 No astrometric solution found\n");
 
-    console.writeln("Checking FITS keywords...\n");
+    console.writeln("Checking image metadata...\n");
 
     let found = checkRequiredKeywords();
     if (!found) return false;
 
-    console.writeln("FITS Keyword Status:");
-    console.writeln("  OBJCTRA/RA:  " + ((found.objctra.exists || found.ra.exists) ? "✔" : "✘"));
-    console.writeln("  OBJCTDEC/DEC: " + ((found.objctdec.exists || found.dec.exists) ? "✔" : "✘"));
-    console.writeln("  XPIXSZ:      " + (found.xpixsz.exists ? "✔" : "✘"));
-    console.writeln("  FOCALLEN:    " + (found.focallen.exists ? "✔" : "✘"));
+    console.writeln("Image metadata (FITS keywords or XISF properties):");
+    console.writeln("  RA  (OBJCTRA/RA):        " + ((found.objctra.exists || found.ra.exists) ? "✔" : "✘"));
+    console.writeln("  Dec (OBJCTDEC/DEC):      " + ((found.objctdec.exists || found.dec.exists) ? "✔" : "✘"));
+    console.writeln("  Pixel size (XPIXSZ):     " + (found.xpixsz.exists ? "✔" : "✘"));
+    console.writeln("  Focal length (FOCALLEN): " + (found.focallen.exists ? "✔" : "✘"));
 
     console.writeln("\n" + "-".repeat(80));
 
@@ -3404,7 +3463,7 @@ function smartPlateSolve() {
     if (hasCoordinates && hasImageScale) {
         console.writeln("DECISION: ImageSolver can work directly");
         console.writeln("-".repeat(80));
-        console.writeln("\n✔ Image has sufficient FITS data");
+        console.writeln("\n✔ Image has sufficient metadata");
 
         let solveSuccess = openImageSolver();
 
@@ -3427,7 +3486,7 @@ function smartPlateSolve() {
 
         if (!WorkflowParameters.enableBlindSolve) {
             console.writeln("⚠  Blind solve is disabled. Cannot proceed with plate solving.");
-            console.writeln("Either enable blind solve or add the missing FITS keywords.\n");
+            console.writeln("Either enable blind solve or add the missing metadata.\n");
             console.writeln("=".repeat(80) + "\n");
             return false;
         }
@@ -4061,8 +4120,8 @@ function shSpfcMgcMismatch()
    var spfcText = W.enableNarrowband
       ? "SPFC is in <b>narrowband</b> mode"
       : (precombined
-         ? "SPFC uses the <b>dual-band</b> filter set \"" + set.label + "\""
-         : "SPFC uses the <b>broadband</b> filter set \"" + (set ? set.label : "?") + "\"");
+         ? "SPFC uses the <b>dual-band</b> filter set \"" + shHtml(set.label) + "\""
+         : "SPFC uses the <b>broadband</b> filter set \"" + (set ? shHtml(set.label) : "?") + "\"");
    if (spfcLine && !mgcNarrow)
       return spfcText + ", but MGC uses broadband MARS filters " + mgcText + ".";
    if (!spfcLine && mgcNarrow)
@@ -4083,7 +4142,7 @@ function shSpfcPrecombinedNote()
    var set = filterList[W.selectedFilterIdx];
    if (!set || set.type != "precombined" || shSpfcMgcMismatch().length > 0)
       return "";
-   return "SPFC uses the <b>dual-band</b> filter set \"" + set.label + "\", and MGC uses " +
+   return "SPFC uses the <b>dual-band</b> filter set \"" + shHtml(set.label) + "\", and MGC uses " +
           "narrowband MARS filters " + W.mgcRedFilter + "/" + W.mgcGreenFilter + "/" +
           W.mgcBlueFilter + ".";
 }
@@ -4237,7 +4296,7 @@ function runMGCOnPreviews()
             console.warningln("   " + preview.id + " skipped and removed; its 1.0 preview still runs.\n");
             win.currentView = win.mainView;
             win.deletePreview(preview);
-            mgcSkipped.push(preview.id);
+            mgcSkipped.push(runs[i].id);   // preview is deleted
             continue;
          }
          var oldId = preview.id;
@@ -4440,6 +4499,7 @@ function runGCOnPreviews()
       throw new Error("GradientCorrection requires " + GC_PRESETS.length + " previews. Found only " + previews.length);
 
    var modelIds = [];
+   modelIds.byPreview = {};   // preview id -> model window GC made for it
    for (var i = 0; i < GC_PRESETS.length; i++)
    {
       var before = shWindowIds();
@@ -4451,12 +4511,15 @@ function runGCOnPreviews()
          {
             var id = w[j].mainView.id;
             modelIds.push(id);
+            if (!modelIds.byPreview[previews[i].id])
+               modelIds.byPreview[previews[i].id] = id;
             // Leftover GC_gradient_model* windows from earlier runs shift
             // GC's numbering, so preview and model numbers no longer match.
             if (id != gcExpectedModelId(previews[i].id))
                console.warningln("⚠  " + previews[i].id + " produced model " + id +
-                  " (expected " + gcExpectedModelId(previews[i].id) + "). Close old " +
-                  "GC_gradient_model windows before running GC to keep the numbers matched.");
+                  " (expected " + gcExpectedModelId(previews[i].id) + "). The result " +
+                  "panel shows " + id + " for it; close old GC_gradient_model windows " +
+                  "before running GC to keep the numbers matched.");
          }
    }
 
@@ -4761,6 +4824,22 @@ function bgmDescribe(P)
           ", scale factors " + (P.autoScaleFactors ? "automatic" : "1.0");
 }
 
+// SH: HISTORY lines of an earlier gradient correction. Kept while that
+// correction is still applied (keep = its mark counted before the new one
+// ran: the user chose to correct again). Otherwise its step was undone, and
+// its lines go (whether undo restores FITS keywords or not).
+function shGradientHistory(kw, keep)
+{
+   if (keep)
+      return kw;
+   return kw.filter(function(k) {
+      if (k.name != "HISTORY")
+         return true;
+      var text = String(k.comment || "") + String(k.value || "");
+      return !/^SH: (MGC|GradientCorrection) /.test(text.trim());
+   });
+}
+
 // Full-frame previews of the window that carry an MGC step (any name).
 function bgmPreviews(win)
 {
@@ -4827,6 +4906,10 @@ function bgmSubtractModel(view, model)
 function bgmApply(win, preview, previews, removePreviews)
 {
    var t0 = Date.now();
+   // No mark property at all (FITS/TIFF, older files): nothing known about
+   // the old SH: lines -> keep them (v2.7.31).
+   var keepOldHistory = shHasMark(win.mainView, "SpaceHunter:GradientDone") ||
+                        !shHasProperty(win.mainView, "SpaceHunter:GradientDone");
    var mgc = bgmMgcInstanceOf(preview);
 
    console.writeln("\n" + "=".repeat(80));
@@ -4856,7 +4939,7 @@ function bgmApply(win, preview, previews, removePreviews)
    shMarkDone(win.mainView, "SpaceHunter:GradientDone");
 
    // Leave a trace in the image's metadata of which model was used.
-   var kw = win.keywords;
+   var kw = shGradientHistory(win.keywords, keepOldHistory);
    kw.push(new FITSKeyword("HISTORY", "",
       "SH: MGC gradient model applied from preview " + preview.id +
       " (scale " + mgc.gradientScale + ")"));
@@ -5498,12 +5581,16 @@ function gcApply(win, preview, previews, modelIds, cleanUp)
    console.writeln("GC settings: " + gcDescribe(gc));
    console.writeln("=".repeat(80));
 
+   // No mark property at all (FITS/TIFF, older files): nothing known about
+   // the old SH: lines -> keep them (v2.7.31).
+   var keepOldHistory = shHasMark(win.mainView, "SpaceHunter:GradientDone") ||
+                        !shHasProperty(win.mainView, "SpaceHunter:GradientDone");
    win.mainView.beginProcess();
    win.mainView.image.assign(preview.image);
    win.mainView.endProcess();
    shMarkDone(win.mainView, "SpaceHunter:GradientDone");
 
-   var kw = win.keywords;
+   var kw = shGradientHistory(win.keywords, keepOldHistory);
    kw.push(new FITSKeyword("HISTORY", "",
       "SH: GradientCorrection result applied from preview " + preview.id +
       " (" + gcDescribe(gc) + ")"));
@@ -5529,7 +5616,7 @@ function gcApply(win, preview, previews, modelIds, cleanUp)
 }
 
 var GCResultDialog = class extends Dialog {
-constructor(win, previews)
+constructor(win, previews, modelIds)
 {
    super();
 
@@ -5547,16 +5634,19 @@ constructor(win, previews)
    this.info_Label.useRichText = true;
    this.info_Label.text = "<b>" + win.mainView.id + "</b><br/>" +
       "Each preview holds the GC-corrected image; its gradient model is in the " +
-      "window with the same number (GC_ &rarr; GC_gradient_model, GC_1 &rarr; " +
-      "GC_gradient_model1). Differences usually show more clearly in the " +
+      "model window GC made for it (normally the same number: GC_ &rarr; " +
+      "GC_gradient_model, GC_1 &rarr; GC_gradient_model1). Differences usually show more clearly in the " +
       "models than in the corrected previews. Click a result below to show " +
       "its preview, or tick Show gradient models to compare the models.";
 
-   // Model window of each preview (null if it is gone).
+   // Model window of each preview (null if it is gone): the window GC made
+   // for it (v2.7.30); the expected name only if that is not known.
    this.modelWins = [];
+   var byPreview = (modelIds && modelIds.byPreview) || {};
    for (var i = 0; i < previews.length; ++i)
    {
-      var mw = ImageWindow.windowById(gcExpectedModelId(previews[i].id));
+      var mw = ImageWindow.windowById(byPreview[previews[i].id] ||
+                                      gcExpectedModelId(previews[i].id));
       this.modelWins.push(mw.isNull ? null : mw);
    }
    this.modelStf = {};
@@ -5756,7 +5846,7 @@ function chooseGCResult(win, modelIds)
    for (var i = 0; i < previews.length; ++i)
       console.writeln("  " + previews[i].id + ": " + gcDescribe(gcInstanceOf(previews[i])));
 
-   var dlg = new GCResultDialog(win, previews);
+   var dlg = new GCResultDialog(win, previews, modelIds);
    dlg.show();
    while (dlg.visible)
    {

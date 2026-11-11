@@ -18,6 +18,9 @@
 % Portable paths for Part 1 v2.7.24 / Part 2 v2.4.20, 2026-11-09: Windows,
 % macOS or Linux; MARS search without fixed folders; XSPD files picked once;
 % Session twins + SpaceHunter:SPFCMode listed (CPD: properties written).
+% Review fixes for Part 1 v2.7.30 / Part 2 v2.4.25, 2026-11-09: background
+% finder deletes all old previews, MAS preview + stars windows, ImageSolver
+% settings complete, MARS search order, HISTORY lines of an undone correction.
 % ----------------------------------------------------------------------------
 
 \subsection { \label requirements Requirements } {
@@ -115,8 +118,8 @@
         files. Each mark also gets a twin with \c Session added to its name
         (for example \c {SpaceHunter:SPFCDoneSession}). It holds the name of
         the marked process and lets the script check that this step is still
-        active in the history. The twins are never saved and are gone when
-        you reopen the file. }
+        active in the history. The twins are not saved in image files and are
+        gone when you reopen the file. }
       { \s {SPFC filter mode:} after SPFC, Part 1 stores the filter mode it
         used in \c {SpaceHunter:SPFCMode}:
         \c {narrowband: &lt;R&gt;, &lt;G&gt;, &lt;B&gt;} (each as
@@ -131,19 +134,27 @@
       { \s {FITS header:} when you apply an MGC background model or a GC
         result, Part 1 adds \c HISTORY lines starting with \c {SH:}. They
         name the preview and its gradient scale (MGC, with the scale
-        factors in a second line) or its GC settings. }
+        factors in a second line) or its GC settings. Lines of an earlier
+        correction that was undone are replaced, not added to. }
       { \s {Previews and windows:} steps 3 and 5 (GC) delete the image's
         existing previews before they create their own. The apply windows
         (steps 4b and 5b) remove their previews, and GC's model windows,
         after applying when that option is ticked. Part 2's background
-        finder removes the previews it made. \s {Show corrected image} in
-        step 4b opens one extra image window, \c {SH_corrected_preview},
-        which closes with the model window and is never saved. }
+        finder, once it has found the background, deletes all of the
+        image's existing previews (exclusion zones, leftover MGC previews
+        and your own) and keeps the one it makes, \c {Background}.
+        \s {Show corrected image} in step 4b opens one extra image window,
+        \c {SH_corrected_preview}, which closes with the model window and
+        is never saved. Part 2's MAS Preview opens a minimised window
+        \c {&lt;image&gt;_MAS_preview}, and Part 2 renames the stars image
+        made by SXT or StarNet2 to \c stars (\c stars1 and so on if that
+        name is taken). }
       { \s {Part 1, ImageSolver:} uses PixInsight's own ImageSolver. It
         starts from the settings you last saved in the ImageSolver script
         (for example the VizieR server and star detection). Part 1 sets only
         the catalogue mode (automatic), the automatic limit magnitude,
-        distortion correction and the blind solver, and turns ImageSolver's
+        distortion correction, a retry with apparent coordinates, automatic
+        PSF fitting (off) and the blind solver, and turns ImageSolver's
         diagnostic outputs off. ImageSolver writes star lists
         (\c {stars*.csv}) to the system temporary folder and leaves them
         there. Its blind solver reads the astrometric index file set in the
@@ -160,10 +171,11 @@
         \c filters.xspd and \c white-references.xspd from PixInsight's
         library folder, and your own filter file (\c {filters-*-pxi.xspd})
         from PixInsight's settings folder, reading only. }
-      { \s {Part 1, MARS:} the script uses the \c .xmars files set in
-        MultiscaleGradientCorrection's preferences; otherwise it looks in the
-        folder you picked and in PixInsight's library and settings folders,
-        reading only. }
+      { \s {Part 1, MARS:} if you picked a MARS folder in the script, it
+        uses the \c .xmars files in that folder together with those in
+        PixInsight's library and settings folders. Otherwise it uses the \c .xmars files set in
+        MultiscaleGradientCorrection's preferences, and if there are none,
+        PixInsight's library and settings folders. Reading only. }
       { \s {Part 1, separation profiles:} profiles are \c .txt files in the
         folder you choose. They are only read for their two factors, never
         run, and written only when you save one (an existing file is
@@ -234,8 +246,9 @@
       {
          { \image[height: 32px] images/Icon_KillPreviews.png }
          { \s {KillPreviews}: deletes all previews in the active image.
-           Part 1's apply windows and Part 2's background finder now remove
-           their previews themselves, so you only need it for leftovers, for
+           Part 1's apply windows remove their previews themselves and Part 2's
+           background finder deletes all old previews, so you only need it
+           for leftovers, for
            example after closing Part 1's apply window without applying. }
       }
       {

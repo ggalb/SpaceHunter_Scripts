@@ -15,6 +15,8 @@
 % 2026-11-02. Dialog images retaken, filter mismatch warning, corrected
 % view and _autoSF fallback for v2.7.25, dual-band note for v2.7.28,
 % 2026-11-09.
+% Blind solve locked with SPFC, metadata check as ImageSolver, GC model
+% pairing for v2.7.30, 2026-11-09.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 1}
@@ -89,7 +91,8 @@
          { { \lref separation {2a Ha/OIII separation} } {Off}
            { Only in narrowband filters mode. Runs just before SPFC. } }
          { { \lref step_spfc {2b SPFC} } {On}
-           { Turning it on also turns on Plate Solve and blind solve. } }
+           { Turning it on also turns on Plate Solve and blind solve. Blind solve
+             stays on (greyed out) while SPFC is on. } }
          { { \lref step_previews {3 Previews (MGC only)} } {On, 4 previews}
            { Turned on by MGC; turned off by GC and DBE. } }
          { { \lref step_mgc {4 MGC} } {On}
@@ -106,7 +109,12 @@
    \subsection { \label step_solve Step 1 --- Smart Plate Solve } {
 
       Checks whether the image already has an astrometric solution. If it
-      does, the step is skipped. If not, the script reads the FITS keywords:
+      does, the step is skipped. If not, the script looks for the image's
+      coordinates and image scale mainly in the same places as ImageSolver: the
+      FITS keywords \c OBJCTRA / \c RA, \c OBJCTDEC / \c DEC, \c FOCALLEN
+      and \c XPIXSZ / \c PIXSIZE, or the XISF properties
+      \c {Observation:Center:RA/Dec}, \c {Instrument:Telescope:FocalLength}
+      and \c {Instrument:Sensor:XPixelSize}:
 
       \list[spaced] {
          { If coordinates and image scale are present, the script solves the
@@ -485,8 +493,9 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
 
       \note {
          Close old \c GC_gradient_model windows before running GC. Otherwise
-         GC numbers the new models differently and they no longer match the
-         preview names.
+         GC numbers the new models differently and their names no longer
+         match the preview names. The result panel still shows each
+         preview's own model.
       }
    }
 
