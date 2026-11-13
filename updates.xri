@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xri version="1.0">
-
    <description>
-      <p><b>Space Hunter Scripts for PixInsight</b></p>
+      <p>
+         <b>Space Hunter Scripts for PixInsight</b>
+      </p>
       <p>A collection of scripts for automated linear image processing of OSC camera images.</p>
-      <p>Copyright &copy; 2026 Georg G Albrecht. MIT License.</p>
+      <p>Copyright © 2026 Georg G Albrecht. MIT License.</p>
       <p>Repository: https://github.com/ggalb/SpaceHunter_Scripts</p>
    </description>
-
-   <!-- PixInsight 1.9.6 and later. Packages for 1.9.5 and earlier are withdrawn. -->
-   <platform os="all" arch="noarch" version="1.9.6:1.9.9">
-      <package
-         fileName="SpaceHunter_Scripts_20261103_1540.zip"
-         sha1="b5aea00c176868debd7ca67ddd061d876b94ad98"
-         type="script"
-         releaseDate="20261103"
-         title="Space Hunter Scripts 20261103_1540">
+   <!-- PixInsight 1.9.6:1.9.6 only (signed Part 1 depends on its ImageSolver). Packages for 1.9.5 and earlier are withdrawn. -->
+   <platform os="all" arch="noarch" version="1.9.6:1.9.6">
+      <package fileName="SpaceHunter_Scripts_20261111.zip" sha1="9f9fea44ac3fb19549dfeafb26f83bd5404f36be" type="script" releaseDate="20261111" title="Space Hunter Scripts 20261111">
          <description>
             <p>Changelog (requires PixInsight 1.9.6):</p>
-            <p>Part 1 v2.7.11, Part 2 v2.4.13, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
-            <p>Part 2 step 5 renamed Auto Display Stretch (linked/unlinked): it sets PixInsight's ScreenTransferFunction with the AutoSTF method and chooses linked or unlinked automatically.</p>
-            <p>Part 1: the gradient model windows use the same Auto Display Stretch.</p>
-            <p>Part 2: the downloaded dust map is checked value by value before use.</p>
+            <p>Compliance with the Certified PixInsight Developer Program (CPDP) Rules, version 1.0.2.</p>
+            <p>All scripts code-signed by a Certified PixInsight Developer (GeorgAlbrecht-SpaceHunter).</p>
+            <p>Part 1 v2.7.31, Part 2 v2.4.26, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
+            <p>Windows, macOS and Linux: no fixed Windows paths; missing filter files are asked for once.</p>
+            <p>Part 1: warning when SPFC and MGC filters don&apos;t match; dual-band sets recognised by their curve.</p>
+            <p>Part 1: &quot;Show corrected image&quot; in the MGC model panel.</p>
+            <p>Part 2: warning when SPCC&apos;s filter mode doesn&apos;t match the one used by SPFC in Part 1.</p>
+            <p>Re-run check: steps no longer wrongly skipped or repeated after History Explorer jumps or in reopened files.</p>
             <p>Full changelog: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/CHANGELOG.md</p>
          </description>
          <remove>
@@ -45,5 +44,5 @@
          </remove>
       </package>
    </platform>
-
 </xri>
+<Signature developerId="GeorgAlbrecht-SpaceHunter" timestamp="2026-11-11T23:10:56.962Z" encoding="Base64">JTdpa3EyVR4JGJzVrOmvHHiS6A5pE6Q0i771VEgJ8TVdFu4kCsyC5xKpOyYu2nY5CtVpY9y9f+uGSYy/WV2oCA==</Signature>
