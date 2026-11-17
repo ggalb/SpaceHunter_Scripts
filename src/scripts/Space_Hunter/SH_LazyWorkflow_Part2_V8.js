@@ -207,6 +207,9 @@
 // v2.4.26: Diff review fix (Fable 5.2, 2026-11-11): a saved " Red/Green/Blue"
 //       filter set from v2.4.25 or older (label "X", now "X (Red/Green/Blue)")
 //       is found again instead of silently falling back to the first filter.
+// v2.4.27: MAS preview no longer copies the image's FITS keywords to its
+//       window (only the astrometric solution): assigning keywords takes
+//       ~0.12 s per keyword, minutes on old stacks with long HISTORY lists.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -230,7 +233,7 @@ CoreApplication.ensureMinimumVersion(1, 9, 6);
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 2"
-#define SCRIPT_VERSION "v2.4.26"
+#define SCRIPT_VERSION "v2.4.27"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -4743,7 +4746,8 @@ function runMASPreview(win)
       copy.mainView.beginProcess(0xFFFFFFFF);   // UndoFlag_NoSwapFile: throwaway copy
       copy.mainView.image.assign(img);
       copy.mainView.endProcess();
-      copy.keywords = win.keywords;
+      // No FITS keywords copied (v2.4.27): the preview needs none, and
+      // assigning them costs ~0.12 s per keyword (minutes on old stacks).
       try { copy.copyAstrometricSolution(win); } catch (e) {}
 
       // MultiscaleAdaptiveStretch defaults, set explicitly.

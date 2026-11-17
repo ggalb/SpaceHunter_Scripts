@@ -21,6 +21,8 @@
 % Review fixes for Part 1 v2.7.30 / Part 2 v2.4.25, 2026-11-09: background
 % finder deletes all old previews, MAS preview + stars windows, ImageSolver
 % settings complete, MARS search order, HISTORY lines of an undone correction.
+% Part 1 v2.7.32, 2026-11-17: gradient record = property
+% SpaceHunter:GradientModel instead of SH: HISTORY lines.
 % ----------------------------------------------------------------------------
 
 \subsection { \label requirements Requirements } {
@@ -131,11 +133,13 @@
         or a broadband set), another dual-band set, or other narrowband
         wavelengths or bandwidths (more than 0.1 nm apart).
         \c precombined marks a dual-band set. }
-      { \s {FITS header:} when you apply an MGC background model or a GC
-        result, Part 1 adds \c HISTORY lines starting with \c {SH:}. They
-        name the preview and its gradient scale (MGC, with the scale
-        factors in a second line) or its GC settings. Lines of an earlier
-        correction that was undone are replaced, not added to. }
+      { \s {Gradient record:} when you apply an MGC background model or a GC
+        result, Part 1 records which one in the property
+        \c {SpaceHunter:GradientModel}: the preview with its gradient scale
+        and scale factors (MGC), or its GC settings. Each Apply replaces the
+        record. It is saved in XISF files. Part 1 writes no FITS keywords;
+        \c HISTORY lines starting with \c {SH:} in older images come from
+        versions before Part 1 v2.7.32 and are left as they are. }
       { \s {Previews and windows:} steps 3 and 5 (GC) delete the image's
         existing previews before they create their own. The apply windows
         (steps 4b and 5b) remove their previews, and GC's model windows,

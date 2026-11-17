@@ -17,6 +17,8 @@
 % 2026-11-09.
 % Blind solve locked with SPFC, metadata check as ImageSolver, GC model
 % pairing for v2.7.30, 2026-11-09.
+% Model record as property SpaceHunter:GradientModel (no FITS history) for
+% v2.7.32, 2026-11-17.
 % ----------------------------------------------------------------------------
 
 \script {SH Lazy Workflow Part 1}
@@ -419,7 +421,8 @@ B:  $T - ( $T[0] - med( $T[0] ) ) * kB
             { Apply }       { Applies the selected model to the main image at
                               once: image &minus; model + median(model). The
                               model used and its scale factors are noted in
-                              the FITS history. }
+                              the image (see \lref access {Files, Programs
+                              and Internet Access}). }
             { Stronger model stretch (same for all models) } { Display only.
                               Shows every model with one stronger stretch,
                               computed from all models together, so you

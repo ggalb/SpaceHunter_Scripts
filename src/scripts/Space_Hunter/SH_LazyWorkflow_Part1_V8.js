@@ -228,6 +228,11 @@
 //       SpaceHunter:GradientDone property (FITS/TIFF, older files) keeps its
 //       SH: HISTORY lines when a gradient model is applied (v2.7.30 dropped
 //       them). Console text says "metadata" instead of "FITS data/keywords".
+// v2.7.32: The applied model / GC result is recorded in one image property,
+//       SpaceHunter:GradientModel (replaced on every Apply), instead of SH:
+//       HISTORY lines. Assigning FITS keywords took ~0.12 s per keyword: 136 s
+//       at Apply on an old stack with 1100 HISTORY lines. The lines also
+//       stacked up after History Explorer resets. Older SH: lines stay.
 // ============================================================
 //
 // THIS SCRIPT IS FOR OSC CAMERA IMAGES ONLY
@@ -468,7 +473,7 @@ function resolveMARSFilesScan()
 // ============================================================
 
 #define SCRIPT_NAME    "Space Hunter Lazy Workflow Part 1"
-#define SCRIPT_VERSION "v2.7.31"
+#define SCRIPT_VERSION "v2.7.32"
 // Dialog.browseScriptDocumentation() takes the MENU name (last part of the
 // #feature-id menu path), not the ID, and opens doc/scripts/<name>/<name>.html.
 // Tested in PI 2026-10-12. Keep in sync with #feature-id and the manual folder.
@@ -4824,20 +4829,16 @@ function bgmDescribe(P)
           ", scale factors " + (P.autoScaleFactors ? "automatic" : "1.0");
 }
 
-// SH: HISTORY lines of an earlier gradient correction. Kept while that
-// correction is still applied (keep = its mark counted before the new one
-// ran: the user chose to correct again). Otherwise its step was undone, and
-// its lines go (whether undo restores FITS keywords or not).
-function shGradientHistory(kw, keep)
+// Which model / GC result the gradient correction was made with (v2.7.32):
+// one view property, replaced on every Apply. Until v2.7.31 this was written
+// as SH: HISTORY lines, but assigning the window's FITS keywords costs about
+// 0.12 s per keyword (136 s on an old stack with 1100 HISTORY lines,
+// 2026-11-17), and the lines stacked up after History Explorer resets.
+// SH: HISTORY lines written by older versions are left as they are.
+function shSetGradientRecord(view, text)
 {
-   if (keep)
-      return kw;
-   return kw.filter(function(k) {
-      if (k.name != "HISTORY")
-         return true;
-      var text = String(k.comment || "") + String(k.value || "");
-      return !/^SH: (MGC|GradientCorrection) /.test(text.trim());
-   });
+   try { view.setPropertyValue("SpaceHunter:GradientModel", text, PropertyType.String,
+                               PropertyAttribute.Storable | PropertyAttribute.Permanent); } catch(e) {}
 }
 
 // Full-frame previews of the window that carry an MGC step (any name).
@@ -4906,10 +4907,6 @@ function bgmSubtractModel(view, model)
 function bgmApply(win, preview, previews, removePreviews)
 {
    var t0 = Date.now();
-   // No mark property at all (FITS/TIFF, older files): nothing known about
-   // the old SH: lines -> keep them (v2.7.31).
-   var keepOldHistory = shHasMark(win.mainView, "SpaceHunter:GradientDone") ||
-                        !shHasProperty(win.mainView, "SpaceHunter:GradientDone");
    var mgc = bgmMgcInstanceOf(preview);
 
    console.writeln("\n" + "=".repeat(80));
@@ -4939,13 +4936,9 @@ function bgmApply(win, preview, previews, removePreviews)
    shMarkDone(win.mainView, "SpaceHunter:GradientDone");
 
    // Leave a trace in the image's metadata of which model was used.
-   var kw = shGradientHistory(win.keywords, keepOldHistory);
-   kw.push(new FITSKeyword("HISTORY", "",
-      "SH: MGC gradient model applied from preview " + preview.id +
-      " (scale " + mgc.gradientScale + ")"));
-   // Separate line: a FITS HISTORY value holds ~70 characters.
-   kw.push(new FITSKeyword("HISTORY", "", "SH: MGC " + factorsText.split(" / ").join("/")));
-   win.keywords = kw;
+   shSetGradientRecord(win.mainView,
+      "MGC gradient model from preview " + preview.id + " (scale " + mgc.gradientScale +
+      ", " + factorsText.split(" / ").join("/") + ")");
 
    if (removePreviews)
    {
@@ -5581,20 +5574,13 @@ function gcApply(win, preview, previews, modelIds, cleanUp)
    console.writeln("GC settings: " + gcDescribe(gc));
    console.writeln("=".repeat(80));
 
-   // No mark property at all (FITS/TIFF, older files): nothing known about
-   // the old SH: lines -> keep them (v2.7.31).
-   var keepOldHistory = shHasMark(win.mainView, "SpaceHunter:GradientDone") ||
-                        !shHasProperty(win.mainView, "SpaceHunter:GradientDone");
    win.mainView.beginProcess();
    win.mainView.image.assign(preview.image);
    win.mainView.endProcess();
    shMarkDone(win.mainView, "SpaceHunter:GradientDone");
 
-   var kw = shGradientHistory(win.keywords, keepOldHistory);
-   kw.push(new FITSKeyword("HISTORY", "",
-      "SH: GradientCorrection result applied from preview " + preview.id +
-      " (" + gcDescribe(gc) + ")"));
-   win.keywords = kw;
+   shSetGradientRecord(win.mainView,
+      "GradientCorrection result from preview " + preview.id + " (" + gcDescribe(gc) + ")");
 
    if (cleanUp)
    {

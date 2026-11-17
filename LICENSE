@@ -97,11 +97,12 @@ Files, Programs and Internet Access
   map (SFD map, Schlegel, Finkbeiner & Davis 1998) is downloaded to the system temporary folder
   and deleted afterwards.
 - Files outside the PixInsight installation: settings are kept in PixInsight's own settings.
-  ImageSolver writes star lists (stars*.csv) to the system temporary folder. Part 1 searches the
-  PixInsight folders, common Astro folders and a folder the user picks for the MARS database
-  (.xmars, read only), and reads/writes separation profiles (.txt) only in a folder the user
-  chooses. Re-run marks are stored as XISF properties in the image; Part 1 adds FITS HISTORY lines
-  starting with "SH:" when a gradient model is applied.
+  ImageSolver writes star lists (stars*.csv) to the system temporary folder. Part 1 reads the MARS
+  database (.xmars, read only) from the files set in MultiscaleGradientCorrection's preferences,
+  from PixInsight's library and settings folders, or from a folder the user picks, and
+  reads/writes separation profiles (.txt) only in a folder the user chooses. Re-run marks are
+  stored as XISF properties in the image; when a gradient model or GC result is applied, Part 1
+  records which one in the XISF property SpaceHunter:GradientModel.
 
 Details: "Files, Programs and Internet Access" in the user guides of Part 1 and Part 2.
 

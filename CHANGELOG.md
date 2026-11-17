@@ -4,6 +4,22 @@ Newest release first. Each script's source file also has a detailed change log i
 
 ---
 
+## Next release (in preparation, not yet published)
+
+**Part 1 (v2.7.32):**
+
+- Applying a background model or GC result no longer writes FITS HISTORY lines. Which model was applied is recorded in the image property SpaceHunter:GradientModel, replaced on every Apply. On old stacks with long FITS headers, writing the keywords took minutes (136 s with 1100 HISTORY lines), and the lines piled up after History Explorer resets. SH: lines from older versions stay in the image.
+
+**Part 2 (v2.4.27):**
+
+- MAS preview no longer copies the image's FITS keywords to its window (same slowdown on long headers).
+
+**General:**
+
+- LICENSE: MARS file locations described as in the code (MGC preferences, PixInsight's library and settings folders, a folder you pick).
+
+---
+
 ## 11 November 2026 (V8, PixInsight 1.9.6, code-signed)
 
 **General:**
