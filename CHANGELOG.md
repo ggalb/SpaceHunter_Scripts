@@ -4,7 +4,7 @@ Newest release first. Each script's source file also has a detailed change log i
 
 ---
 
-## Next release (in preparation, not yet published)
+## 18 November 2026 (V8, PixInsight 1.9.6, code-signed)
 
 **Part 1 (v2.7.32):**
 
