@@ -1,0 +1,232 @@
+\documentclass PIScriptDoc
+
+% ----------------------------------------------------------------------------
+% GENERATED FILE - DO NOT EDIT. Built by tools/build_master.py from tools/master_template.pidoc (release variant).
+%
+% Space Hunter Lazy Workflow Master -- PIDoc source (DRAFT, 2026-11-18)
+%
+% \script must be the script's MENU name (last part of the menu path
+% in #feature-id), not the ID: PixInsight's help button looks up
+% doc/scripts/<menu name>/<menu name>.html.
+%    #feature-id SHLazyWorkflowMaster : Space_Hunter > SH Lazy Workflow Master
+% The start dialog's Documentation button calls
+%    Dialog.browseScriptDocumentation( "SH Lazy Workflow Master" )
+%
+% One template, two manuals (built by tools/build_master.py together with
+% the two scripts):
+%  - release: SH Lazy Workflow Master -> pidoc/SHLazyWorkflowMaster.pidoc,
+%    compiled into doc/scripts/SH Lazy Workflow Master/ (update package);
+%  - internal: SH Lazy Workflow Master - Internal ->
+%    internal/pidoc/SHLazyWorkflowMasterInternal.pidoc (git-ignored), compiled
+%    into internal/doc/scripts/SH Lazy Workflow Master - Internal/ - NEVER
+%    into doc/ (everything git tracks under doc/ goes into the zip).
+% A "[internal:<name>]" line is replaced by that section of the git-ignored
+% internal/master_internal.pidoc in the internal manual and dropped in the
+% release; lines marked [nosound] are release only. Sound was dropped from
+% the release on all systems after PTeam's answer of 2026-11-18 (CPD
+% rule 5.3).
+%
+% Written against the test build v0.3.3 (Part 1 v2.7.32 / Part 2 v2.4.27),
+% for release v1.0.0. OPEN before release:
+%  - VERIFY in PI: double-clicking a New Instance icon from Part 2's dialog
+%    starts the Master with both parts' settings (stated in "start" note).
+%  - images/Master_0.png is Georg's v0.2.7-test screenshot: retake with the
+%    release build (no TEST checkbox, no Sound checkbox).
+% ----------------------------------------------------------------------------
+
+\script {SH Lazy Workflow Master}
+
+\keywords {
+   Space Hunter, OSC, workflow, Lazy Workflow, MGC, GradientCorrection, background model,
+   SPFC, SPCC, BlurXTerminator
+}
+
+\author {
+   Georg G. Albrecht
+}
+
+\copyright {
+   2026 Georg G. Albrecht. MIT License. AutoColor.js \copy 2016 Hartmut V. Bornemann, used with written permission.
+}
+
+\brief {
+   Runs SH Lazy Workflow Part 1 and Part 2 as one workflow: Part 2 starts by itself as soon as you apply a background model or GC result in Part 1.
+}
+
+\description {
+
+   The Master runs the two parts of the Space Hunter Lazy Workflow,
+   \sref {SH Lazy Workflow Part 1} {Part 1} and
+   \sref {SH Lazy Workflow Part 2} {Part 2}, as one workflow. You set up both
+   parts at the start; after that the run only needs you once, to choose
+   the background model (or GC result) in Part 1's panel. As soon as you
+   click \s Apply there, Part 2 continues without being started by hand.
+
+   The Master contains both parts unchanged. Every step works and is set up
+   exactly as described in their manuals. This manual only covers what the
+   Master adds: the start dialog, and when a run stops and how it continues.
+
+   \s {Master sequence:} start dialog &rarr; Part 1 dialog &rarr; Part 2
+   dialog &rarr; Part 1 (plate solve, SPFC, previews, MGC / GC) &rarr; your
+   choice in the model / GC panel &rarr; Part 2 (BXT correct, background,
+   SPCC, stretch, BXT full, and the optional steps).
+}
+
+\section { Requirements, Files and License } {
+
+   \subsection { \label requirements Requirements } {
+
+      The same as for Part 1 and Part 2 together: see \e {Requirements} in
+      the \sref {SH Lazy Workflow Part 1} {Part 1} and
+      \sref {SH Lazy Workflow Part 2} {Part 2} manuals. The Master has no
+      requirements of its own.
+   }
+
+   \subsection { \label access Files, Programs and Internet Access } {
+
+      Everything Part 1 and Part 2 store, write or download is listed in
+      \e {Files, Programs and Internet Access} in their manuals, and applies
+      unchanged when they run inside the Master. The Master adds only this:
+
+      \list[spaced] {
+         { \s {Settings:} the Master stores no settings of its own.
+           Part 1's and Part 2's
+           dialogs use the same saved settings as the single scripts, so what
+           you choose in one is remembered in the other. }
+         { \s {Image:} the Master itself writes nothing to the image. It reads
+           the re-run marks and the processing history to fill in
+           \e {Already done}. }
+         { \s {Programs:} none of its own. }
+         { \s {Internet:} none of its own. }
+      }
+   }
+
+   \subsection { \label license License } {
+
+      The Master is released under the MIT License, Copyright \copy 2026
+      Georg G. Albrecht, like Part 1 and Part 2. It contains Part 2, and with
+      it the AutoColor code (\copy 2016 Hartmut V. Bornemann, used with
+      written permission), which must be kept in its original form and needs
+      a separate written agreement with its author. See the
+      \xref {https://github.com/ggalb/SpaceHunter_Scripts/blob/main/LICENSE} {LICENSE}
+      on GitHub.
+   }
+}
+
+\usage {
+
+   \subsection { \label start The Start Dialog } {
+
+      \center {
+         \image[width:480px] images/Master_0.png
+      }
+
+      The start dialog shows the active image and what has already been done
+      to it, and lets you choose what to run.
+
+      \definition {
+         { Already done } { Read from the image before anything runs:
+                            plate solution, Ha/OIII separation, SPFC, gradient
+                            correction and Part 2's steps. A step counts only
+                            while it is still active in the History Explorer
+                            (see \lref detect {What counts as done}). }
+         { Part 1 + Part 2 } { The whole workflow. Preselected when no
+                            gradient correction was found. }
+         { Part 1 only }    { Part 1 as the single script would run it. }
+         { Part 2 only }    { Continue after the gradient correction.
+                            Preselected when a gradient correction or a
+                            Part 2 step was found. }
+      }
+
+      After \s OK, Part 1's dialog opens, then Part 2's (for
+      \e {Part 1 + Part 2}). Both are the dialogs of the single scripts.
+      Part 2's camera, filter set and white reference start with what you
+      chose for SPFC in Part 1, if Part 2's list has the same entry; check
+      them before you click OK. \s Cancel in any dialog ends the Master
+      without changing the image.
+
+      \note {
+         A process icon made with \e {New Instance} in Part 2's dialog holds
+         the settings of both parts. Double-click it to start the Master with
+         them.
+      }
+   }
+
+   \subsection { \label run The Run } {
+
+      With \e {Part 1 + Part 2}, everything is set up first, then the image is
+      processed:
+
+      \list[ordered, spaced] {
+         { The start dialog, Part 1's dialog and Part 2's dialog. }
+         { Part 2's background pre-check (IFN / dust map), if it is switched
+           on and the image is already plate solved. }
+         { Part 1 runs: plate solve, SPFC, previews, MGC (or GC). }
+         { Part 1's \e {Choose background model} panel (or \e {Choose GC
+           result}) opens. This is the one moment the run waits for you. }
+         { After \s Apply, Part 2 starts by itself. On an image that was not
+           plate solved at the start, its background pre-check comes now,
+           because the dust map needs the image's coordinates. }
+         { Part 2 runs to the end. }
+      }
+
+      If MGC fails (for example where the MARS database has no data), Part 1
+      falls back to GradientCorrection as usual, and the Master waits for
+      \s Apply in the GC result panel instead.
+   }
+
+   \subsection { \label stops When the Run Stops } {
+
+      The Master stops before Part 2, with a message in the console, when:
+
+      \list[spaced] {
+         { \s {ImageSolver needs you:} the image could not be plate solved
+           automatically. Solve it, then run the Master again. }
+         { \s {DBE is ticked in Part 1:} DBE is applied by hand, so Part 2's
+           dialog is not shown at all in that run. Place the samples, apply
+           DBE, then run the Master again. }
+         { \s {The panel is closed without Apply,} or the MGC / GC tool is
+           opened instead: nothing was applied. Apply a gradient correction,
+           then run the Master again. }
+      }
+
+      In each case the next run sees what was done and preselects
+      \e {Part 2 only}, so it continues where it stopped. A DBE, MGC, GC or
+      ABE step that is active in the History Explorer counts, as does
+      Part 1's own mark.
+   }
+
+   \subsection { \label detect What Counts as Done } {
+
+      \list[spaced] {
+         { Part 1's and Part 2's re-run marks (see their manuals) count while
+           their step is still active in the History Explorer. Going back in
+           the History Explorer undoes them; the Master then offers those
+           steps again. }
+         { A DBE, MGC, GC or ABE tool step counts while it is active in the
+           History Explorer. }
+         { \s {Reopened files:} a tool step from an earlier session leaves no
+           trace once the file is closed; only the marks are saved (in XISF
+           files). Choose \e {Part 2 only} yourself then. }
+         { \s {GraXpert:} its background extraction leaves only a PixelMath
+           step that copies another image in. The Master shows a hint
+           (\e {PixelMath copy from another image in history}) but doesn't
+           count it, because GraXpert's denoising leaves the same step. If it
+           was a background extraction, choose \e {Part 2 only}. }
+      }
+
+      If you choose \e {Part 1 + Part 2} on an image that already has a
+      gradient correction, Part 1 and the Master warn you first. \s No is the
+      default: a second gradient correction may damage the image.
+   }
+}
+
+\relatedscripts {
+   SH Lazy Workflow Part 1, SH Lazy Workflow Part 2, SH +Previews
+}
+
+\relatedtools {
+   MultiscaleGradientCorrection, GradientCorrection, DynamicBackgroundExtraction
+}
+
+\make
