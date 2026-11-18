@@ -4,6 +4,29 @@ Newest release first. Each script's source file also has a detailed change log i
 
 ---
 
+## 18 November 2026 (V8, PixInsight 1.9.6, code-signed)
+
+**Part 1 (v2.7.32):**
+
+- Applying a background model or GC result no longer writes FITS HISTORY lines. Which model was applied is recorded in the image property SpaceHunter:GradientModel, replaced on every Apply. On old stacks with long FITS headers, writing the keywords took minutes (136 s with 1100 HISTORY lines), and the lines piled up after History Explorer resets. SH: lines from older versions stay in the image.
+
+**Part 2 (v2.4.27):**
+
+- MAS preview no longer copies the image's FITS keywords to its window (same slowdown on long headers).
+
+**New: SH Lazy Workflow Master (v1.0.0):**
+
+- Runs Part 1 and Part 2 as one workflow: both dialogs at the start, Part 2 continues by itself after Apply in Part 1's model / GC panel.
+- Start dialog with what is already done to the image (re-run marks, History Explorer) and the choice Part 1 + Part 2 / Part 1 only / Part 2 only.
+- Stops before Part 2 when ImageSolver needs you, when DBE is opened, or when the panel is closed without Apply; the next run continues where it stopped. The console says how the run ended (finished, stopped, cancelled) and how to go on.
+- Contains Part 1 and Part 2 unchanged; own manual (documentation button) and menu icon. No external programs.
+
+**General:**
+
+- LICENSE: MARS file locations described as in the code (MGC preferences, PixInsight's library and settings folders, a folder you pick); Master section added.
+
+---
+
 ## 11 November 2026 (V8, PixInsight 1.9.6, code-signed)
 
 **General:**

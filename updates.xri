@@ -10,17 +10,15 @@
    </description>
    <!-- PixInsight 1.9.6:1.9.6 only (signed Part 1 depends on its ImageSolver). Packages for 1.9.5 and earlier are withdrawn. -->
    <platform os="all" arch="noarch" version="1.9.6:1.9.6">
-      <package fileName="SpaceHunter_Scripts_20261111.zip" sha1="9f9fea44ac3fb19549dfeafb26f83bd5404f36be" type="script" releaseDate="20261111" title="Space Hunter Scripts 20261111">
+      <package fileName="SpaceHunter_Scripts_20261118.zip" sha1="144d2250bd9e3c29c78e43d3b5f31ec43a82eb3d" type="script" releaseDate="20261118" title="Space Hunter Scripts 20261118">
          <description>
             <p>Changelog (requires PixInsight 1.9.6):</p>
             <p>Compliance with the Certified PixInsight Developer Program (CPDP) Rules, version 1.0.2.</p>
             <p>All scripts code-signed by a Certified PixInsight Developer (GeorgAlbrecht-SpaceHunter).</p>
-            <p>Part 1 v2.7.31, Part 2 v2.4.26, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
-            <p>Windows, macOS and Linux: no fixed Windows paths; missing filter files are asked for once.</p>
-            <p>Part 1: warning when SPFC and MGC filters don&apos;t match; dual-band sets recognised by their curve.</p>
-            <p>Part 1: &quot;Show corrected image&quot; in the MGC model panel.</p>
-            <p>Part 2: warning when SPCC&apos;s filter mode doesn&apos;t match the one used by SPFC in Part 1.</p>
-            <p>Re-run check: steps no longer wrongly skipped or repeated after History Explorer jumps or in reopened files.</p>
+            <p>Part 1 v2.7.32, Part 2 v2.4.27, new: Master v1.0.0; +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2.</p>
+            <p>New: SH Lazy Workflow Master runs Part 1 and Part 2 as one workflow; Part 2 continues by itself after Apply in Part 1&apos;s model / GC panel.</p>
+            <p>Part 1: applying a background model or GC result is fast again on old stacks (no FITS HISTORY lines; the model is recorded in the property SpaceHunter:GradientModel).</p>
+            <p>Part 2: MAS preview is fast on old stacks (FITS keywords no longer copied to the preview).</p>
             <p>Full changelog: https://github.com/ggalb/SpaceHunter_Scripts/blob/main/CHANGELOG.md</p>
          </description>
          <remove>
@@ -45,4 +43,4 @@
       </package>
    </platform>
 </xri>
-<Signature developerId="GeorgAlbrecht-SpaceHunter" timestamp="2026-11-11T23:10:56.962Z" encoding="Base64">JTdpa3EyVR4JGJzVrOmvHHiS6A5pE6Q0i771VEgJ8TVdFu4kCsyC5xKpOyYu2nY5CtVpY9y9f+uGSYy/WV2oCA==</Signature>
+<Signature developerId="GeorgAlbrecht-SpaceHunter" timestamp="2026-11-18T23:08:33.973Z" encoding="Base64">G8AsaGlQU2QCbFbxVOT2ir5oxkbMQx8W+uBwVe4xW5BH+NL8Ys1PMBcI72fv/U+Tc5Hxcx6r+ybzXO7M2w2BBw==</Signature>

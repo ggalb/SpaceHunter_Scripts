@@ -1,5 +1,5 @@
 MIT License
-Space Hunter Lazy Workflow — Part 1 & Part 2
+Space Hunter Lazy Workflow — Part 1, Part 2 and Master
 Copyright (c) 2026 Georg G Albrecht
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
@@ -27,7 +27,8 @@ AutoColor.js
 Copyright (c) 2016 Hartmut V. Bornemann
 
 This software includes AutoColor.js 1.1.2 by Hartmut V. Bornemann, integrated into Space Hunter
-Lazy Workflow Part 2 with the explicit written permission of the author.
+Lazy Workflow Part 2 with the explicit written permission of the author. SH Lazy Workflow Master
+contains Part 2 unchanged, and with it AutoColor.js with the same headers and notices.
 
 Permission history:
 - 2026-03-10  Written permission to integrate AutoColor.js into Lazy Workflow Part 2.
@@ -83,11 +84,17 @@ implementation is independently written with a different algorithm and scoring a
 Standard PixInsight processes called by this script: SpectrophotometricColorCalibration (SPCC),
 BackgroundNeutralization, ColorCalibration.
 
+Master — Lazy Workflow Master
+
+Runs Part 1 and Part 2 as one workflow. It contains both scripts unchanged (Part 1 with its
+ImageSolver include), so everything stated above for them applies. It calls no processes,
+programs or internet services of its own.
+
 -------------------------------------------------------------------------------
 Files, Programs and Internet Access
 -------------------------------------------------------------------------------
 
-- External programs: none. Both scripts run entirely inside PixInsight.
+- External programs: none. All scripts run entirely inside PixInsight.
 - Internet, Part 1: only through PixInsight's ImageSolver. If the local Gaia star catalogue is not
   installed (or for limit magnitudes of 5 or less), ImageSolver downloads catalogue stars from the
   VizieR service set in its preferences, sending the image's centre coordinates and search radius.
@@ -97,13 +104,14 @@ Files, Programs and Internet Access
   map (SFD map, Schlegel, Finkbeiner & Davis 1998) is downloaded to the system temporary folder
   and deleted afterwards.
 - Files outside the PixInsight installation: settings are kept in PixInsight's own settings.
-  ImageSolver writes star lists (stars*.csv) to the system temporary folder. Part 1 searches the
-  PixInsight folders, common Astro folders and a folder the user picks for the MARS database
-  (.xmars, read only), and reads/writes separation profiles (.txt) only in a folder the user
-  chooses. Re-run marks are stored as XISF properties in the image; Part 1 adds FITS HISTORY lines
-  starting with "SH:" when a gradient model is applied.
+  ImageSolver writes star lists (stars*.csv) to the system temporary folder. Part 1 reads the MARS
+  database (.xmars, read only) from the files set in MultiscaleGradientCorrection's preferences,
+  from PixInsight's library and settings folders, or from a folder the user picks, and
+  reads/writes separation profiles (.txt) only in a folder the user chooses. Re-run marks are
+  stored as XISF properties in the image; when a gradient model or GC result is applied, Part 1
+  records which one in the XISF property SpaceHunter:GradientModel.
 
-Details: "Files, Programs and Internet Access" in the user guides of Part 1 and Part 2.
+Details: "Files, Programs and Internet Access" in the user guides of Part 1, Part 2 and the Master.
 
 -------------------------------------------------------------------------------
 Commercial Tools
