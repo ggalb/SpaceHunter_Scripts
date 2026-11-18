@@ -2,7 +2,7 @@
 
 #feature-id @@FEATURE_ID@@ : Space_Hunter > @@MENU_NAME@@
 #feature-icon  @script_icons_dir/@@ICON@@
-#feature-info Space Hunter Lazy Workflow Master@@NAME_SUFFIX@@ @@MASTER_VERSION@@ (@@BUILD_LABEL@@)<br/>\
+#feature-info Space Hunter Lazy Workflow Master@@NAME_SUFFIX@@ @@MASTER_VERSION@@@@BUILD_TAG@@<br/>\
    <br/>\
    Runs SH Lazy Workflow Part 1 (@@P1_VERSION@@) and Part 2 (@@P2_VERSION@@) as one workflow.<br/>\
    Part 2 continues right after a background model or GC result is applied<br/>\
@@ -13,7 +13,7 @@
    AutoColor.js Copyright &copy; 2016 Hartmut V. Bornemann. Used with written permission.
 
 // ============================================================
-// Space Hunter Lazy Workflow Master@@NAME_SUFFIX@@ @@MASTER_VERSION@@ (@@BUILD_LABEL@@)
+// Space Hunter Lazy Workflow Master@@NAME_SUFFIX@@ @@MASTER_VERSION@@@@BUILD_TAG@@
 //
 // GENERATED FILE - DO NOT EDIT. Built by build_master.py from:
 @@BUILD_INFO@@
@@ -57,6 +57,7 @@
 //          Part 2's dialog is skipped at M1 already (v0.2.1). Run the master again
 //          afterwards: a DBE / MGC / GC / ABE step in the active history
 //          (or Part 1's gradient mark) counts as "Part 1 done".
+// v1.0.0:  first release (PI update repository): no "(TEST BUILD)" label.
 // v0.3.6:  TEST "simulate MGC failure" checkbox moved to the author's
 //          internal build (Georg 2026-11-18); the release has none.
 // v0.3.5:  back to Part 2 v2.4.27: v2.4.28 (MAS preview window moved to the
@@ -776,7 +777,7 @@ constructor(win, state)
 
    this.title_Label = new Label(this);
    this.title_Label.useRichText = true;
-   this.title_Label.text = "<b>" + SHM_NAME + " " + SHM_VERSION + "</b> (@@BUILD_LABEL_LC@@) &mdash; " +
+   this.title_Label.text = "<b>" + SHM_NAME + " " + SHM_VERSION + "</b>@@BUILD_TAG_LC@@ &mdash; " +
                            "Part 1 " + SHM_Part1.version + ", Part 2 " + SHM_Part2.version;
 
    this.image_Label = new Label(this);
@@ -913,7 +914,7 @@ function shmMain()
 
    P1.banner();
    console.writeln("\n" + "=".repeat(80));
-   console.writeln(SHM_NAME.toUpperCase() + " " + SHM_VERSION + " (@@BUILD_LABEL@@)");
+   console.writeln(SHM_NAME.toUpperCase() + " " + SHM_VERSION + "@@BUILD_TAG@@");
    console.writeln("Part 1 " + P1.version + " → model / GC Apply → Part 2 " + P2.version);
    console.writeln("=".repeat(80) + "\n");
 

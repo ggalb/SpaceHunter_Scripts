@@ -2,7 +2,7 @@
 
 #feature-id SHLazyWorkflowMaster : Space_Hunter > SH Lazy Workflow Master
 #feature-icon  @script_icons_dir/SH_Master.svg
-#feature-info Space Hunter Lazy Workflow Master v0.3.6-test (TEST BUILD)<br/>\
+#feature-info Space Hunter Lazy Workflow Master v1.0.0<br/>\
    <br/>\
    Runs SH Lazy Workflow Part 1 (v2.7.32) and Part 2 (v2.4.27) as one workflow.<br/>\
    Part 2 continues right after a background model or GC result is applied<br/>\
@@ -13,7 +13,7 @@
    AutoColor.js Copyright &copy; 2016 Hartmut V. Bornemann. Used with written permission.
 
 // ============================================================
-// Space Hunter Lazy Workflow Master v0.3.6-test (TEST BUILD)
+// Space Hunter Lazy Workflow Master v1.0.0
 //
 // GENERATED FILE - DO NOT EDIT. Built by build_master.py from:
 //   SH_LazyWorkflow_Part1_V8.js v2.7.32  (sha1 b79bf2f50fc3b31f029dc0aadb71cb87e0ed97db)
@@ -60,6 +60,7 @@
 //          Part 2's dialog is skipped at M1 already (v0.2.1). Run the master again
 //          afterwards: a DBE / MGC / GC / ABE step in the active history
 //          (or Part 1's gradient mark) counts as "Part 1 done".
+// v1.0.0:  first release (PI update repository): no "(TEST BUILD)" label.
 // v0.3.6:  TEST "simulate MGC failure" checkbox moved to the author's
 //          internal build (Georg 2026-11-18); the release has none.
 // v0.3.5:  back to Part 2 v2.4.27: v2.4.28 (MAS preview window moved to the
@@ -93,7 +94,7 @@
 CoreApplication.ensureMinimumVersion(1, 9, 6);
 
 #define SHM_NAME    "Space Hunter Lazy Workflow Master"
-#define SHM_VERSION "v0.3.6-test"
+#define SHM_VERSION "v1.0.0"
 // Manual folder = MENU name (Dialog.browseScriptDocumentation), not the ID.
 var SHM_DOC_NAME = "SH Lazy Workflow Master";
 
@@ -11636,7 +11637,7 @@ constructor(win, state)
 
    this.title_Label = new Label(this);
    this.title_Label.useRichText = true;
-   this.title_Label.text = "<b>" + SHM_NAME + " " + SHM_VERSION + "</b> (test build) &mdash; " +
+   this.title_Label.text = "<b>" + SHM_NAME + " " + SHM_VERSION + "</b> &mdash; " +
                            "Part 1 " + SHM_Part1.version + ", Part 2 " + SHM_Part2.version;
 
    this.image_Label = new Label(this);
@@ -11768,7 +11769,7 @@ function shmMain()
 
    P1.banner();
    console.writeln("\n" + "=".repeat(80));
-   console.writeln(SHM_NAME.toUpperCase() + " " + SHM_VERSION + " (TEST BUILD)");
+   console.writeln(SHM_NAME.toUpperCase() + " " + SHM_VERSION + "");
    console.writeln("Part 1 " + P1.version + " → model / GC Apply → Part 2 " + P2.version);
    console.writeln("=".repeat(80) + "\n");
 

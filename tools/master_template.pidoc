@@ -26,12 +26,12 @@
 % the release on all systems after PTeam's answer of 2026-11-18 (CPD
 % rule 5.3).
 %
-% Written against the test build v0.3.3 (Part 1 v2.7.32 / Part 2 v2.4.27),
-% for release v1.0.0. OPEN before release:
-%  - VERIFY in PI: double-clicking a New Instance icon from Part 2's dialog
-%    starts the Master with both parts' settings (stated in "start" note).
-%  - images/Master_0.png is Georg's v0.2.7-test screenshot: retake with the
-%    release build (no TEST checkbox, no Sound checkbox).
+% Written for release v1.0.0 (Part 1 v2.7.32 / Part 2 v2.4.27).
+% images/Master_0.png = Georg's v1.0.0 screenshot (2026-11-18), cropped to the
+% dialog frame. The internal manual keeps its older picture (Sound checkbox).
+% New Instance note VERIFIED by Georg 2026-11-18: icons from Part 1's and
+% Part 2's dialog both start the Master (Script filePath = the Master);
+% Part 1's holds P1_ keys only, Part 2's holds P1_ + P2_.
 % ----------------------------------------------------------------------------
 
 \script {@@MENU_NAME@@}
@@ -152,9 +152,12 @@
       without changing the image.
 
       \note {
-         A process icon made with \e {New Instance} in Part 2's dialog holds
-         the settings of both parts. Double-click it to start the Master with
-         them.
+         \e {New Instance} in Part 1's or Part 2's dialog makes a process icon
+         of the Master, not of the single script: double-click it (or apply
+         it globally) to start the Master with those settings. An icon from
+         Part 2's dialog holds the settings of both parts; one from Part 1's
+         dialog holds only Part 1's, because Part 2's dialog has not been
+         shown yet at that point.
       }
    }
 

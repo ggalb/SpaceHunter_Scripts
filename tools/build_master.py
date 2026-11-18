@@ -32,9 +32,9 @@ import os
 import re
 import sys
 
-# Release line: v0.3.x-test until the first PI push, which is v1.0.0.
+# Release line: v0.3.x-test until the first PI push = v1.0.0 (2026-11-18).
 # Internal line: stays below v1 for good (never mixed up with a release).
-MASTER_VERSION = "v0.3.6-test"
+MASTER_VERSION = "v1.0.0"
 INTERNAL_VERSION = "v0.3.6-internal"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -54,7 +54,7 @@ VARIANTS = [
         "MENU_NAME": "SH Lazy Workflow Master",
         "NAME_SUFFIX": "",
         "ICON": "SH_Master.svg",
-        "BUILD_LABEL": "TEST BUILD",
+        "BUILD_LABEL": "",          # "TEST BUILD" for test builds; empty = release
         "script": os.path.join(DEFAULT_SRC, "SH_LazyWorkflow_Master_V8.js"),
         "pidoc": os.path.join(REPO, "pidoc", "SHLazyWorkflowMaster.pidoc"),
     },
@@ -207,8 +207,10 @@ def select_internal(text, sections, comment, where):
 
 def fill(text, v, extra):
     keys = dict(extra)
-    keys.update({k: v[k] for k in ("FEATURE_ID", "MENU_NAME", "NAME_SUFFIX", "ICON", "BUILD_LABEL")})
-    keys["BUILD_LABEL_LC"] = v["BUILD_LABEL"].lower()
+    keys.update({k: v[k] for k in ("FEATURE_ID", "MENU_NAME", "NAME_SUFFIX", "ICON")})
+    lab = v["BUILD_LABEL"]   # empty for a release: no "( )" at all
+    keys["BUILD_TAG"] = " (" + lab + ")" if lab else ""
+    keys["BUILD_TAG_LC"] = " (" + lab.lower() + ")" if lab else ""
     keys["MASTER_VERSION"] = v["version"]
     for k, val in keys.items():
         text = text.replace("@@" + k + "@@", val)

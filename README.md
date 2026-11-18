@@ -9,10 +9,10 @@ Copyright © 2026 Georg G Albrecht. MIT License.
 
 | PixInsight | Scripts |
 |---|---|
-| 1.9.6 | Part 1 v2.7.31, Part 2 v2.4.26, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2 (code-signed) |
+| 1.9.6 | Part 1 v2.7.32, Part 2 v2.4.27, Master v1.0.0, +Previews v2.2.7, NamePreviews v2.1.1, KillPreviews v2.0.2 (code-signed) |
 
 Older packages (for PixInsight 1.9.5 and earlier) have been withdrawn. The scripts are code-signed;
-Part 1's signature depends on the ImageSolver of the PixInsight version it was signed with, so
+Part 1's and the Master's signatures depend on the ImageSolver of the PixInsight version they were signed with, so
 each new PixInsight version gets its own package soon after its release. Script file names carry
 no version number (e.g. `SH_LazyWorkflow_Part1_V8.js`); the version is shown in each script's
 dialog. Saved settings are kept when you update.
@@ -73,6 +73,9 @@ Plate solving with PixInsight's ImageSolver (blind solve when the image has no c
 ### SH Lazy Workflow Part 2
 Continues from Part 1: BlurXTerminator (correct only), tiled background finder with a pre-check and optional dust map, SPCC with auto-detected ROI or AutoColor, Auto Display Stretch (PixInsight STF with the AutoSTF method, linked/unlinked chosen automatically), BlurXTerminator full with adjustable parameters, optional MultiscaleAdaptiveStretch preview copy, StarXTerminator or StarNet2, MLDenoise or NoiseXTerminator. Steps already applied to the image are skipped on a second run. New Instance support.
 
+### SH Lazy Workflow Master
+Runs Part 1 and Part 2 as one workflow. You set up both parts at the start; the run then only waits for you once, to pick the background model (or GC result) in Part 1's panel, and Part 2 continues by itself after Apply. The start dialog shows what is already done to the image and preselects what is left; when the run has to stop (plate solve needs you, DBE, panel closed without Apply), the next run continues where it stopped. Contains Part 1 and Part 2 unchanged.
+
 ### Bonus Scripts
 
 **SH KillPreviews** — Deletes all previews of the active image in one click.
@@ -85,7 +88,7 @@ Continues from Part 1: BlurXTerminator (correct only), tiled background finder w
 
 ## Documentation
 
-Each Lazy Workflow script and +Previews has a manual in PixInsight's documentation format. It is installed with the scripts and opens from the documentation button in the script dialog. The manuals list every file the scripts write, every network connection they make, and every setting they store (section "Files, Programs and Internet Access").
+Each Lazy Workflow script (Part 1, Part 2, Master) and +Previews has a manual in PixInsight's documentation format. It is installed with the scripts and opens from the documentation button in the script dialog. The manuals list every file the scripts write, every network connection they make, and every setting they store (section "Files, Programs and Internet Access").
 
 ---
 
